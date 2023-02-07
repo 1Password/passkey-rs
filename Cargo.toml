@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "passkey",
+    "passkey-authenticator",
+    "passkey-client",
+    "passkey-types",
+]
+
+[workspace.package]
+version = "0.0.1"
+authors = ["1Password"]
+repository = "https://github.com/1Password/passkey-rs"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+keywords = ["passkey", "webauthn", "fido2", "passwordless", "ctap"]
+categories = ["authentication"]
