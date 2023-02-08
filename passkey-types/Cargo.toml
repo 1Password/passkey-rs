@@ -1,6 +1,8 @@
 [package]
 name = "passkey-types"
 description = "Rust type definitions for the webauthn and CTAP specifications"
+include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
+readme = "README.md"
 version.workspace = true
 authors.workspace = true
 repository.workspace = true

@@ -1,6 +1,8 @@
 [package]
 name = "passkey-client"
 description = "Webauthn client supporting passkey credentials"
+include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
+readme = "README.md"
 version.workspace = true
 authors.workspace = true
 repository.workspace = true

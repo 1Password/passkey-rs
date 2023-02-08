@@ -1,6 +1,8 @@
 [package]
 name = "passkey"
 description = "Webauthn library for developing authenticators."
+include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT", "../README.md"]
+readme = "../README.md"
 version.workspace = true
 authors.workspace = true
 repository.workspace = true

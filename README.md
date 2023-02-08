@@ -1,5 +1,9 @@
 # Passkey-rs
 
+A framework for defining Webauthn authenticators and clients that support passkeys.
+
+Coming soon.
+
 ## Credits
 
 Made with ❤️ and ☕ by the [1Password](https://1password.com/) team.
