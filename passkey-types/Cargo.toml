@@ -11,6 +11,17 @@ license.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+bitflags = "1"
+ciborium = "0.2"
+data-encoding = "2"
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+strum = { version = "0.24", features = ["derive"] }
+typeshare = "1"
+# TODO: investigate rolling our own IANA listings and COSE keys
+coset = "0.3"
+
+[dev-dependencies]
+rand = "0.8"
+serde_json = "1"
