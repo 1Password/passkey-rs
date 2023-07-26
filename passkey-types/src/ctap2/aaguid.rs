@@ -10,8 +10,6 @@ use serde::{Deserialize, Serialize};
 /// way to generate an empty AAGUID where it is only `0`s. This the typical AAGUID used when doing
 /// self or no attestation.
 ///
-/// For example this is unique to the (Account, Device) tuple within the context of 1Password.
-///
 /// [spec]: https://w3c.github.io/webauthn/#sctn-authenticator-model
 /// [RFC4122]: https://www.rfc-editor.org/rfc/rfc4122
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

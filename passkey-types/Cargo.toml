@@ -3,7 +3,7 @@ name = "passkey-types"
 description = "Rust type definitions for the webauthn and CTAP specifications"
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
 readme = "README.md"
-version = "0.1.0"
+version = "0.1.1"
 authors.workspace = true
 repository.workspace = true
 edition.workspace = true
@@ -11,10 +11,15 @@ license.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+serialize_bytes_as_base64_string = []
+
 [dependencies]
 bitflags = "1"
 ciborium = "0.2"
 data-encoding = "2"
+rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
 strum = { version = "0.24", features = ["derive"] }
@@ -23,5 +28,4 @@ typeshare = "1"
 coset = "0.3"
 
 [dev-dependencies]
-rand = "0.8"
 serde_json = "1"

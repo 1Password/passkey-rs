@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
 use crate::{
-    utils::serde::ignore_unknown,
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec},
     webauthn::{
         common::{
             AuthenticationExtensionsClientInputs, PublicKeyCredentialDescriptor,
@@ -21,11 +21,11 @@ use crate::{
     webauthn::{CollectedClientData, PublicKeyCredentialUserEntity},
 };
 
-/// The response of the successfull authentication of a [`PublicKeyCredential`]
+/// The response to the successful authentication of a [`PublicKeyCredential`]
 #[typeshare]
 pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAssertionResponse>;
 
-/// This types supplies `get()` requests with the data it needs to generate an assertion.
+/// This type supplies `get()` requests with the data it needs to generate an assertion.
 /// Its `challenge` member MUST be present, while its other members are OPTIONAL.
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-publickeycredentialrequestoptions>
@@ -50,7 +50,7 @@ pub struct PublicKeyCredentialRequestOptions {
     /// MUST verify that this RP ID exactly equals the rpId of the credential to be used for the
     /// authentication ceremony.
     ///
-    /// If omitted, its value will be the requesting origin's [effective domain]
+    /// If omitted, its value will be the requesting origin's [effective domain].
     ///
     /// [RP ID]: https://w3c.github.io/webauthn/#rp-id
     /// [Relying Party]: https://w3c.github.io/webauthn/#relying-party
@@ -61,7 +61,7 @@ pub struct PublicKeyCredentialRequestOptions {
     /// This OPTIONAL member is used by the client to find authenticators eligible for this
     /// authentication ceremony. It can be used in two ways:
     ///
-    /// * If the user account to authenticate is already identified (e.g., if the user has entered a
+    /// * If the user account to authenticate is already identified (e.g. if the user has entered a
     ///   username), then the Relying Party SHOULD use this member to list credential descriptors for
     ///   credential records in the user account. This SHOULD usually include all credential records
     ///   in the user account.
@@ -87,12 +87,12 @@ pub struct PublicKeyCredentialRequestOptions {
     /// The list is ordered in descending order of preference: the first item in the list is the
     /// most preferred credential, and the last is the least preferred.
     ///
-    /// > Note: Unfortunately we cannot skip an object within a vec if theres an error deserializing it.
-    /// >       Therefore, any credential descriptor whose type is unknown should be ignored.
-    /// >       If this is empty we'll error out anyways.
-    ///
     /// [privacy]: https://w3c.github.io/webauthn/#sctn-credential-id-privacy-leak
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown_opt_vec"
+    )]
     pub allow_credentials: Option<Vec<PublicKeyCredentialDescriptor>>,
 
     /// This OPTIONAL member specifies the Relying Party's requirements regarding user verification

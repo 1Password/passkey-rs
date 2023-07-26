@@ -21,10 +21,9 @@ bitflags! {
     }
 }
 
-/// Flags for 1Password will always verify the User's presence and will always be backed up.
 impl Default for Flags {
     fn default() -> Self {
-        Flags::UP | Flags::UV | Flags::BE | Flags::BS
+        Flags::BE | Flags::BS
     }
 }
 

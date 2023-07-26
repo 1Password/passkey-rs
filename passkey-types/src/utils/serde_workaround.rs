@@ -1,6 +1,6 @@
 /// This is a workaround to deriving [`serde::Deserialize`] and [`serde::Serialize`] but where the
 /// field identifiers are serialized as integers rather than strings. This is due to the fact that
-/// serde can only serialize struct fields are strings, including when using the `#[serde(rename)]`
+/// serde can only serialize struct fields as strings, including when using the `#[serde(rename)]`
 /// attribute.
 ///
 /// Issues to keep an eye on for this workaround to no longer be relevant:
@@ -222,7 +222,11 @@ macro_rules! delegate_visit_to_u8 {
     };
 }
 
-pub fn set_if_none<'de, E, K, T, M>(key: K, val: &mut Option<T>, map: &mut M) -> Result<(), E>
+pub(crate) fn set_if_none<'de, E, K, T, M>(
+    key: K,
+    val: &mut Option<T>,
+    map: &mut M,
+) -> Result<(), E>
 where
     E: serde::de::Error,
     K: Into<&'static str>,

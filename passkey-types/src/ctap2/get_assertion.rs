@@ -1,7 +1,6 @@
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorGetAssertion>
 use crate::{
     ctap2::AuthenticatorData,
-    // serde_workaround,
     webauthn::{
         AuthenticationExtensionsClientInputs, PublicKeyCredentialDescriptor,
         PublicKeyCredentialUserEntity,
@@ -55,7 +54,7 @@ serde_workaround! {
 }
 
 serde_workaround! {
-    /// Return of `Authenticator::get_assertion` on success
+    /// Type returned from `Authenticator::get_assertion` on success.
     #[derive(Debug)]
     pub struct Response {
         /// PublicKeyCredentialDescriptor structure containing the credential identifier whose
@@ -103,9 +102,8 @@ serde_workaround! {
         /// one account for the RP and the authenticator does not have a display. Omitted when
         /// returned for the authenticatorGetNextAssertion method.
         ///
-        /// If a user complains that we've broken their workflow due to not allowing more than 256
-        /// accounts/credentials, I'd be VERY interested in hearing the details of their flow,
-        /// and immediately find an XKCD artist.
+        /// It seems unlikely that more than 256 credentials would be needed for any given RP. Please
+        /// file an enhancement request if this limit impacts your application.
         #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
         pub number_of_credentials: Option<u8>,
     }

@@ -15,7 +15,7 @@
 //!
 //! ## CTAP 2
 //!
-//! In [this](ctap2) module, seeing as the method inputs are not given explicit names, the `Request` and
+//! In [this](ctap2) module, since the method inputs are not given explicit names, the `Request` and
 //! `Response` types are defined in separate modules for each operation. These types make use of the
 //! same data structures from the [`webauthn`] module. In some cases though, the types have
 //! different constraits regarding required and optional fields, in which case it is re-defined in
@@ -31,12 +31,17 @@
 #[macro_use]
 mod utils;
 
+mod passkey;
+
 pub mod ctap2;
+pub mod u2f;
 pub mod webauthn;
-// pub mod u2f;
 
 // Re-exports
-pub use utils::{
-    bytes::{Bytes, NotBase64Encoded},
-    crypto, encoding,
+pub use self::{
+    passkey::Passkey,
+    utils::{
+        bytes::{Bytes, NotBase64Encoded},
+        crypto, encoding, rand,
+    },
 };

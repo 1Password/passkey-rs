@@ -7,10 +7,15 @@ use super::encoding;
 
 /// A newtype around `Vec<u8>` which serializes using the transport format's byte representation.
 ///
+/// When feature `serialize_bytes_as_base64_string` is set, this type will be serialized into a
+/// `base64url` representation instead. Note that this type should not be used externally when this
+/// feature is set, such as in Kotlin, to avoid a serialization errors. In the future, this feature
+/// flag can be removed when typeshare supports target/language specific serialization:
+/// <https://github.com/1Password/typeshare/issues/63>
+///
 /// This will use an array of numbers for JSON, and a byte string in CBOR for example.
 ///
-/// It also supports deserializing from `base64` and `base64url` formatted strings. Serializing into
-/// `base64url` is future work.
+/// It also supports deserializing from `base64` and `base64url` formatted strings.
 #[typeshare(transparent)]
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 #[repr(transparent)]
@@ -49,6 +54,7 @@ impl From<Bytes> for String {
 }
 
 /// The string given for decoding is not `base64url` nor `base64` encoded data.
+#[derive(Debug)]
 pub struct NotBase64Encoded;
 
 impl TryFrom<&str> for Bytes {
@@ -93,7 +99,11 @@ impl Serialize for Bytes {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_bytes(&self.0)
+        if cfg!(feature = "serialize_bytes_as_base64_string") {
+            serializer.serialize_str(&crate::encoding::base64url(&self.0))
+        } else {
+            serializer.serialize_bytes(&self.0)
+        }
     }
 }
 

@@ -7,7 +7,6 @@ use crate::{ctap2::AuthenticatorData, webauthn, Bytes};
 #[cfg(doc)]
 use crate::webauthn::{
     CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
-    PublicKeyCredentialUserEntity,
 };
 
 serde_workaround! {
@@ -64,11 +63,11 @@ serde_workaround! {
         pub exclude_list: Option<Vec<webauthn::PublicKeyCredentialDescriptor>>,
 
         /// Parameters to influence authenticator operation, as specified in [`webauthn`].
-        /// These parameters might be authenticator specific
+        /// These parameters might be authenticator specific.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
         pub extensions: Option<webauthn::AuthenticationExtensionsClientInputs>,
 
-        ///Parameters to influence authenticator operation, see [`Options`] for more details.
+        /// Parameters to influence authenticator operation, see [`Options`] for more details.
         #[serde(rename = 0x07, default)]
         pub options: Options,
 
@@ -79,17 +78,18 @@ serde_workaround! {
 
         /// PIN protocol version chosen by the client
         ///
-        /// if ever we hit more than 256 protocol versions, I'm quitting progamming
+        /// if ever we hit more than 256 protocol versions, an enhacement request should be filed.
         #[serde(rename = 0x09, default, skip_serializing_if = Option::is_none)]
         pub pin_protocol: Option<u8>,
     }
 }
 
 /// This is a copy of [`webauthn::PublicKeyCredentialRpEntity`] but where the `id` is required
-/// and the `name` is optional which is the inverse of what is defined in the [WebAuthn]. This is
-/// the requirements of the ctap version of this struct.
+/// and the `name` is optional which is the inverse of what is defined in the [WebAuthn]. These are
+/// the requirements of the [CTAP2] version of this struct.
 ///
 /// [WebAuthn]: https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity
+/// [CTAP2]: https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorMakeCredential
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PublicKeyCredentialRpEntity {
     /// The domain of the relying party
@@ -99,23 +99,72 @@ pub struct PublicKeyCredentialRpEntity {
     pub name: Option<String>,
 }
 
-/// temp
-pub trait IntoCtap2 {
-    /// temp
-    type Out;
-
-    /// temp
-    fn into_ctap2(self, rp_id: &str) -> Self::Out;
+/// This is a copy of [`webauthn::PublicKeyCredentialUserEntity`] with differing optional fields.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PublicKeyCredentialUserEntity {
+    /// The ID of the user
+    pub id: Bytes,
+    /// Optional user name
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Optional display name
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Optional URL pointing to a user icon
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_url: Option<String>,
 }
 
-impl IntoCtap2 for webauthn::PublicKeyCredentialRpEntity {
-    type Out = PublicKeyCredentialRpEntity;
+impl From<webauthn::PublicKeyCredentialUserEntity> for PublicKeyCredentialUserEntity {
+    fn from(value: webauthn::PublicKeyCredentialUserEntity) -> Self {
+        Self {
+            id: value.id,
+            name: Some(value.name),
+            display_name: Some(value.display_name),
+            icon_url: None,
+        }
+    }
+}
+
+impl TryFrom<PublicKeyCredentialUserEntity> for webauthn::PublicKeyCredentialUserEntity {
+    type Error = &'static str;
+    fn try_from(value: PublicKeyCredentialUserEntity) -> Result<Self, Self::Error> {
+        match (value.name, value.display_name) {
+            (Some(name), Some(display_name)) => {
+                Ok(Self {
+                    id: value.id,
+                    name,
+                    display_name,
+                })
+            },
+            _ => Err("PublicKeyCredentialUserEntity is missing one or more required fields: name, display_name"),
+        }
+    }
+}
+
+/// In the case of a missing `rp_id` on [`webauthn::PublicKeyCredentialRpEntity`] use this to
+/// construct a [`PublicKeyCredentialRpEntity`] using a effective domain.
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct MissingRpId {
+    /// Human friendly name for the Relying Party, extracted from [`webauthn::PublicKeyCredentialRpEntity::name`].
+    pub rp_name: String,
+}
+
+impl TryFrom<webauthn::PublicKeyCredentialRpEntity> for PublicKeyCredentialRpEntity {
+    type Error = MissingRpId;
     /// Convert the webauthn version of the struct to the CTAP2 version with the effective domain if
     /// the id was not provided.
-    fn into_ctap2(self, rp_id: &str) -> Self::Out {
-        PublicKeyCredentialRpEntity {
-            id: self.id.unwrap_or_else(|| rp_id.into()),
-            name: Some(self.name),
+    fn try_from(value: webauthn::PublicKeyCredentialRpEntity) -> Result<Self, Self::Error> {
+        if let Some(id) = value.id {
+            Ok(Self {
+                id,
+                name: Some(value.name),
+            })
+        } else {
+            Err(MissingRpId {
+                rp_name: value.name,
+            })
         }
     }
 }
@@ -123,7 +172,7 @@ impl IntoCtap2 for webauthn::PublicKeyCredentialRpEntity {
 /// The options that control how an authenticator will behave.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Options {
-    /// Instructs the authenticator to store the key material on the device.
+    /// Specifies whether this credential is to be discoverable or not.
     #[serde(default)]
     pub rk: bool,
     /// Instructs the authenticator to require a gesture that verifies the user to complete the request. Examples of such gestures are fingerprint scan or a PIN.
@@ -151,7 +200,7 @@ const fn default_true() -> bool {
 }
 
 serde_workaround! {
-    /// Un a successfull creation of a credential, the authenticator returns an attestation object.
+    /// Upon successful creation of a credential, the authenticator returns an attestation object.
     #[derive(Debug)]
     pub struct Response {
         /// The authenticator data object
@@ -164,9 +213,9 @@ serde_workaround! {
 
         /// The attestation statement, whose format is identified by the "fmt" object member.
         /// The client treats it as an opaque object.
-        ///
-        /// TODO: Change to a flattenned enum when `content, type` serde enums can use numbers as
-        /// the keys
+        //
+        // TODO: Change to a flattened enum when `content, type` serde enums can use numbers as
+        // the keys
         #[serde(rename = 0x03)]
         pub att_stmt: ciborium::value::Value,
     }

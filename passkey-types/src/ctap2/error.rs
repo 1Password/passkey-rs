@@ -64,7 +64,7 @@ impl From<U2FError> for StatusCode {
     }
 }
 
-/// Ctap2 error which may or may not be explicitely defined
+/// Ctap2 error which may or may not be explicitly defined
 #[derive(Debug, PartialEq, Eq)]
 pub enum Ctap2Code {
     /// Known error codes
@@ -107,7 +107,7 @@ impl From<Ctap2Code> for u8 {
 }
 
 repr_enum! {
-    /// Explicitely defined CTAP2 error variants
+    /// Explicitly defined CTAP2 error variants
     Ctap2Error: u8 {
         /// Indicates successful response.
         ///
@@ -122,7 +122,7 @@ repr_enum! {
         MissingParameter : 0x14,
         /// Limit for number of items exceeded.
         LimitExceeded : 0x15,
-        /// Fingerprint data base is full, e.g., during enrollment.
+        /// Fingerprint database is full, e.g. during enrollment.
         FingerprintDatabaseFull : 0x17,
         /// Large blob storage is full. (See [§ 6.10.3 Large, per-credential blobs.][1])
         ///

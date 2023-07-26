@@ -1,10 +1,12 @@
 //! Common types used in both Attestation (registration) and Assertion (authentication).
 //!
-//! All the types here are re-exported in the [`super::attestation`] and [`super::assertion`] modules.
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
-use crate::{utils::serde::ignore_unknown, Bytes};
+use crate::{
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec},
+    Bytes,
+};
 
 #[cfg(doc)]
 use crate::webauthn::{
@@ -33,7 +35,7 @@ pub struct AuthenticationExtensionsClientInputs {}
 #[serde(rename_all = "kebab-case")]
 #[typeshare(serialized_as = "String")]
 pub enum PublicKeyCredentialType {
-    /// Currently the only type defined is a `public-key` meaning the public conterpart of an
+    /// Currently the only type defined is a `PublicKey` meaning the public conterpart of an
     /// asymmetric key pair.
     PublicKey,
     /// This is the default as it will be ignored if the value is unknown during deserialization
@@ -78,7 +80,7 @@ pub struct PublicKeyCredentialDescriptor {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "ignore_unknown"
+        deserialize_with = "ignore_unknown_opt_vec"
     )]
     pub transports: Option<Vec<AuthenticatorTransport>>,
 }
@@ -142,10 +144,11 @@ pub enum AuthenticatorTransport {
     /// Indicates the respective authenticator can be contacted using a combination of (often separate)
     /// data-transport and proximity mechanisms. This supports, for example, authentication on a
     /// desktop computer using a smartphone.
+    #[serde(alias = "cable")]
     Hybrid,
 
     /// Indicates the respective authenticator is contacted using a client device-specific transport,
-    /// i.e., it is a platform authenticator. These authenticators are not removable from the client
+    /// i.e. it is a platform authenticator. These authenticators are not removable from the client
     /// device.
     Internal,
 }
@@ -153,7 +156,7 @@ pub enum AuthenticatorTransport {
 /// This enumeration’s values describe authenticators' attachment modalities. Relying Parties use
 /// this to express a preferred authenticator attachment modality when passing a
 /// [`PublicKeyCredentialCreationOptions`] to create a credential, and clients use this to report the
-///  authenticator attachment modality used to complete a registration or authentication ceremony.
+/// authenticator attachment modality used to complete a registration or authentication ceremony.
 ///
 /// <https://w3c.github.io/webauthn/#enumdef-authenticatorattachment>
 #[derive(Debug, Deserialize, Serialize)]
@@ -166,7 +169,7 @@ pub enum AuthenticatorAttachment {
     /// **platform credential**.
     Platform,
 
-    /// This value indicates cross-platform attachment which is attached using cross-platform transports,
+    /// This value indicates cross-platform attachment which is attached using cross-platform transports
     /// called **cross-platform attachment**. Authenticators of this class are removable from, and can
     /// "roam" between, client devices. A public key credential bound to a roaming authenticator is
     /// called a **roaming credential**.

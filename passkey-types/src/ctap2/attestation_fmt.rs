@@ -27,7 +27,7 @@ pub struct AuthenticatorData {
     /// SHA-256 hash of the RP ID the credential is scoped to.
     rp_id_hash: [u8; 32],
 
-    /// The flags representing the information of this credential. See [Flags] for more information
+    /// The flags representing the information of this credential. See [Flags] for more information.
     pub flags: Flags,
 
     /// Signature counter, 32-bit unsigned big-endian integer.
@@ -41,7 +41,7 @@ pub struct AuthenticatorData {
     /// Extension-defined authenticator data. This is a CBOR [RFC8949] map with extension identifiers
     /// as keys, and authenticator extension outputs as values. See [WebAuthn Extensions] for details.
     ///
-    /// Using the generic `Value` rather than a HashMap or the internal map representation for the
+    /// This field uses the generic `Value` rather than a HashMap or the internal map representation for the
     /// following reasons:
     /// 1. `Value` does not implement `Hash` so it can't be used as a key in a `HashMap`
     /// 2. Even if `Vec<(Value, Value)>` is the internal representation of a map in `Value`, it
@@ -56,7 +56,7 @@ pub struct AuthenticatorData {
 }
 
 impl AuthenticatorData {
-    /// Create a new AuthenticatorData object for an RP_id and an optional counter.
+    /// Create a new AuthenticatorData object for an RP ID and an optional counter.
     ///
     /// The flags will be set to their default values.
     pub fn new(rp_id: &str, counter: Option<u32>) -> Self {
@@ -69,12 +69,17 @@ impl AuthenticatorData {
         }
     }
 
-    /// Add an [AttestedCredentialData] to the authenticator data.
+    /// Add an [`AttestedCredentialData`] to the authenticator data.
     ///
-    /// This sets the [Flags::AT] value as well.
+    /// This sets the [`Flags::AT`] value as well.
     pub fn set_attested_credential_data(mut self, acd: AttestedCredentialData) -> Self {
-        self.flags |= Flags::AT;
         self.attested_credential_data = Some(acd);
+        self.set_flags(Flags::AT)
+    }
+
+    /// Set additional [`Flags`] to the authenticator data.
+    pub fn set_flags(mut self, flags: Flags) -> Self {
+        self.flags |= flags;
         self
     }
 
@@ -202,7 +207,7 @@ pub struct AttestedCredentialData {
     /// The AAGUID of the authenticator.
     pub aaguid: Aaguid,
 
-    /// The credential ID who's length is prepended in the byte array. This is not public as it
+    /// The credential ID whose length is prepended to the byte array. This is not public as it
     /// should not be modifiable to be longer than a u16.
     credential_id: Vec<u8>,
 
@@ -211,7 +216,7 @@ pub struct AttestedCredentialData {
     /// MUST contain the "alg" parameter and MUST NOT contain any other OPTIONAL parameters.
     /// The "alg" parameter MUST contain a [coset::iana::Algorithm] value. The encoded credential
     /// public key MUST also contain any additional REQUIRED parameters stipulated by the relevant
-    /// key type specification, i.e., REQUIRED for the key type "kty" and algorithm "alg"
+    /// key type specification, i.e. REQUIRED for the key type "kty" and algorithm "alg"
     /// (see Section 2 of [RFC9053]).
     ///
     /// [RFC9052]: https://www.rfc-editor.org/rfc/rfc9052
@@ -223,9 +228,9 @@ impl AttestedCredentialData {
     /// Create a new [AttestedCredentialData]
     ///
     /// # Error
-    /// Returns an error if the length of `credential_id` cannot be represented by a u16
+    /// Returns an error if the length of `credential_id` cannot be represented by a u16.
     pub fn new(
-        aaguid: impl Into<Aaguid>,
+        aaguid: Aaguid,
         credential_id: Vec<u8>,
         key: CoseKey,
     ) -> Result<Self, TryFromIntError> {
@@ -233,7 +238,7 @@ impl AttestedCredentialData {
         u16::try_from(credential_id.len())?;
 
         Ok(Self {
-            aaguid: aaguid.into(),
+            aaguid,
             credential_id,
             key,
         })
@@ -293,7 +298,7 @@ mod test {
     use coset::CoseKeyBuilder;
 
     use super::*;
-    use crate::utils::test::random_vec;
+    use crate::utils::rand::random_vec;
 
     #[test]
     fn deserialize_authenticator_data_with_at_and_ed() {

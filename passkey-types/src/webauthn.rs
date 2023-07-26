@@ -27,9 +27,9 @@ pub trait AuthenticatorResponse: sealed::Sealed {}
 impl AuthenticatorResponse for AuthenticatorAssertionResponse {}
 impl AuthenticatorResponse for AuthenticatorAttestationResponse {}
 
-/// This is the response from a successfull creation or assertion of a credential.
+/// This is the response from a successful creation or assertion of a credential.
 ///
-/// It is recommended to use the type aliases depending of which response you are expecting:
+/// It is recommended to use the type aliases depending on which response you are expecting:
 /// * Credential Creation: [CreatedPublicKeyCredential]
 /// * Credential assertion: [AuthenticatedPublicKeyCredential]
 ///
@@ -41,8 +41,8 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// The id contains the credential ID, chosen by the authenticator. This is usually the base64url
     /// encoded data of [Self::raw_id]
     ///
-    /// The credential ID is used to look up credentials for use, and is therefore expected to be
-    /// globally unique with high probability across all credentials of the same type, across all
+    /// The credential ID is used to look up credentials for use and is therefore expected to be
+    /// globally unique with high probability across all credentials of the same type across all
     /// authenticators.
     ///
     /// > NOTE: This API does not constrain the format or length of this identifier, except that it
@@ -52,7 +52,7 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// The raw byte containing the credential ID, see [Self::id] for more information.
     pub raw_id: Bytes,
 
-    /// Always "public-key"
+    /// Always [PublicKeyCredentialType]
     #[serde(rename = "type")]
     pub ty: PublicKeyCredentialType,
 
@@ -63,4 +63,19 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
 
     /// This reports the modality of the communication between the client and authenticator.
     pub authenticator_attachment: AuthenticatorAttachment,
+
+    /// This object is a map containing extension identifier → client extension output entries
+    /// produced by the extension’s client extension processing.
+    pub client_extension_results: AuthenticationExtensionsClientOutputs,
 }
+
+/// This is a dictionary containing the client extension output values for zero or more
+/// [WebAuthn Extensions]. There are currently none supported.
+///
+/// <https://w3c.github.io/webauthn/#dictdef-authenticationextensionsclientoutputs>
+///
+/// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+#[typeshare]
+pub struct AuthenticationExtensionsClientOutputs {}

@@ -38,13 +38,13 @@ serde_workaround! {
 
         /// List of supported PIN Protocol versions.
         ///
-        /// If we ever end up with more than 256 pin protocols, I'm going home.
+        /// If we ever end up with more than 256 pin protocols, an enhacement request should be filed.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
         pub pin_protocols: Option<Vec<u8>>,
     }
 }
 
-/// All options are in the form key-value pairs with string IDs and boolean values.
+/// All options are in the form of key-value pairs with string IDs and boolean values.
 /// When an option is not present, the default is applied.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -61,13 +61,13 @@ pub struct Options {
     pub rk: bool,
 
     /// Client Pin:
-    /// If present and set to true, it indicates that the device is capable of accepting a PIN from
+    /// If `Some(true)`, it indicates that the device is capable of accepting a PIN from
     /// the client and PIN has been set.
     ///
-    /// If present and set to false, it indicates that the device is capable of accepting a PIN from
+    /// If `Some(false)`, it indicates that the device is capable of accepting a PIN from
     /// the client and PIN has not been set yet.
     ///
-    /// If absent, it indicates that the device is not capable of accepting a PIN from the client.
+    /// If `None`, it indicates that the device is not capable of accepting a PIN from the client.
     ///
     /// Client PIN is one of the ways to do user verification.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -80,14 +80,14 @@ pub struct Options {
     /// User Verification: Indicates that the device is capable of verifying the user within itself.
     /// For example, devices with UI, biometrics fall into this category.
     ///
-    /// If present and set to true, it indicates that the device is capable of user verification
+    /// If `Some(true)`, it indicates that the device is capable of user verification
     /// within itself and has been configured.
     ///
-    /// If present and set to false, it indicates that the device is capable of user verification
+    /// If `Some(false)`, it indicates that the device is capable of user verification
     /// within itself and has not been yet configured. For example, a biometric device that has not
     /// yet been configured will return this parameter set to false.
     ///
-    /// If absent, it indicates that the device is not capable of user verification within itself.
+    /// If `None`, it indicates that the device is not capable of user verification within itself.
     ///
     /// A device that can only do Client PIN will not return the "uv" parameter.
     ///

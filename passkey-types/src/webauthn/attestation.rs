@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
 use crate::{
-    utils::serde::{i64_to_iana, ignore_unknown},
+    utils::serde::{i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec},
     webauthn::{
         common::{
             AuthenticationExtensionsClientInputs, AuthenticatorAttachment, AuthenticatorTransport,
@@ -21,7 +21,7 @@ use crate::{
     webauthn::AuthenticatorAssertionResponse,
 };
 
-/// The response of the successfull creation of a PublicKeyCredential
+/// The response to the successful creation of a PublicKeyCredential
 #[typeshare]
 pub type CreatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAttestationResponse>;
 
@@ -61,7 +61,7 @@ pub struct PublicKeyCredentialCreationOptions {
     /// [discoverable credentials]: https://w3c.github.io/webauthn/#discoverable-credential
     pub user: PublicKeyCredentialUserEntity,
 
-    /// This This member specifies a challenge that the authenticator signs, along with other data,
+    /// This member specifies a challenge that the authenticator signs, along with other data,
     /// when producing an [`AttestedCredentialData`] for the newly created credential.
     ///
     /// See the [Cryptographic Challenges] security consideration.
@@ -88,6 +88,7 @@ pub struct PublicKeyCredentialCreationOptions {
     /// [-8]: coset::iana::Algorithm::EdDSA
     /// [-7]: coset::iana::Algorithm::ES256
     /// [-257]: coset::iana::Algorithm::RS256
+    #[serde(deserialize_with = "ignore_unknown_vec")]
     pub pub_key_cred_params: Vec<PublicKeyCredentialParameters>,
 
     /// This OPTIONAL member specifies a time, in milliseconds, that the Relying Party is willing to
@@ -100,10 +101,11 @@ pub struct PublicKeyCredentialCreationOptions {
     /// the new credential is not created on an authenticator that already contains a credential
     /// mapped to this user account. If it would be, the client is requested to instead guide the
     /// user to use a different authenticator, or return an error if that fails.
-    ///
-    /// Unfortunately we cannot skip an object within a vec if theres an error deserializing it.
-    /// Therefore, any credential descriptor whose type is unknown should be ignored.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown_opt_vec"
+    )]
     pub exclude_credentials: Option<Vec<PublicKeyCredentialDescriptor>>,
 
     /// The Relying Party MAY use this OPTIONAL member to specify capabilities and settings that the
@@ -132,7 +134,7 @@ pub struct PublicKeyCredentialCreationOptions {
 /// This type is used to supply additional Relying Party attributes when creating a new credential.
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity>
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[typeshare]
 pub struct PublicKeyCredentialRpEntity {
     /// A unique identifier for the [Relying Party] entity, which sets the [RP ID].
@@ -185,7 +187,7 @@ pub struct PublicKeyCredentialRpEntity {
 /// [RFC8266]: https://www.rfc-editor.org/rfc/rfc8266
 /// [RFC8264]: https://www.rfc-editor.org/rfc/rfc8264
 /// [Lang]: https://w3c.github.io/webauthn/#sctn-strings-langdir
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[typeshare]
 pub struct PublicKeyCredentialUserEntity {
@@ -424,6 +426,21 @@ pub struct AuthenticatorAttestationResponse {
     #[serde(rename = "clientDataJSON")]
     pub client_data_json: Bytes,
 
+    /// This is the authenticator Data that is contained within Attestation Object.
+    pub authenticator_data: Bytes,
+
+    /// This is the DER [SubjectPublicKeyInfo] of the new credential. Or None if it is not available.
+    ///
+    /// [SubjectPublicKeyInfo]: https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.7
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<Bytes>,
+
+    /// This is the [CoseAlgorithmIdentifier] of the new credential
+    ///
+    /// [CoseAlgorithmIdentifier]: https://w3c.github.io/webauthn/#typedefdef-cosealgorithmidentifier
+    #[typeshare(serialized_as = "I54")] // because i64 fails for js
+    pub public_key_algorithm: i64,
+
     /// This attribute contains an attestation object, which is opaque to, and cryptographically
     /// protected against tampering by, the client. The attestation object contains both
     /// [`AuthenticatorData`] and an attestation statement. The former contains the [`Aaguid`], a unique
@@ -490,4 +507,59 @@ pub enum ClientDataType {
     /// Serializes to the string `"webauthn.get"`
     #[serde(rename = "webauthn.get")]
     Get,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CredentialCreationOptions;
+
+    #[test]
+    fn ebay_registration() {
+        let request = r#"{
+            "publicKey": {
+                "challenge": [
+                    77, 115, 118, 84, 75, 114, 76, 45, 88, 119, 100, 121, 116, 118, 110, 88, 87, 109,
+                    65, 77, 98, 100, 120, 77, 67, 119, 70, 103, 112, 70, 98, 122, 83, 81, 110, 74,
+                    97, 68, 120, 118, 117, 49, 115, 46, 77, 84, 89, 51, 79, 84, 107, 122, 77, 68, 81,
+                    52, 77, 84, 69, 50, 77, 119, 46, 77, 110, 70, 108, 99, 71, 70, 107, 90, 122, 74,
+                    48, 99, 109, 69, 46, 120, 117, 120, 86, 77, 108, 97, 90, 100, 78, 70, 112, 54,
+                    78, 122, 73, 90, 84, 68, 87, 89, 71, 122, 112, 70, 48, 108, 68, 71, 114, 66, 106,
+                    110, 57, 86, 89, 87, 88, 103, 78, 54, 120, 69
+                ],
+                "rp": {
+                    "id": "ebay.ca",
+                    "name": "ebay.ca"
+                },
+                "user": {
+                    "id": [50, 113, 101, 112, 97, 100, 103, 50, 116, 114, 97],
+                    "name": "R L",
+                    "displayName": "R L"
+                },
+                "pubKeyCredParams": [
+                    { "type": "public-key", "alg": -7 },
+                    { "type": "public-key", "alg": -35 },
+                    { "type": "public-key", "alg": -36 },
+                    { "type": "public-key", "alg": -257 },
+                    { "type": "public-key", "alg": -258 },
+                    { "type": "public-key", "alg": -259 },
+                    { "type": "public-key", "alg": -37 },
+                    { "type": "public-key", "alg": -38 },
+                    { "type": "public-key", "alg": -39 },
+                    { "type": "public-key", "alg": -1 }
+                ],
+                "authenticatorSelection": {
+                    "authenticatorAttachment": "platform",
+                    "requireResidentKey": false,
+                    "userVerification": "preferred"
+                },
+                "timeout": 60000,
+                "attestation": "direct"
+            }
+        }"#;
+
+        let deserialized = serde_json::from_str::<CredentialCreationOptions>(request)
+            .expect("Failed to deserialize");
+        // there are 10 in the json but we should be ignoring the `alg: -1`
+        assert_eq!(deserialized.public_key.pub_key_cred_params.len(), 9);
+    }
 }
