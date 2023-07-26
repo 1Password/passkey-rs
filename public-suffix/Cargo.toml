@@ -1,0 +1,18 @@
+[package]
+name = "public-suffix"
+description = "Crate for efficient determination of eTLD+1 based on the Mozilla Public Suffix List."
+version = "0.1.0"
+include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
+readme = "README.md"
+keywords = ["tld", "etld", "domain", "publicsuffix"]
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["default_provider"]
+default_provider = []
+
+[dependencies]
