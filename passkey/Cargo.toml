@@ -1,16 +1,29 @@
 [package]
 name = "passkey"
-description = "Webauthn library for developing authenticators."
-include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT", "../README.md"]
+version = "0.1.0"
+edition = "2021"
+include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
+license = "MIT OR Apache-2.0"
 readme = "../README.md"
-version.workspace = true
-authors.workspace = true
-repository.workspace = true
-edition.workspace = true
-license.workspace = true
-keywords.workspace = true
-categories.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[package.metadata.cargo-udeps.ignore]
+development = ["tokio-test"] # Only used for async doctests. Cargo udeps can't check.:
+
 [dependencies]
+passkey-authenticator = { path = "../passkey-authenticator" }
+passkey-types = { path = "../passkey-types" }
+passkey-client = { path = "../passkey-client" }
+passkey-transports = { path = "../passkey-transports" }
+
+[dev-dependencies]
+coset = "0.3"
+url = "2"
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
+tokio-test = "0.4"
+async-trait = "0.1"
+passkey-authenticator = { path = "../passkey-authenticator", features = [
+    "tokio",
+    "testable",
+] }
