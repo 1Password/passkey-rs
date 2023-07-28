@@ -1,10 +1,15 @@
 [package]
 name = "passkey"
 version = "0.1.0"
-edition = "2021"
+description = "A one stop library to implement a passkey client and authenticator"
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
-license = "MIT OR Apache-2.0"
 readme = "../README.md"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
