@@ -12,10 +12,10 @@ readme = "../README.md"
 development = ["tokio-test"] # Only used for async doctests. Cargo udeps can't check.:
 
 [dependencies]
-passkey-authenticator = { path = "../passkey-authenticator" }
-passkey-types = { path = "../passkey-types" }
-passkey-client = { path = "../passkey-client" }
-passkey-transports = { path = "../passkey-transports" }
+passkey-authenticator = { path = "../passkey-authenticator", version = "0.1.0" }
+passkey-types = { path = "../passkey-types", version = "0.1.1" }
+passkey-client = { path = "../passkey-client", version = "0.1.0" }
+passkey-transports = { path = "../passkey-transports", version = "0.1.0" }
 
 [dev-dependencies]
 coset = "0.3"
