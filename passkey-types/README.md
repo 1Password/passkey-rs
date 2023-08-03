@@ -11,7 +11,7 @@ This crate contains the types defined in both the [WebAuthn Level 3] and [CTAP 2
 In this module the type names mirror exactly those in the specifications for ease of navigation. They are defined in a way that allows interoperability with the web types directly as well as the [JSON encoding] for over network communication.
 
 ### Bytes Serialization
-By default, the [`Bytes`] type serializes to an array of numbers for easy conversion to array buffers on the javascript side. However, if you are interacting with a server directly or wish to use this crate with Android's [credential-manager] library, you may wish this type to serialize to Base64Url. To do so, simply enable the crate feature `serialize_bytes_as_base64_string`. In the future we will work on changing this behavior dynamically.
+By default, the [`Bytes`] type serializes to an array of numbers for easy conversion to array buffers on the JavaScript side. However, if you are interacting with a server directly or wish to use this crate with Android's [credential-manager] library, you may wish this type to serialize to Base64Url. To do so, simply enable the crate feature `serialize_bytes_as_base64_string`. In the future we will work on changing this behavior dynamically.
 
 
 ## CTAP 2
