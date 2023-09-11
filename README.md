@@ -16,7 +16,7 @@ In understanding how to use this library, developers should read the [Webauthn L
 
 Examples in this documentation shows certain values being assumed to come from the website (Relying Party). It is not within the scope of these libraries to manage the details of the interaction with the Relying Party. How these values and the authentication results are communicated with the Relying Party is an implementation detail for users of these crates.
 
-# Basic Concepts
+# Basic Concepts
 
 Conceptually, working with Passkeys involves receiving requests for registration of new credentials, storing those credentials, and performing authentication with existing credentials. Two standards are involved here: [Webauthn][webauthn-3] is the protocol by which a website (a "Relying Party") communicates with your application. The [Client-to-Authenticator Protocol (CTAP2)][ctap-2] is the protocol by which your application communicates with an authenticator - which can be software or a hardware device such as a FIDO2 USB key.
 
