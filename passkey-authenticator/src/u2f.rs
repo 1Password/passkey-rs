@@ -78,7 +78,8 @@ impl<S: CredentialStore + Sync + Send, U: UserValidationMethod + Sync + Send> U2
             .chain(handle.iter().copied()) // 4. Key handle
             .chain(public_key.encode()) // 5. public key
             .collect::<Vec<u8>>();
-        let signature = signing_key.sign(&signature_target).to_vec();
+        let signature_singleton: p256::ecdsa::Signature = signing_key.sign(&signature_target);
+        let signature = signature_singleton.to_vec();
 
         let attestation_certificate = Vec::new();
 
@@ -145,16 +146,13 @@ impl<S: CredentialStore + Sync + Send, U: UserValidationMethod + Sync + Send> U2
             .chain(request.challenge) // 4. The challenge parameter [32 bytes] from the authentication request message.
             .collect::<Vec<u8>>();
 
-        let signature = signing_key
-            .sign(&signature_target)
-            .to_der()
-            .as_bytes()
-            .to_vec();
+        let signature: p256::ecdsa::Signature = signing_key.sign(&signature_target);
+        let signature_bytes = signature.to_der().as_bytes().to_vec();
 
         Ok(AuthenticationResponse {
             user_presence,
             counter,
-            signature,
+            signature: signature_bytes,
         })
     }
 }
@@ -164,12 +162,12 @@ mod tests {
     use super::{AuthenticationRequest, Authenticator, RegisterRequest};
     use crate::{u2f::U2fApi, user_validation::MockUserValidationMethod};
     use generic_array::GenericArray;
+    use p256::ecdsa::signature::Verifier;
     use p256::{
         ecdsa::{Signature, VerifyingKey},
         EncodedPoint,
     };
     use passkey_types::{ctap2::Aaguid, *};
-    use signature::Verifier;
 
     #[tokio::test]
     async fn test_save_u2f_passkey() {

@@ -121,19 +121,15 @@ where
 
         let mut private_key = SigningKey::from(secret_key);
 
-        let signature = private_key
-            .sign(&signature_target)
-            .to_der()
-            .to_bytes()
-            .to_vec()
-            .into();
+        let signature: p256::ecdsa::Signature = private_key.sign(&signature_target);
+        let signature_bytes = signature.to_der().to_bytes().to_vec().into();
 
         let user_handle = credential.user_handle.clone();
 
         Ok(Response {
             credential: Some(credential.into()),
             auth_data,
-            signature,
+            signature: signature_bytes,
             user: user_handle.map(|id| PublicKeyCredentialUserEntity {
                 id,
                 // TODO: make a Authenticator version of this struct similar to make_credential::PublicKeyCredentialRpEntity

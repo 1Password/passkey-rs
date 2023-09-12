@@ -77,7 +77,7 @@ fn private_key_from_cose_key(key: &CoseKey) -> Result<SecretKey, Ctap2Error> {
                 iana::Ec2KeyParameter::from_i64(*i)
                     .filter(|p| p == &iana::Ec2KeyParameter::D)
                     .and_then(|_| v.as_bytes())
-                    .and_then(|b| SecretKey::from_be_bytes(b).ok())
+                    .and_then(|b| SecretKey::from_slice(b).ok())
             } else {
                 None
             }
@@ -161,7 +161,7 @@ impl CoseKeyPair {
             iana::EllipticCurve::P_256,
             x.clone(),
             y.clone(),
-            private_key.to_be_bytes().to_vec(),
+            private_key.to_bytes().to_vec(),
         )
         .algorithm(algorithm)
         .build();
@@ -197,7 +197,8 @@ mod tests {
             private: private_cose,
             ..
         } = CoseKeyPair::from_secret_key(&private_key, iana::Algorithm::ES256);
-        let public_key = SigningKey::from(&private_key).verifying_key();
+        let public_signing_key = SigningKey::from(&private_key);
+        let public_key = public_signing_key.verifying_key();
 
         let auth_data = AuthenticatorData::new("future.1password.com", None);
         let mut signature_target = auth_data.to_vec();
@@ -207,7 +208,7 @@ mod tests {
 
         let private_key = SigningKey::from(secret_key);
 
-        let signature = private_key.sign(&signature_target);
+        let signature: p256::ecdsa::Signature = SigningKey::sign(&private_key, &signature_target);
 
         public_key
             .verify(&signature_target, &signature)
