@@ -21,7 +21,7 @@ async-trait = "0.1"
 coset = "0.3"
 log = "0.4"
 mockall = { version = "0.11", optional = true }
-p256 = { version = "0.10", features = ["pem", "arithmetic", "jwk"] }
+p256 = { version = "0.13", features = ["pem", "arithmetic", "jwk"] }
 passkey-types = { path = "../passkey-types", version = "0.1.1" }
 rand = "0.8"
 tokio = { version = "1", features = ["sync"], optional = true }
