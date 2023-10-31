@@ -179,6 +179,7 @@ where
             challenge: encoding::base64url(&request.challenge),
             origin: origin.as_str().trim_end_matches('/').to_owned(),
             cross_origin: None,
+            unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
@@ -302,6 +303,7 @@ where
             challenge: encoding::base64url(&request.challenge),
             origin: origin.as_str().trim_end_matches('/').to_owned(),
             cross_origin: None, //Some(false),
+            unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.

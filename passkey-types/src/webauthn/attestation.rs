@@ -1,6 +1,8 @@
 //! Types specific to public key credential creation
 use coset::iana;
-use serde::{Deserialize, Serialize};
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize, Serializer};
+use std::fmt;
 use typeshare::typeshare;
 
 use crate::{
@@ -478,7 +480,7 @@ pub enum AttestationStatementFormatIdentifiers {
 /// <https://w3c.github.io/webauthn/#iface-authenticatorattestationresponse>
 ///
 /// [Relying Party]: https://w3c.github.io/webauthn/#relying-party
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[typeshare]
 pub struct AuthenticatorAttestationResponse {
@@ -528,8 +530,20 @@ pub struct AuthenticatorAttestationResponse {
 /// > Note: The [`CollectedClientData`] may be extended in the future. Therefore it’s critical when
 /// >       parsing to be tolerant of unknown keys and of any reordering of the keys
 ///
+/// This struct conforms to the JSON byte serialization format expected of `CollectedClientData`,
+/// detailed in section §5.8.1.1 Serialization of the WebAuthn spec.
+///
+/// Changes to `CollectedClientData` include:
+/// 1.  serde `skip_serializing_if` applied to `ty`, `challenge`, `origin`, and `cross_origin`.
+///     This is for serialization steps 11-13 of [`collected_client_data_to_json_bytes`](collected_client_data_to_json_bytes)
+/// 2. `origin` is String instead of `url::Url`. This implies that empty strings are allowed, which
+///     is needed for step 11 of `serialize_serializeable_collected_client_data`.
+/// 3. `unknown_keys` uses `IndexMap` instead of `BTreeMap` to preserve ordering of keys so that
+///    `to_bytes()` is consistent with the bytes in `AuthenticatorAssertionResponse`.
+///     The ordering is significant because the WebAuthn signature is computed over these bytes
+///
 /// <https://w3c.github.io/webauthn/#dictionary-client-data>
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[typeshare]
 pub struct CollectedClientData {
@@ -554,8 +568,20 @@ pub struct CollectedClientData {
 
     /// This OPTIONAL member contains the inverse of the sameOriginWithAncestors argument value that
     /// was passed into the internal method
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, serialize_with = "truthiness")]
     pub cross_origin: Option<bool>,
+
+    /// CollectedClientData can be extended in the future, this accounts for unknown keys
+    /// Uses an IndexMap to preserve order of keys for JSON byte serialization
+    #[serde(flatten)]
+    pub unknown_keys: IndexMap<String, serde_json::value::Value>,
+}
+
+fn truthiness<S>(cross_origin: &Option<bool>, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    ser.serialize_bool(cross_origin.filter(|b| *b).is_some())
 }
 
 /// Used to limit the values of [`CollectedClientData::ty`] and serializes to static strings.
@@ -569,12 +595,58 @@ pub enum ClientDataType {
     /// Serializes to the string `"webauthn.get"`
     #[serde(rename = "webauthn.get")]
     Get,
+
+    /// Serializes to the string `"payment.get"`
+    /// This variant is part of the Secure Payment Confirmation specification
+    ///
+    /// See <https://www.w3.org/TR/secure-payment-confirmation/#client-extension-processing-authentication>
+    #[serde(rename = "payment.get")]
+    PaymentGet,
+}
+
+impl fmt::Display for ClientDataType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let renamed = serde_json::to_string(self).unwrap();
+        write!(f, "{}", renamed.trim_matches('"'))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::CredentialCreationOptions;
+    use crate::webauthn::{ClientDataType, CollectedClientData};
+    use regex::Regex;
+
+    // Normal client data from Chrome assertion
+    const CLIENT_DATA_JSON_STRING: &str = r#"{
+        "type":"webauthn.get",
+        "challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
+        "origin":"http://localhost:4000",
+        "crossOrigin":false
+    }"#;
+
+    /// This is a Secure Payment Confirmation (SPC) response. SPC assertion responses
+    /// extend the `CollectedClientData` struct by adding a "payment" field that
+    /// normally does not exist on `CollectedClientData`
+    const EXTENDED_CLIENT_DATA_JSON_STRING: &str = r#"{
+            "type": "payment.get",
+            "challenge": "ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
+            "origin": "http://localhost:4000",
+            "crossOrigin": false,
+            "payment": {
+                "rpId": "localhost",
+                "topOrigin": "http://localhost:4000",
+                "payeeOrigin": "https://localhost:4000",
+                "total": {
+                    "value": "1.01",
+                    "currency": "APT"
+                },
+                "instrument": {
+                    "icon": "https://aptoslabs.com/assets/favicon-2c9e23abc3a3f4c45038e8c784b0a4ecb9051baa.ico",
+                    "displayName": "Petra test"
+                }
+            }
+        }"#;
 
     #[test]
     fn ebay_registration() {
@@ -664,5 +736,147 @@ mod tests {
             .expect("Failed to deserialize");
         assert_eq!(deserialized.public_key.timeout, Some(300_000));
         assert_eq!(deserialized.public_key.pub_key_cred_params.len(), 2)
+    }
+
+    #[test]
+    fn test_client_data_type_to_string() {
+        let payment_get = ClientDataType::PaymentGet;
+        assert_eq!(payment_get.to_string(), "payment.get");
+
+        let webauthn_get = ClientDataType::Get;
+        assert_eq!(webauthn_get.to_string(), "webauthn.get");
+    }
+
+    #[test]
+    fn test_client_data_serialization() {
+        // This is the raw client data json byte buffer returned by a webauthn assertion
+        let expected_client_data_bytes = r#"{"type":"webauthn.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":false}"#.as_bytes();
+
+        // Deserialize CollectedClientData from JSON string
+        let actual_collected_client_data: CollectedClientData =
+            serde_json::from_str(CLIENT_DATA_JSON_STRING).unwrap();
+
+        // Check that serde_json byte serialization is also equivalent
+        let actual_client_data_bytes = serde_json::to_vec(&actual_collected_client_data).unwrap();
+        assert_eq!(
+            actual_client_data_bytes.as_slice(),
+            expected_client_data_bytes
+        )
+    }
+
+    #[test]
+    fn test_extended_client_data_serialization() {
+        // This is the raw client data json byte buffer returned by an SPC webauthn assertion
+        let expected_client_data_bytes = r#"{"type":"payment.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":false,"payment":{"rpId":"localhost","topOrigin":"http://localhost:4000","payeeOrigin":"https://localhost:4000","total":{"value":"1.01","currency":"APT"},"instrument":{"icon":"https://aptoslabs.com/assets/favicon-2c9e23abc3a3f4c45038e8c784b0a4ecb9051baa.ico","displayName":"Petra test"}}}"#.as_bytes();
+
+        // Deserialize CollectedClientData from JSON string
+        let actual_collected_client_data: CollectedClientData =
+            serde_json::from_str(EXTENDED_CLIENT_DATA_JSON_STRING).unwrap();
+
+        // Check that serde_json byte serialization is also equivalent
+        let actual_client_data_bytes = serde_json::to_vec(&actual_collected_client_data).unwrap();
+        assert_eq!(
+            actual_client_data_bytes.as_slice(),
+            expected_client_data_bytes
+        );
+
+        // This is another byte serialization of client data json, different from the ones above
+        let expected_client_data_bytes= r#"{"type":"payment.get","challenge":"eUf1aXwdtHKnIYUXkTgHxmWtYQ_U0c3O8Ldmx3PTA_g","origin":"http://localhost:5173","crossOrigin":false,"payment":{"rpId":"localhost","topOrigin":"http://localhost:5173","payeeOrigin":"https://localhost:4000","total":{"value":"1.01","currency":"APT"},"instrument":{"icon":"https://aptoslabs.com/assets/favicon-2c9e23abc3a3f4c45038e8c784b0a4ecb9051baa.ico","displayName":"Petra test"}},"other_keys_can_be_added_here":"do not compare clientDataJSON against a template. See https://goo.gl/yabPex"}"#.as_bytes();
+
+        let collected_client_data_string = r#"
+            {
+              "type": "payment.get",
+              "challenge": "eUf1aXwdtHKnIYUXkTgHxmWtYQ_U0c3O8Ldmx3PTA_g",
+              "origin": "http://localhost:5173",
+              "crossOrigin": false,
+              "payment": {
+                "rpId": "localhost",
+                "topOrigin": "http://localhost:5173",
+                "payeeOrigin": "https://localhost:4000",
+                "total": {
+                  "value": "1.01",
+                  "currency": "APT"
+                },
+                "instrument": {
+                  "icon": "https://aptoslabs.com/assets/favicon-2c9e23abc3a3f4c45038e8c784b0a4ecb9051baa.ico",
+                  "displayName": "Petra test"
+                }
+              },
+              "other_keys_can_be_added_here": "do not compare clientDataJSON against a template. See https://goo.gl/yabPex"
+            }"#;
+
+        // Deserialize CollectedClientData from JSON string
+        let actual_collected_client_data: CollectedClientData =
+            serde_json::from_str(collected_client_data_string).unwrap();
+
+        // Check that serde_json byte serialization is also equivalent
+        let actual_client_data_bytes = serde_json::to_vec(&actual_collected_client_data).unwrap();
+        assert_eq!(
+            actual_client_data_bytes.as_slice(),
+            expected_client_data_bytes
+        );
+    }
+
+    #[test]
+    fn test_extended_client_data_encoding_failure() {
+        let expected_client_data: CollectedClientData =
+            serde_json::from_str(EXTENDED_CLIENT_DATA_JSON_STRING).unwrap();
+        let expected_client_data_bytes = serde_json::to_vec(&expected_client_data).unwrap();
+
+        // This is a sample Secure Payment Confirmation (SPC) client_data response
+        // based on the EXTENDED_CLIENT_DATA constant instantiated above
+        // The ordering of "rpId" and "topOrigin" is switched
+        let bad_client_data_json = r#"{
+            "type": "payment.get",
+            "challenge": "ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
+            "origin": "http://localhost:4000",
+            "crossOrigin": false,
+            "payment": {
+                "topOrigin": "http://localhost:4000",
+                "rpId": "localhost",
+                "payeeOrigin": "https://localhost:4000",
+                "total": {
+                    "value": "1.01",
+                    "currency": "APT"
+                },
+                "instrument": {
+                    "icon": "https://aptoslabs.com/assets/favicon-2c9e23abc3a3f4c45038e8c784b0a4ecb9051baa.ico",
+                    "displayName": "Petra test"
+                }
+            }
+        }"#;
+
+        let bad_collected_client_data: CollectedClientData =
+            serde_json::from_str(bad_client_data_json).unwrap();
+        let bad_client_data_bytes = serde_json::to_vec(&bad_collected_client_data).unwrap();
+
+        // Should not be equal
+        assert_ne!(bad_client_data_bytes, expected_client_data_bytes);
+    }
+
+    #[test]
+    fn test_client_data_cross_origin_serialization() {
+        let mut ccd: CollectedClientData = serde_json::from_str(CLIENT_DATA_JSON_STRING).unwrap();
+
+        // Check that serialization of cross_origin with value Some(true) resolves to true
+        ccd.cross_origin = Some(true);
+        let client_data_json = serde_json::to_string(&ccd).unwrap();
+        let pattern = r#""crossOrigin":s*true"#;
+        let regex = Regex::new(pattern).expect("Invalid regex pattern");
+        assert_eq!(regex.is_match(client_data_json.as_str()), true);
+
+        // Check that serialization of cross_origin with value Some(false) resolves to false
+        ccd.cross_origin = Some(false);
+        let client_data_json = serde_json::to_string(&ccd).unwrap();
+        let pattern = r#""crossOrigin":s*false"#;
+        let regex = Regex::new(pattern).expect("Invalid regex pattern");
+        assert_eq!(regex.is_match(client_data_json.as_str()), true);
+
+        // Check that serialization of cross_origin with value None resolves to false
+        ccd.cross_origin = None;
+        let client_data_json = serde_json::to_string(&ccd).unwrap();
+        let pattern = r#""crossOrigin":s*false"#;
+        let regex = Regex::new(pattern).expect("Invalid regex pattern");
+        assert_eq!(regex.is_match(client_data_json.as_str()), true);
     }
 }
