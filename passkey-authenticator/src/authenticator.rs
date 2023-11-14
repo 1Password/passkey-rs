@@ -24,6 +24,9 @@ pub struct Authenticator<S, U> {
     transports: Vec<webauthn::AuthenticatorTransport>,
     /// Provider of user verification factor.
     user_validation: U,
+
+    /// The display name given when a [`webauthn::CredentialPropertiesOutput`] is requested
+    display_name: Option<String>,
 }
 
 impl<S, U> Authenticator<S, U>
@@ -43,7 +46,18 @@ where
                 webauthn::AuthenticatorTransport::Hybrid,
             ],
             user_validation: user,
+            display_name: None,
         }
+    }
+
+    /// Set the authenticator's display name which will be returned if [`webauthn::CredentialPropertiesOutput`] is requested.
+    pub fn set_display_name(&mut self, name: String) {
+        self.display_name = Some(name);
+    }
+
+    /// Get a reference to the authenticators display name to return in [`webauthn::CredentialPropertiesOutput`].
+    pub fn display_name(&self) -> Option<&String> {
+        self.display_name.as_ref()
     }
 
     /// Access the [`CredentialStore`] to look into what is stored.

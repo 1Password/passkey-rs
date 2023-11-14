@@ -14,17 +14,6 @@ use crate::webauthn::{
     PublicKeyCredentialRequestOptions,
 };
 
-/// This is a dictionary containing the client extension input values for zero or more
-/// [WebAuthn Extensions]. There are currently none supported.
-///
-/// <https://w3c.github.io/webauthn/#dictdef-authenticationextensionsclientinputs>
-///
-/// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[typeshare]
-pub struct AuthenticationExtensionsClientInputs {}
-
 /// This enumeration defines the valid credential types. It is an extension point; values can be
 /// added to it in the future, as more credential types are defined. The values of this enumeration
 /// are used for versioning the Authentication Assertion and attestation structures according to the

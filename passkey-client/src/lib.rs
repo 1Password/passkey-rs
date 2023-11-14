@@ -20,7 +20,9 @@ use ciborium::{cbor, value::Value};
 use coset::{iana::EnumI64, Algorithm};
 use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
 use passkey_types::{
-    crypto::sha256, ctap2, encoding, webauthn, webauthn::AuthenticationExtensionsClientOutputs,
+    crypto::sha256,
+    ctap2, encoding, webauthn,
+    webauthn::{AuthenticatorExtensionsClientOutputs, CredentialPropertiesOutput},
     Passkey,
 };
 use typeshare::typeshare;
@@ -186,6 +188,16 @@ where
         let client_data_json_hash =
             client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
+        let cred_props =
+            if let Some(true) = request.extensions.as_ref().and_then(|ext| ext.cred_props) {
+                Some(CredentialPropertiesOutput {
+                    discoverable: Some(true), // Set to true because it is set in the Options of make_credential.
+                    authenticator_display_name: self.authenticator.display_name().cloned(),
+                })
+            } else {
+                None
+            };
+
         let ctap2_response = self
             .authenticator
             .make_credential(ctap2::make_credential::Request {
@@ -257,8 +269,8 @@ where
                 attestation_object: attestation_object.into(),
                 transports: auth_info.transports,
             },
-            client_extension_results: AuthenticationExtensionsClientOutputs {},
             authenticator_attachment: Some(self.authenticator().attachment_type()),
+            client_extension_results: AuthenticatorExtensionsClientOutputs { cred_props },
         };
 
         Ok(response)
@@ -334,7 +346,7 @@ where
                 attestation_object: None,
             },
             authenticator_attachment: Some(self.authenticator().attachment_type()),
-            client_extension_results: AuthenticationExtensionsClientOutputs {},
+            client_extension_results: AuthenticatorExtensionsClientOutputs::default(),
         })
     }
 }
