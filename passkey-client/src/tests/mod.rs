@@ -165,13 +165,7 @@ async fn create_and_authenticate_without_rp_id() {
 
 #[test]
 fn validate_rp_id() -> Result<(), ParseError> {
-    let auth = Authenticator::new(
-        ctap2::Aaguid::new_empty(),
-        MemoryStore::new(),
-        MockUserValidationMethod::verified_user(0),
-    );
-
-    let client = Client::new(auth);
+    let client = RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER);
 
     let example = "https://example.com".parse()?;
     let com_tld = client.assert_domain(&example, Some("com"));
@@ -231,13 +225,7 @@ impl public_suffix::EffectiveTLDProvider for BrokenTLDProvider {
 #[test]
 fn validate_domain_with_private_list_provider() -> Result<(), ParseError> {
     let my_custom_provider = BrokenTLDProvider {};
-    let auth = Authenticator::new(
-        ctap2::Aaguid::new_empty(),
-        MemoryStore::new(),
-        MockUserValidationMethod::verified_user(0),
-    );
-
-    let client = Client::new_with_custom_tld_provider(auth, my_custom_provider);
+    let client = RpIdVerifier::new(my_custom_provider);
 
     // Notice that, in this test, this is a legitimate origin/rp_id combination
     // We assert that this produces an error to prove that we are indeed using our
