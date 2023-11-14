@@ -133,6 +133,7 @@
 //!         exclude_credentials: None,
 //!         authenticator_selection: None,
 //!         attestation: AttestationConveyancePreference::None,
+//!         attestation_formats: None,
 //!         extensions: None,
 //!     },
 //! };
@@ -151,6 +152,8 @@
 //!         rp_id: Some(String::from(origin.domain().unwrap())),
 //!         allow_credentials: None,
 //!         user_verification: UserVerificationRequirement::default(),
+//!         attestation: AttestationConveyancePreference::None,
+//!         attestation_formats: None,
 //!         extensions: None,
 //!     },
 //! };

@@ -24,6 +24,7 @@ fn good_credential_creation_options() -> webauthn::PublicKeyCredentialCreationOp
         exclude_credentials: Default::default(),
         authenticator_selection: Default::default(),
         attestation: Default::default(),
+        attestation_formats: Default::default(),
         extensions: Default::default(),
     }
 }
@@ -41,6 +42,8 @@ fn good_credential_request_options(
             transports: None,
         }]),
         user_verification: Default::default(),
+        attestation: Default::default(),
+        attestation_formats: Default::default(),
         extensions: Default::default(),
     }
 }

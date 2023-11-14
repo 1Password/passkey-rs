@@ -331,6 +331,7 @@ where
                 authenticator_data: ctap2_response.auth_data.to_vec().into(),
                 signature: ctap2_response.signature,
                 user_handle: ctap2_response.user.map(|user| user.id),
+                attestation_object: None,
             },
             authenticator_attachment: Some(self.authenticator().attachment_type()),
             client_extension_results: AuthenticationExtensionsClientOutputs {},
