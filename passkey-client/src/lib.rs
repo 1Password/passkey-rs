@@ -96,8 +96,7 @@ where
     Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
 {
     authenticator: Authenticator<S, U>,
-    allows_insecure_localhost: bool,
-    tld_provider: Box<P>,
+    rp_id_verifier: RpIdVerifier<P>,
 }
 
 impl<S, U> Client<S, U, public_suffix::PublicSuffixList>
@@ -111,8 +110,7 @@ where
     pub fn new(authenticator: Authenticator<S, U>) -> Self {
         Self {
             authenticator,
-            allows_insecure_localhost: false,
-            tld_provider: Box::new(public_suffix::DEFAULT_PROVIDER),
+            rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER),
         }
     }
 }
@@ -132,14 +130,13 @@ where
     ) -> Self {
         Self {
             authenticator,
-            allows_insecure_localhost: false,
-            tld_provider: Box::new(custom_provider),
+            rp_id_verifier: RpIdVerifier::new(custom_provider),
         }
     }
 
-    /// Allows the internal tld verification to pass through localhost requests.
+    /// Allows the internal [RpIdVerifier] to pass through localhost requests.
     pub fn allows_insecure_localhost(mut self, is_allowed: bool) -> Self {
-        self.allows_insecure_localhost = is_allowed;
+        self.rp_id_verifier = self.rp_id_verifier.allows_insecure_localhost(is_allowed);
         self
     }
 
@@ -171,7 +168,9 @@ where
         //     .map(|t| t.clamp(MIN_TIMEOUT, MAX_TIMEOUT))
         //     .unwrap_or(MAX_TIMEOUT);
 
-        let rp_id = self.assert_domain(origin, request.rp.id.as_deref())?;
+        let rp_id = self
+            .rp_id_verifier
+            .assert_domain(origin, request.rp.id.as_deref())?;
 
         let collected_client_data = webauthn::CollectedClientData {
             ty: webauthn::ClientDataType::Create,
@@ -284,7 +283,9 @@ where
         //     .map(|t| t.clamp(MIN_TIMEOUT, MAX_TIMEOUT))
         //     .unwrap_or(MAX_TIMEOUT);
 
-        let rp_id = self.assert_domain(origin, request.rp_id.as_deref())?;
+        let rp_id = self
+            .rp_id_verifier
+            .assert_domain(origin, request.rp_id.as_deref())?;
 
         let collected_client_data = webauthn::CollectedClientData {
             ty: webauthn::ClientDataType::Get,
@@ -335,13 +336,43 @@ where
             client_extension_results: AuthenticationExtensionsClientOutputs {},
         })
     }
+}
+
+/// Wrapper struct for verifying that a given RpId matches the request's origin.
+///
+/// While most cases should not use this type directly and instead use [`Client`], there are some
+/// cases that warant the need for checking an RpId in the same way that the client does, but without
+/// the rest of pieces that the client needs.
+pub struct RpIdVerifier<P> {
+    tld_provider: Box<P>,
+    allows_insecure_localhost: bool,
+}
+
+impl<P> RpIdVerifier<P>
+where
+    P: public_suffix::EffectiveTLDProvider + Sync + 'static,
+{
+    /// Create a new Verifier with a given TLD provider. Most cases should just use
+    /// [`public_suffix::DEFAULT_PROVIDER`].
+    pub fn new(tld_provider: P) -> Self {
+        Self {
+            tld_provider: Box::new(tld_provider),
+            allows_insecure_localhost: false,
+        }
+    }
+
+    /// Allows [`RpIdVerifier::assert_domain`] to pass through requests from `localhost`
+    pub fn allows_insecure_localhost(mut self, is_allowed: bool) -> Self {
+        self.allows_insecure_localhost = is_allowed;
+        self
+    }
 
     /// Parse the given Relying Party Id and verify it against the origin url of the request.
     ///
-    /// This follows the following spec: https://html.spec.whatwg.org/multipage/browsers.html#is-a-registrable-domain-suffix-of-or-is-equal-to
+    /// This follows the steps defined in: <https://html.spec.whatwg.org/multipage/browsers.html#is-a-registrable-domain-suffix-of-or-is-equal-to>
     ///
     /// Returns the effective domain on success or some [`WebauthnError`]
-    fn assert_domain<'a>(
+    pub fn assert_domain<'a>(
         &self,
         origin: &'a Url,
         rp_id: Option<&'a str>,
