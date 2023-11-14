@@ -157,6 +157,7 @@ where
         &mut self,
         origin: &Url,
         request: webauthn::CredentialCreationOptions,
+        client_data_hash: Option<Vec<u8>>,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
@@ -181,12 +182,13 @@ where
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash = sha256(client_data_json.as_bytes());
+        let client_data_json_hash =
+            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let ctap2_response = self
             .authenticator
             .make_credential(ctap2::make_credential::Request {
-                client_data_hash: client_data_json_hash.to_vec().into(),
+                client_data_hash: client_data_json_hash.into(),
                 rp: ctap2::make_credential::PublicKeyCredentialRpEntity {
                     id: rp_id.to_owned(),
                     name: Some(request.rp.name),
