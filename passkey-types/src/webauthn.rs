@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
-use crate::Bytes;
+use crate::{utils::serde::ignore_unknown, Bytes};
 
 mod assertion;
 mod attestation;
@@ -62,7 +62,12 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     pub response: R,
 
     /// This reports the modality of the communication between the client and authenticator.
-    pub authenticator_attachment: AuthenticatorAttachment,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown"
+    )]
+    pub authenticator_attachment: Option<AuthenticatorAttachment>,
 
     /// This object is a map containing extension identifier → client extension output entries
     /// produced by the extension’s client extension processing.

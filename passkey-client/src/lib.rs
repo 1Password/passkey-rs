@@ -258,7 +258,7 @@ where
                 transports: auth_info.transports,
             },
             client_extension_results: AuthenticationExtensionsClientOutputs {},
-            authenticator_attachment: self.authenticator().attachment_type(),
+            authenticator_attachment: Some(self.authenticator().attachment_type()),
         };
 
         Ok(response)
@@ -332,7 +332,7 @@ where
                 signature: ctap2_response.signature,
                 user_handle: ctap2_response.user.map(|user| user.id),
             },
-            authenticator_attachment: self.authenticator().attachment_type(),
+            authenticator_attachment: Some(self.authenticator().attachment_type()),
             client_extension_results: AuthenticationExtensionsClientOutputs {},
         })
     }
