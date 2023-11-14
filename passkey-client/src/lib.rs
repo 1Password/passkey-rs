@@ -161,6 +161,7 @@ where
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
+        let auth_info = self.authenticator.get_info();
 
         // TODO: Handle given timeout here, If the value is not within what we consider a reasonable range
         // override to our default
@@ -254,10 +255,7 @@ where
                 public_key,
                 public_key_algorithm: alg,
                 attestation_object: attestation_object.into(),
-                transports: Some(vec![
-                    webauthn::AuthenticatorTransport::Internal,
-                    // TODO: Add Hybrid once we support the android API
-                ]),
+                transports: auth_info.transports,
             },
             client_extension_results: AuthenticationExtensionsClientOutputs {},
             authenticator_attachment: self.authenticator().attachment_type(),

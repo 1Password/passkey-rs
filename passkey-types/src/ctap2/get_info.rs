@@ -3,6 +3,8 @@ use std::{borrow::Cow, num::NonZeroU128};
 
 use serde::{Deserialize, Serialize};
 
+use crate::{utils::serde::ignore_unknown_opt_vec, webauthn::AuthenticatorTransport};
+
 use super::Aaguid;
 
 serde_workaround! {
@@ -41,6 +43,17 @@ serde_workaround! {
         /// If we ever end up with more than 256 pin protocols, an enhacement request should be filed.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
         pub pin_protocols: Option<Vec<u8>>,
+
+        /// List of supported transports. Values are taken from the [`AuthenticatorTransport`] enum.
+        /// The list MUST NOT include duplicate values nor be empty if present.
+        /// Platforms MUST tolerate unknown values by ignoring them.
+        #[serde(
+            rename = 0x09,
+            default,
+            skip_serializing_if = Option::is_none,
+            deserialize_with = ignore_unknown_opt_vec
+        )]
+        pub transports: Option<Vec<AuthenticatorTransport>>,
     }
 }
 
@@ -119,7 +132,7 @@ impl Default for Options {
 mod tests {
     use ciborium::cbor;
 
-    use super::{Aaguid, Options, Response};
+    use super::{Aaguid, AuthenticatorTransport, Options, Response};
     #[test]
     fn serialization_round_trip() {
         let expected = Response {
@@ -133,6 +146,10 @@ mod tests {
             }),
             max_msg_size: None,
             pin_protocols: Some(vec![1]),
+            transports: Some(vec![
+                AuthenticatorTransport::Internal,
+                AuthenticatorTransport::Hybrid,
+            ]),
         };
         let mut serialized = Vec::new();
         ciborium::ser::into_writer(&expected, &mut serialized)
@@ -159,6 +176,10 @@ mod tests {
             }),
             max_msg_size: None,
             pin_protocols: Some(vec![1]),
+            transports: Some(vec![
+                AuthenticatorTransport::Internal,
+                AuthenticatorTransport::Hybrid,
+            ]),
         };
         let mut serialized = Vec::new();
         ciborium::ser::into_writer(&input, &mut serialized).expect("Could not serialize to cbor");
@@ -178,10 +199,54 @@ mod tests {
                 // clientPin should be skipped
             },
             // maxMsgSize should be skipped
-            0x06 => vec![1]
+            0x06 => vec![1],
+            0x09 => vec!["internal", "hybrid"]
         })
         .unwrap();
 
         assert_eq!(deserialized, expected);
+    }
+
+    #[test]
+    fn unknown_gets_ignored() {
+        let input = cbor!({
+            0x01 => vec!["FIDO_2_0"],
+            // extensions should be skiped
+            0x03 => ciborium::value::Value::Bytes([0;16].into()),
+            0x04 => {
+                "plat" => false,
+                "rk" => true,
+                "up" => true,
+                "uv" => true
+                // clientPin should be skipped
+            },
+            // maxMsgSize should be skipped
+            0x06 => vec![1],
+            0x09 => vec!["lora", "hybrid"]
+        })
+        .unwrap();
+
+        let mut serialized = Vec::new();
+        ciborium::ser::into_writer(&input, &mut serialized).expect("Could not serialize to cbor");
+
+        let deserialized: Response =
+            ciborium::de::from_reader(serialized.as_slice()).expect("Could not deserialize");
+
+        let expected = Response {
+            versions: vec!["FIDO_2_0".into()],
+            extensions: None,
+            aaguid: Aaguid::new_empty(),
+            options: Some(Options {
+                rk: true,
+                uv: Some(true),
+                plat: false,
+                ..Default::default()
+            }),
+            max_msg_size: None,
+            pin_protocols: Some(vec![1]),
+            transports: Some(vec![AuthenticatorTransport::Hybrid]),
+        };
+
+        assert_eq!(expected, deserialized);
     }
 }

@@ -128,7 +128,7 @@ pub enum UserVerificationRequirement {
 /// the supported transports for a [`PublicKeyCredential`] via [`AuthenticatorAttestationResponse::transports`].
 ///
 /// <https://w3c.github.io/webauthn/#enum-transport>
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[typeshare(serialized_as = "String")]
 pub enum AuthenticatorTransport {

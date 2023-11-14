@@ -45,12 +45,29 @@ fn good_credential_request_options(
     }
 }
 
+fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
+    let mut user_mock = MockUserValidationMethod::new();
+    user_mock
+        .expect_is_verification_enabled()
+        .returning(|| Some(true))
+        .times(times + 1);
+    user_mock
+        .expect_check_user_verification()
+        .returning(|| Box::pin(async { true }))
+        .times(times);
+    user_mock
+        .expect_is_presence_enabled()
+        .returning(|| true)
+        .times(1);
+    user_mock
+}
+
 #[tokio::test]
 async fn create_and_authenticate() {
     let auth = Authenticator::new(
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
-        MockUserValidationMethod::verified_user(2),
+        uv_mock_with_creation(2),
     );
     let mut client = Client::new(auth);
 
@@ -83,7 +100,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
     let auth = Authenticator::new(
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
-        MockUserValidationMethod::verified_user(2),
+        uv_mock_with_creation(2),
     );
     let mut client = Client::new(auth);
 
@@ -121,7 +138,7 @@ async fn create_and_authenticate_without_rp_id() {
     let auth = Authenticator::new(
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
-        MockUserValidationMethod::verified_user(2),
+        uv_mock_with_creation(2),
     );
     let mut client = Client::new(auth);
 

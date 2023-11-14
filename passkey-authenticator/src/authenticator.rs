@@ -18,6 +18,10 @@ pub struct Authenticator<S, U> {
     store: S,
     /// Current supported algorithms by the authenticator
     algs: Vec<iana::Algorithm>,
+    /// Current supported transports that this authenticator can use to communicate.
+    ///
+    /// Default values are [`AuthenticatorTransport::Internal`] and [`AuthenticatorTransport::Hybrid`].
+    transports: Vec<webauthn::AuthenticatorTransport>,
     /// Provider of user verification factor.
     user_validation: U,
 }
@@ -34,6 +38,10 @@ where
             store,
             // TODO: Change this to a method on the cryptographic backend
             algs: vec![iana::Algorithm::ES256],
+            transports: vec![
+                webauthn::AuthenticatorTransport::Internal,
+                webauthn::AuthenticatorTransport::Hybrid,
+            ],
             user_validation: user,
         }
     }
@@ -79,6 +87,11 @@ where
             .ok_or(Ctap2Error::UnsupportedAlgorithm)
     }
 
+    /// Builder method for overwriting the authenticator's supported transports.
+    pub fn transports(self, transports: Vec<webauthn::AuthenticatorTransport>) -> Self {
+        Self { transports, ..self }
+    }
+
     /// Collect user consent if required. This step MUST happen before the following steps due
     ///    to privacy reasons (i.e., authenticator cannot disclose existence of a credential
     ///    until the user interacted with the device):
@@ -96,7 +109,7 @@ where
     ) -> Result<Flags, Ctap2Error> {
         if options.uv {
             let Some(true) = self.user_validation.is_verification_enabled() else {
-                return Err(Ctap2Error::UnsupportedOption)
+                return Err(Ctap2Error::UnsupportedOption);
             };
             if self.user_validation.check_user_verification().await {
                 Ok(Flags::UP | Flags::UV)

@@ -18,6 +18,7 @@ impl<S: CredentialStore, U: UserValidationMethod> Authenticator<S, U> {
             }),
             max_msg_size: None,
             pin_protocols: None,
+            transports: Some(self.transports.clone()),
         }
     }
 }
