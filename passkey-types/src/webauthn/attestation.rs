@@ -8,11 +8,9 @@ use crate::{
         i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec, maybe_stringified,
     },
     webauthn::{
-        common::{
-            AuthenticationExtensionsClientInputs, AuthenticatorAttachment, AuthenticatorTransport,
-            PublicKeyCredentialDescriptor, PublicKeyCredentialType, UserVerificationRequirement,
-        },
-        PublicKeyCredential,
+        AuthenticationExtensionsClientInputs, AuthenticatorAttachment, AuthenticatorTransport,
+        PublicKeyCredential, PublicKeyCredentialDescriptor, PublicKeyCredentialType,
+        UserVerificationRequirement,
     },
     Bytes,
 };
@@ -129,6 +127,23 @@ pub struct PublicKeyCredentialCreationOptions {
     /// The default value is [`AttestationConveyancePreference::None`]
     #[serde(default, deserialize_with = "ignore_unknown")]
     pub attestation: AttestationConveyancePreference,
+
+    /// The Relying Party MAY use this OPTIONAL member to specify a preference regarding the attestation
+    /// statement format used by the authenticator. Values SHOULD be taken from the IANA "WebAuthn
+    /// Attestation Statement Format Identifiers" registry [IANA-WebAuthn-Registries] established by
+    /// [RFC8809]. Values are ordered from most preferable to least preferable. This parameter is
+    /// advisory and the authenticator MAY use an attestation statement not enumerated in this parameter.
+    ///
+    /// The default value is the empty list, which indicates no preference.
+    ///
+    /// [IANA-WebAuthn-Registries]: https://www.iana.org/assignments/webauthn/webauthn.xhtml#webauthn-attestation-statement-format-ids
+    /// [RFC8809]: https://www.rfc-editor.org/rfc/rfc8809
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown_opt_vec"
+    )]
+    pub attestation_formats: Option<Vec<AttestationStatementFormatIdentifiers>>,
 
     /// The Relying Party MAY use this OPTIONAL member to provide client extension inputs requesting
     /// additional processing by the client and authenticator. For example, the Relying Party may
@@ -412,6 +427,47 @@ pub enum AttestationConveyancePreference {
     /// enterprise attestation is requested, and convey the resulting AAGUID and attestation
     /// statement, unaltered, to the Relying Party.
     Enterprise,
+}
+
+/// Attestation statement formats are identified by a string, called an attestation statement format
+/// identifier, chosen by the author of the attestation statement format. The values defined below
+/// are registed in the [IANA WebAuthn regirsty][1]. See [Attestation Statement Identifiers][2] in
+/// the WebAuthn spec for more information.
+///
+/// [1]: https://www.iana.org/assignments/webauthn/webauthn.xhtml#webauthn-attestation-statement-format-ids
+/// [2]: https://w3c.github.io/webauthn/#sctn-attstn-fmt-ids
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[typeshare]
+pub enum AttestationStatementFormatIdentifiers {
+    /// The `packed` attestation statement format is a WebAuthn-optimized format for attestation.
+    /// It uses a very compact but still extensible encoding method. This format is implementable by
+    /// authenticators with limited resources (e.g., secure elements).
+    Packed,
+
+    /// The TPM attestation statement format returns an attestation statement in the same format as
+    /// the packed attestation statement format, although the `rawData` and `signature` fields are
+    /// computed differently.
+    Tpm,
+
+    /// Platform authenticators on versions "N", and later, may provide this proprietary
+    /// `hardware attestation` statement.
+    AndroidKey,
+
+    /// Android-based platform authenticators MAY produce an attestation statement based on the
+    /// [Android SafetyNet API](https://developer.android.com/training/safetynet/).
+    AndroidSafetynet,
+
+    /// Used with FIDO U2F authenticators.
+    FidoU2f,
+
+    /// Used with Apple devices' platform authenticators.
+    Apple,
+
+    /// Used to replace any authenticator-provided attestation statement when a WebAuthn Relying
+    /// Party indicates it does not wish to receive attestation information.
+    #[default]
+    None,
 }
 
 /// The type represents the authenticator's response to a client’s request for the creation of a new

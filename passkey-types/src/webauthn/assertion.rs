@@ -6,19 +6,19 @@ use typeshare::typeshare;
 use crate::{
     utils::serde::{ignore_unknown, ignore_unknown_opt_vec, maybe_stringified},
     webauthn::{
-        common::{
-            AuthenticationExtensionsClientInputs, PublicKeyCredentialDescriptor,
-            UserVerificationRequirement,
-        },
-        PublicKeyCredential,
+        AttestationConveyancePreference, AttestationStatementFormatIdentifiers,
+        AuthenticationExtensionsClientInputs, PublicKeyCredential, PublicKeyCredentialDescriptor,
+        UserVerificationRequirement,
     },
     Bytes,
 };
 
 #[cfg(doc)]
 use crate::{
-    ctap2::AuthenticatorData,
-    webauthn::{CollectedClientData, PublicKeyCredentialUserEntity},
+    ctap2::{AttestedCredentialData, AuthenticatorData},
+    webauthn::{
+        AuthenticatorAttestationResponse, CollectedClientData, PublicKeyCredentialUserEntity,
+    },
 };
 
 /// The response to the successful authentication of a [`PublicKeyCredential`]
@@ -109,6 +109,32 @@ pub struct PublicKeyCredentialRequestOptions {
     #[serde(default, deserialize_with = "ignore_unknown")]
     pub user_verification: UserVerificationRequirement,
 
+    /// The Relying Party MAY use this OPTIONAL member to specify a preference regarding attestation
+    /// conveyance. Its value SHOULD be a member of [`AttestationConveyancePreference`]. Client platforms
+    /// MUST ignore unknown values, treating an unknown value as if the member does not exist,
+    /// therefore acting as the default value.
+    ///
+    /// The default value is [`AttestationConveyancePreference::None`]
+    #[serde(default, deserialize_with = "ignore_unknown")]
+    pub attestation: AttestationConveyancePreference,
+
+    /// The Relying Party MAY use this OPTIONAL member to specify a preference regarding the attestation
+    /// statement format used by the authenticator. Values SHOULD be taken from the IANA "WebAuthn
+    /// Attestation Statement Format Identifiers" registry [IANA-WebAuthn-Registries] established by
+    /// [RFC8809]. Values are ordered from most preferable to least preferable. This parameter is
+    /// advisory and the authenticator MAY use an attestation statement not enumerated in this parameter.
+    ///
+    /// The default value is the empty list, which indicates no preference.
+    ///
+    /// [IANA-WebAuthn-Registries]: https://www.iana.org/assignments/webauthn/webauthn.xhtml#webauthn-attestation-statement-format-ids
+    /// [RFC8809]: https://www.rfc-editor.org/rfc/rfc8809
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown_opt_vec"
+    )]
+    pub attestation_formats: Option<Vec<AttestationStatementFormatIdentifiers>>,
+
     /// The Relying Party MAY use this OPTIONAL member to provide client extension inputs requesting
     /// additional processing by the client and authenticator.
     ///
@@ -166,4 +192,15 @@ pub struct AuthenticatorAssertionResponse {
     /// This mirrors the [`PublicKeyCredentialUserEntity::id`] field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_handle: Option<Bytes>,
+
+    /// This OPTIONAL attribute contains an attestation object, if the authenticator supports attestation
+    /// in assertions. The attestation object, if present, includes an attestation statement. Unlike
+    /// the [`AuthenticatorAttestationResponse::attestation_object`], it does not contain an `authData`
+    /// key because the authenticator data is provided directly above in
+    /// [`AuthenticatorAssertionResponse::authenticator_data`] structure. For more details on attestation,
+    /// see [Attestation in assertions][1].
+    ///
+    /// [1]: https://w3c.github.io/webauthn/#sctn-attestation-in-assertions
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attestation_object: Option<Bytes>,
 }
