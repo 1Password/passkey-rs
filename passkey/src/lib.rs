@@ -138,7 +138,7 @@
 //! };
 //!
 //! // Now create the credential.
-//! let my_webauthn_credential = my_client.register(&origin, request).await.unwrap();
+//! let my_webauthn_credential = my_client.register(&origin, request, None).await.unwrap();
 //!
 //! // Let's try and authenticate.
 //! // Create a challenge that would usually come from the RP.

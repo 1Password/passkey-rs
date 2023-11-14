@@ -59,7 +59,7 @@ async fn create_and_authenticate() {
         public_key: good_credential_creation_options(),
     };
     let cred = client
-        .register(&origin, options)
+        .register(&origin, options, None)
         .await
         .expect("failed to register with options");
 
@@ -92,7 +92,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         public_key: good_credential_creation_options(),
     };
     let cred = client
-        .register(&origin, options)
+        .register(&origin, options, None)
         .await
         .expect("failed to register with options");
 
@@ -136,7 +136,7 @@ async fn create_and_authenticate_without_rp_id() {
         },
     };
     let cred = client
-        .register(&origin, options)
+        .register(&origin, options, None)
         .await
         .expect("failed to register with options");
 

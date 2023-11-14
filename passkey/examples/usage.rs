@@ -68,7 +68,7 @@ async fn client_setup(
     };
 
     // Now create the credential.
-    let my_webauthn_credential = my_client.register(origin, request).await?;
+    let my_webauthn_credential = my_client.register(origin, request, None).await?;
 
     // Let's try and authenticate.
     // Create a challenge that would usually come from the RP.
