@@ -10,9 +10,10 @@ use crate::{utils::serde::ignore_unknown, Bytes};
 mod assertion;
 mod attestation;
 mod common;
+mod extensions;
 
 // re-export types
-pub use self::{assertion::*, attestation::*, common::*};
+pub use self::{assertion::*, attestation::*, common::*, extensions::*};
 
 mod sealed {
     pub trait Sealed {}
@@ -71,16 +72,6 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
 
     /// This object is a map containing extension identifier → client extension output entries
     /// produced by the extension’s client extension processing.
-    pub client_extension_results: AuthenticationExtensionsClientOutputs,
+    #[serde(default)]
+    pub client_extension_results: AuthenticatorExtensionsClientOutputs,
 }
-
-/// This is a dictionary containing the client extension output values for zero or more
-/// [WebAuthn Extensions]. There are currently none supported.
-///
-/// <https://w3c.github.io/webauthn/#dictdef-authenticationextensionsclientoutputs>
-///
-/// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-#[typeshare]
-pub struct AuthenticationExtensionsClientOutputs {}
