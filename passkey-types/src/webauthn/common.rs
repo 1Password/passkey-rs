@@ -20,7 +20,7 @@ use crate::webauthn::{
 /// type of the authenticator.
 ///
 /// <https://w3c.github.io/webauthn/#enumdef-publickeycredentialtype>
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 #[typeshare(serialized_as = "String")]
 pub enum PublicKeyCredentialType {
@@ -91,7 +91,7 @@ impl PublicKeyCredentialDescriptor {
 /// <https://w3c.github.io/webauthn/#enumdef-userverificationrequirement>
 ///
 /// [user verification]: https://w3c.github.io/webauthn/#user-verification
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[typeshare(serialized_as = "String")]
 pub enum UserVerificationRequirement {
@@ -148,7 +148,7 @@ pub enum AuthenticatorTransport {
 /// authenticator attachment modality used to complete a registration or authentication ceremony.
 ///
 /// <https://w3c.github.io/webauthn/#enumdef-authenticatorattachment>
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 #[typeshare(serialized_as = "String")]
 pub enum AuthenticatorAttachment {

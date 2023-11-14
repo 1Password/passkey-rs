@@ -350,7 +350,7 @@ pub struct AuthenticatorSelectionCriteria {
 /// <https://w3c.github.io/webauthn/#enumdef-residentkeyrequirement>
 ///
 /// [discoverable credential]: https://w3c.github.io/webauthn/#client-side-discoverable-credential
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[typeshare(serialized_as = "String")]
 pub enum ResidentKeyRequirement {
@@ -387,7 +387,7 @@ pub enum ResidentKeyRequirement {
 /// <https://w3c.github.io/webauthn/#enumdef-attestationconveyancepreference>
 ///
 /// [attestation conveyance]: https://w3c.github.io/webauthn/#attestation-conveyance
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[typeshare(serialized_as = "String")]
 pub enum AttestationConveyancePreference {
@@ -436,7 +436,7 @@ pub enum AttestationConveyancePreference {
 ///
 /// [1]: https://www.iana.org/assignments/webauthn/webauthn.xhtml#webauthn-attestation-statement-format-ids
 /// [2]: https://w3c.github.io/webauthn/#sctn-attstn-fmt-ids
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 #[typeshare]
 pub enum AttestationStatementFormatIdentifiers {
@@ -559,7 +559,7 @@ pub struct CollectedClientData {
 }
 
 /// Used to limit the values of [`CollectedClientData::ty`] and serializes to static strings.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[typeshare]
 pub enum ClientDataType {
     /// Serializes to the string `"webauthn.create"`
