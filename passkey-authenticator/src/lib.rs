@@ -207,8 +207,7 @@ mod tests {
         let secret_key = private_key_from_cose_key(&private_cose).expect("to get a private key");
 
         let private_key = SigningKey::from(secret_key);
-
-        let signature: p256::ecdsa::Signature = SigningKey::sign(&private_key, &signature_target);
+        let signature: p256::ecdsa::Signature = private_key.sign(&signature_target);
 
         public_key
             .verify(&signature_target, &signature)

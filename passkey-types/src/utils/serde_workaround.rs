@@ -11,7 +11,7 @@ macro_rules! serde_workaround {
         $(#[$attr:meta])*
         pub struct $name:ident {$(
             $(#[doc=$doc:literal])*
-            #[serde(rename = $discriminant:literal$(,$default:ident)?$(,skip_serializing_if = $method:path)?)]
+            #[serde(rename = $discriminant:literal$(,$default:ident)?$(,skip_serializing_if = $method:path)?$(,deserialize_with = $de:path)?)]
             $vis:vis $field:ident: $ty:ty,
         )*}
     ) => {
@@ -142,7 +142,7 @@ macro_rules! serde_workaround {
                     while let Some(key) = map.next_key::<Ident>()? {
                         match key {
                             $(
-                                Ident::$field => $crate::utils::serde_workaround::set_if_none(key, &mut $field, &mut map)?,
+                                Ident::$field => serde_deserialize_with!(key; $field; map$(; $ty; $de; $name)?),
                             )*
                             Ident::Unknown => {
                                 let _ = map.next_value::<serde::de::IgnoredAny>()?;
@@ -203,6 +203,33 @@ macro_rules! serde_visit_map {
     };
 }
 
+macro_rules! serde_deserialize_with {
+    ($key:ident; $field:ident; $map:ident; $ty:ty; $de_with:path; $name:ident) => {{
+        struct __DeserializeWith<'de> {
+            value: $ty,
+            phantom: ::std::marker::PhantomData<$name>,
+            lifetime: ::std::marker::PhantomData<&'de ()>,
+        }
+        impl<'de> ::serde::Deserialize<'de> for __DeserializeWith<'de> {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: ::serde::Deserializer<'de>,
+            {
+                $de_with(deserializer).map(|value| __DeserializeWith {
+                    value,
+                    phantom: ::std::marker::PhantomData,
+                    lifetime: ::std::marker::PhantomData,
+                })
+            }
+        }
+        $crate::utils::serde_workaround::check_is_already_set($key, &$field, &$map)?;
+        $field = Some($map.next_value::<__DeserializeWith<'de>>()?.value);
+    }};
+    ($key:ident; $field:ident; $map:ident) => {
+        $crate::utils::serde_workaround::set_if_none($key, &mut $field, &mut $map)?
+    };
+}
+
 macro_rules! delegate_visit_to_u8 {
     ($($fn:ident: $int:ty,)+) => {
         $(
@@ -233,9 +260,23 @@ where
     T: serde::Deserialize<'de>,
     M: serde::de::MapAccess<'de, Error = E>,
 {
+    check_is_already_set(key, val, map)?;
+    *val = Some(map.next_value()?);
+    Ok(())
+}
+
+pub(crate) fn check_is_already_set<'de, E, K, T, M>(
+    key: K,
+    val: &Option<T>,
+    _map: &M,
+) -> Result<(), E>
+where
+    E: serde::de::Error,
+    K: Into<&'static str>,
+    M: serde::de::MapAccess<'de, Error = E>,
+{
     if val.is_some() {
         return Err(E::duplicate_field(key.into()));
     }
-    *val = Some(map.next_value()?);
     Ok(())
 }

@@ -162,9 +162,8 @@ mod tests {
     use super::{AuthenticationRequest, Authenticator, RegisterRequest};
     use crate::{u2f::U2fApi, user_validation::MockUserValidationMethod};
     use generic_array::GenericArray;
-    use p256::ecdsa::signature::Verifier;
     use p256::{
-        ecdsa::{Signature, VerifyingKey},
+        ecdsa::{signature::Verifier, Signature, VerifyingKey},
         EncodedPoint,
     };
     use passkey_types::{ctap2::Aaguid, *};
