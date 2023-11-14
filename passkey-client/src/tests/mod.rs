@@ -171,7 +171,7 @@ fn validate_rp_id() -> Result<(), ParseError> {
         MockUserValidationMethod::verified_user(0),
     );
 
-    let mut client = Client::new(auth);
+    let client = Client::new(auth);
 
     let example = "https://example.com".parse()?;
     let com_tld = client.assert_domain(&example, Some("com"));
@@ -207,7 +207,7 @@ fn validate_rp_id() -> Result<(), ParseError> {
         Err(WebauthnError::InsecureLocalhostNotAllowed)
     );
 
-    client.allows_insecure_localhost = true;
+    let client = client.allows_insecure_localhost(true);
     let skips_http_and_tld_check = client.assert_domain(&localhost, Some("localhost"));
     assert_eq!(skips_http_and_tld_check, Ok("localhost"));
     let skips_http_and_tld_check = client.assert_domain(&localhost, None);

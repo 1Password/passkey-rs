@@ -137,6 +137,12 @@ where
         }
     }
 
+    /// Allows the internal tld verification to pass through localhost requests.
+    pub fn allows_insecure_localhost(mut self, is_allowed: bool) -> Self {
+        self.allows_insecure_localhost = is_allowed;
+        self
+    }
+
     /// Read access to the Client's `Authenticator`.
     pub fn authenticator(&self) -> &Authenticator<S, U> {
         &self.authenticator
