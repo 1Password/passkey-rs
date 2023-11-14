@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
 use crate::{
-    utils::serde::{ignore_unknown, ignore_unknown_opt_vec},
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec, maybe_stringified},
     webauthn::{
         common::{
             AuthenticationExtensionsClientInputs, PublicKeyCredentialDescriptor,
@@ -42,7 +42,11 @@ pub struct PublicKeyCredentialRequestOptions {
     /// This OPTIONAL member specifies a time, in milliseconds, that the Relying Party is willing to
     /// wait for the call to complete. The value is treated as a hint, and MAY be overridden by the
     /// client.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "maybe_stringified"
+    )]
     pub timeout: Option<u32>,
 
     /// This OPTIONAL member specifies the [RP ID] claimed by the [Relying Party]. The client MUST
@@ -102,7 +106,7 @@ pub struct PublicKeyCredentialRequestOptions {
     /// those capable of satisfying this requirement.
     ///
     /// See [`UserVerificationRequirement`] for the description of this field's values and semantics.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "ignore_unknown")]
     pub user_verification: UserVerificationRequirement,
 
     /// The Relying Party MAY use this OPTIONAL member to provide client extension inputs requesting

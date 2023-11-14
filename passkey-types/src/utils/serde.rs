@@ -93,6 +93,9 @@ where
 }
 
 pub mod i64_to_iana {
+    use super::StringOrNum;
+    use std::marker::PhantomData;
+
     use coset::iana::EnumI64;
 
     pub fn serialize<S, T>(value: &T, ser: S) -> Result<S::Ok, S::Error>
@@ -108,7 +111,7 @@ pub mod i64_to_iana {
         D: serde::Deserializer<'de>,
         T: EnumI64,
     {
-        let value: i64 = serde::Deserialize::deserialize(de)?;
+        let value: i64 = de.deserialize_any(StringOrNum(PhantomData))?;
 
         T::from_i64(value).ok_or_else(|| {
             <D::Error as serde::de::Error>::invalid_value(
@@ -117,4 +120,95 @@ pub mod i64_to_iana {
             )
         })
     }
+}
+
+struct StringOrNum<T>(pub std::marker::PhantomData<T>);
+
+impl<'de, T> Visitor<'de> for StringOrNum<T>
+where
+    T: std::str::FromStr + TryFrom<i64> + TryFrom<u64>,
+{
+    type Value = T;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("A number or a stringified number")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        std::str::FromStr::from_str(v).map_err(|_| E::custom("Was not a stringified number"))
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_str(&v)
+    }
+
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        TryFrom::try_from(v).map_err(|_| E::custom("out of range"))
+    }
+
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_i64(v.into())
+    }
+
+    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_i64(v.into())
+    }
+
+    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_i64(v.into())
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        TryFrom::try_from(v).map_err(|_| E::custom("out of range"))
+    }
+
+    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_u64(v.into())
+    }
+
+    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_u64(v.into())
+    }
+
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_u64(v.into())
+    }
+}
+
+pub(crate) fn maybe_stringified<'de, D>(de: D) -> Result<Option<u32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    de.deserialize_any(StringOrNum(std::marker::PhantomData))
+        .map(Some)
 }

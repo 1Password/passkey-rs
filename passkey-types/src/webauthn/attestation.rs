@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
 use crate::{
-    utils::serde::{i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec},
+    utils::serde::{
+        i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec, maybe_stringified,
+    },
     webauthn::{
         common::{
             AuthenticationExtensionsClientInputs, AuthenticatorAttachment, AuthenticatorTransport,
@@ -93,7 +95,11 @@ pub struct PublicKeyCredentialCreationOptions {
 
     /// This OPTIONAL member specifies a time, in milliseconds, that the Relying Party is willing to
     /// wait for the call to complete. This is treated as a hint, and MAY be overridden by the client.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "maybe_stringified"
+    )]
     pub timeout: Option<u32>,
 
     /// The Relying Party SHOULD use this OPTIONAL member to list any existing credentials mapped to
@@ -511,6 +517,7 @@ pub enum ClientDataType {
 
 #[cfg(test)]
 mod tests {
+
     use super::CredentialCreationOptions;
 
     #[test]
@@ -561,5 +568,45 @@ mod tests {
             .expect("Failed to deserialize");
         // there are 10 in the json but we should be ignoring the `alg: -1`
         assert_eq!(deserialized.public_key.pub_key_cred_params.len(), 9);
+    }
+
+    #[test]
+    fn webauthn_me_debugger() {
+        let request = r#"{
+            "publicKey": {
+              "rp": {
+                "name": "test"
+              },
+              "user": {
+                "id": [
+                  208, 3, 44, 155, 74, 109, 149, 31, 234, 107, 36, 243, 249, 29, 32, 48,
+                  189, 69, 220, 216, 11, 222, 113, 155, 129, 208, 156, 217, 58, 99, 41,
+                  166
+                ],
+                "name": "test",
+                "displayName": "Test User"
+              },
+              "challenge": [
+                21, 69, 217, 214, 15, 130, 240, 139, 91, 76, 136, 60, 96, 131, 25, 110,
+                173, 121, 215, 220, 246, 162, 39, 30, 0, 144, 238, 65, 195, 219, 32, 233
+              ],
+              "pubKeyCredParams": [
+                {
+                  "type": "public-key",
+                  "alg": "-257"
+                },
+                {
+                  "type": "public-key",
+                  "alg": "-7"
+                }
+              ],
+              "timeout": "300000"
+            }
+          }"#;
+
+        let deserialized = serde_json::from_str::<CredentialCreationOptions>(request)
+            .expect("Failed to deserialize");
+        assert_eq!(deserialized.public_key.timeout, Some(300_000));
+        assert_eq!(deserialized.public_key.pub_key_cred_params.len(), 2)
     }
 }
