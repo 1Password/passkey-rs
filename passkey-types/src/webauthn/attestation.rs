@@ -23,6 +23,8 @@ use crate::{
     webauthn::AuthenticatorAssertionResponse,
 };
 
+use super::PublicKeyCredentialHints;
+
 /// The response to the successful creation of a PublicKeyCredential
 #[typeshare]
 pub type CreatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAttestationResponse>;
@@ -120,6 +122,17 @@ pub struct PublicKeyCredentialCreationOptions {
     /// For more information see [`AuthenticatorSelectionCriteria`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authenticator_selection: Option<AuthenticatorSelectionCriteria>,
+
+    /// This OPTIONAL member contains zero or more elements from [`PublicKeyCredentialHints`]` to
+    /// guide the user agent in interacting with the user.
+    ///
+    /// This field ignores unknown hint values at deserialization.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown_opt_vec"
+    )]
+    pub hints: Option<Vec<PublicKeyCredentialHints>>,
 
     /// The Relying Party MAY use this OPTIONAL member to specify a preference regarding attestation
     /// conveyance. Its value SHOULD be a member of [`AttestationConveyancePreference`]. Client platforms
