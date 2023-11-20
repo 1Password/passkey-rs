@@ -21,6 +21,8 @@ use crate::{
     },
 };
 
+use super::PublicKeyCredentialHints;
+
 /// The response to the successful authentication of a [`PublicKeyCredential`]
 #[typeshare]
 pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAssertionResponse>;
@@ -108,6 +110,17 @@ pub struct PublicKeyCredentialRequestOptions {
     /// See [`UserVerificationRequirement`] for the description of this field's values and semantics.
     #[serde(default, deserialize_with = "ignore_unknown")]
     pub user_verification: UserVerificationRequirement,
+
+    /// This OPTIONAL member contains zero or more elements from [`PublicKeyCredentialHints`]` to
+    /// guide the user agent in interacting with the user.
+    ///
+    /// This field ignores unknown hint values at deserialization.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown_opt_vec"
+    )]
+    pub hints: Option<Vec<PublicKeyCredentialHints>>,
 
     /// The Relying Party MAY use this OPTIONAL member to specify a preference regarding attestation
     /// conveyance. Its value SHOULD be a member of [`AttestationConveyancePreference`]. Client platforms
