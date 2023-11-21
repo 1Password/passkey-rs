@@ -9,8 +9,8 @@ use crate::{
     },
     webauthn::{
         AuthenticationExtensionsClientInputs, AuthenticatorAttachment, AuthenticatorTransport,
-        PublicKeyCredential, PublicKeyCredentialDescriptor, PublicKeyCredentialType,
-        UserVerificationRequirement,
+        PublicKeyCredential, PublicKeyCredentialDescriptor, PublicKeyCredentialHints,
+        PublicKeyCredentialType, UserVerificationRequirement,
     },
     Bytes,
 };
@@ -20,8 +20,6 @@ use crate::{
     ctap2::{Aaguid, AttestedCredentialData, AuthenticatorData},
     webauthn::AuthenticatorAssertionResponse,
 };
-
-use super::PublicKeyCredentialHints;
 
 /// The response to the successful creation of a PublicKeyCredential
 #[typeshare]

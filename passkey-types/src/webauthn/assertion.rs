@@ -8,7 +8,7 @@ use crate::{
     webauthn::{
         AttestationConveyancePreference, AttestationStatementFormatIdentifiers,
         AuthenticationExtensionsClientInputs, PublicKeyCredential, PublicKeyCredentialDescriptor,
-        UserVerificationRequirement,
+        PublicKeyCredentialHints, UserVerificationRequirement,
     },
     Bytes,
 };
@@ -20,8 +20,6 @@ use crate::{
         AuthenticatorAttestationResponse, CollectedClientData, PublicKeyCredentialUserEntity,
     },
 };
-
-use super::PublicKeyCredentialHints;
 
 /// The response to the successful authentication of a [`PublicKeyCredential`]
 #[typeshare]
