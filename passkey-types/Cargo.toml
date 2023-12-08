@@ -28,6 +28,3 @@ strum = { version = "0.25", features = ["derive"] }
 typeshare = "1"
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = "0.3"
-
-[dev-dependencies]
-regex = "1.10"

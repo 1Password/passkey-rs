@@ -542,18 +542,17 @@ pub struct AuthenticatorAttestationResponse {
 /// >       parsing to be tolerant of unknown keys and of any reordering of the keys
 ///
 /// This struct conforms to the JSON byte serialization format expected of `CollectedClientData`,
-/// detailed in section §5.8.1.1 Serialization of the WebAuthn spec.
+/// detailed in section [5.8.1.1 Serialization] of the WebAuthn spec. Namely the following
+/// requirements:
 ///
-/// Changes to `CollectedClientData` include:
-/// 1.  serde `skip_serializing_if` applied to `ty`, `challenge`, `origin`, and `cross_origin`.
-///     This is for serialization steps 11-13 of [`collected_client_data_to_json_bytes`](collected_client_data_to_json_bytes)
-/// 2. `origin` is String instead of `url::Url`. This implies that empty strings are allowed, which
-///     is needed for step 11 of `serialize_serializeable_collected_client_data`.
-/// 3. `unknown_keys` uses `IndexMap` instead of `BTreeMap` to preserve ordering of keys so that
-///    `to_bytes()` is consistent with the bytes in `AuthenticatorAssertionResponse`.
-///     The ordering is significant because the WebAuthn signature is computed over these bytes
+/// * `type`, `challenge`, `origin`, `crossOrigin` must always be present in the serialized format
+///   _in that order_.
+/// * Any extra parameters must keep the order in which they were used in the signature, hence the
+///   use of [`IndexMap`].
 ///
 /// <https://w3c.github.io/webauthn/#dictionary-client-data>
+///
+/// [5.8.1.1 Serialization]: https://w3c.github.io/webauthn/#clientdatajson-serialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[typeshare]
@@ -626,7 +625,6 @@ impl fmt::Display for ClientDataType {
 mod tests {
     use super::CredentialCreationOptions;
     use crate::webauthn::{ClientDataType, CollectedClientData};
-    use regex::Regex;
 
     // Normal client data from Chrome assertion
     const CLIENT_DATA_JSON_STRING: &str = r#"{
@@ -870,24 +868,20 @@ mod tests {
         let mut ccd: CollectedClientData = serde_json::from_str(CLIENT_DATA_JSON_STRING).unwrap();
 
         // Check that serialization of cross_origin with value Some(true) resolves to true
+        const CROSS_ORIGIN_TRUE: &str = r#"{"type":"webauthn.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":true}"#;
         ccd.cross_origin = Some(true);
         let client_data_json = serde_json::to_string(&ccd).unwrap();
-        let pattern = r#""crossOrigin":s*true"#;
-        let regex = Regex::new(pattern).expect("Invalid regex pattern");
-        assert_eq!(regex.is_match(client_data_json.as_str()), true);
+        assert_eq!(client_data_json, CROSS_ORIGIN_TRUE);
 
         // Check that serialization of cross_origin with value Some(false) resolves to false
+        const CROSS_ORIGIN_FALSE: &str = r#"{"type":"webauthn.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":false}"#;
         ccd.cross_origin = Some(false);
         let client_data_json = serde_json::to_string(&ccd).unwrap();
-        let pattern = r#""crossOrigin":s*false"#;
-        let regex = Regex::new(pattern).expect("Invalid regex pattern");
-        assert_eq!(regex.is_match(client_data_json.as_str()), true);
+        assert_eq!(client_data_json, CROSS_ORIGIN_FALSE);
 
         // Check that serialization of cross_origin with value None resolves to false
         ccd.cross_origin = None;
         let client_data_json = serde_json::to_string(&ccd).unwrap();
-        let pattern = r#""crossOrigin":s*false"#;
-        let regex = Regex::new(pattern).expect("Invalid regex pattern");
-        assert_eq!(regex.is_match(client_data_json.as_str()), true);
+        assert_eq!(client_data_json, CROSS_ORIGIN_FALSE);
     }
 }
