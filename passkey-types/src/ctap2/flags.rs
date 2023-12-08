@@ -5,6 +5,7 @@ bitflags! {
     ///
     /// <https://w3c.github.io/webauthn/#authdata-flags>
     #[repr(transparent)]
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     pub struct Flags: u8 {
         /// User Present, bit 0
         const UP = 1 << 0;
@@ -29,7 +30,7 @@ impl Default for Flags {
 
 impl From<Flags> for u8 {
     fn from(src: Flags) -> Self {
-        src.bits
+        src.bits()
     }
 }
 

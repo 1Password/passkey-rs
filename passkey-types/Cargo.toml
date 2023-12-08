@@ -16,7 +16,7 @@ default = []
 serialize_bytes_as_base64_string = []
 
 [dependencies]
-bitflags = "1"
+bitflags = "2"
 ciborium = "0.2"
 data-encoding = "2"
 indexmap = { version = "2", features = ["serde"] }
