@@ -57,3 +57,29 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
       - run: rustup run ${{ matrix.rust }} cargo test --all-features
+
+  typeshare:
+    name: Typeshare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+        lang:
+          - typescript
+          - kotlin
+          - swift
+        include:
+          - fs: ts
+            lang: typescript
+          - fs: kt
+            lang: kotlin
+          - fs: swift
+            lang: swift
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/install@v0.1
+        with:
+          crate: typeshare-cli
+          version: "1.7.0"
+      - run: typeshare --lang=${{ matrix.lang }} . -o test.${{ matrix.fs }}
