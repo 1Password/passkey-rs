@@ -555,7 +555,6 @@ pub struct AuthenticatorAttestationResponse {
 /// [5.8.1.1 Serialization]: https://w3c.github.io/webauthn/#clientdatajson-serialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
 pub struct CollectedClientData {
     /// This member contains the value [`ClientDataType::Create`] when creating new credentials, and
     /// [`ClientDataType::Get`] when getting an assertion from an existing credential. The purpose
