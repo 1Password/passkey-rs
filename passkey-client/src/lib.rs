@@ -54,6 +54,13 @@ pub enum WebauthnError {
     AuthenticatorError(u8),
 }
 
+impl WebauthnError {
+    /// Was the error a vendor error?
+    pub fn is_vendor_error(&self) -> bool {
+        matches!(self, WebauthnError::AuthenticatorError(ctap_error) if ctap2::VendorError::try_from(*ctap_error).is_ok())
+    }
+}
+
 impl From<ctap2::StatusCode> for WebauthnError {
     fn from(value: ctap2::StatusCode) -> Self {
         match value {
@@ -354,7 +361,7 @@ where
 /// Wrapper struct for verifying that a given RpId matches the request's origin.
 ///
 /// While most cases should not use this type directly and instead use [`Client`], there are some
-/// cases that warant the need for checking an RpId in the same way that the client does, but without
+/// cases that warrant the need for checking an RpId in the same way that the client does, but without
 /// the rest of pieces that the client needs.
 pub struct RpIdVerifier<P> {
     tld_provider: Box<P>,
