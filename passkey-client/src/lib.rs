@@ -170,6 +170,11 @@ where
         let request = request.public_key;
         let auth_info = self.authenticator.get_info();
 
+        let pub_key_cred_params = if request.pub_key_cred_params.is_empty() {
+            webauthn::PublicKeyCredentialParameters::default_algorithms()
+        } else {
+            request.pub_key_cred_params
+        };
         // TODO: Handle given timeout here, If the value is not within what we consider a reasonable range
         // override to our default
         // let timeout = request
@@ -213,7 +218,7 @@ where
                     name: Some(request.rp.name),
                 },
                 user: request.user,
-                pub_key_cred_params: request.pub_key_cred_params,
+                pub_key_cred_params,
                 exclude_list: request.exclude_credentials,
                 extensions: request.extensions,
                 options: ctap2::make_credential::Options {
