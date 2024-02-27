@@ -94,10 +94,6 @@ async fn create_and_authenticate() {
         .authenticate(&origin, auth_options, None)
         .await
         .expect("failed to authenticate with freshly created credential");
-    // Commented due to commiting to main
-    // let diag =
-    //     cbor_diag::parse_bytes(cred.public_key.response.attestation_object.as_slice()).unwrap();
-    // println!("{}", diag.to_diag_pretty(),);
 }
 
 #[tokio::test]
@@ -183,6 +179,38 @@ async fn create_and_authenticate_without_rp_id() {
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
         .expect("could not deserialize response");
     assert_eq!(att_obj.rp_id_hash(), &sha256(b"www.future.1password.com"));
+}
+
+#[tokio::test]
+async fn create_and_authenticate_without_cred_params() {
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(2),
+    );
+    let mut client = Client::new(auth);
+
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let options = webauthn::CredentialCreationOptions {
+        public_key: webauthn::PublicKeyCredentialCreationOptions {
+            pub_key_cred_params: Vec::new(),
+            ..good_credential_creation_options()
+        },
+    };
+    let cred = client
+        .register(&origin, options, None)
+        .await
+        .expect("failed to register with options");
+
+    let credential_id = cred.raw_id;
+
+    let auth_options = webauthn::CredentialRequestOptions {
+        public_key: good_credential_request_options(credential_id),
+    };
+    client
+        .authenticate(&origin, auth_options, None)
+        .await
+        .expect("failed to authenticate with freshly created credential");
 }
 
 #[test]

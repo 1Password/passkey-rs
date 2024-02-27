@@ -294,6 +294,29 @@ pub struct PublicKeyCredentialParameters {
     pub alg: iana::Algorithm,
 }
 
+impl PublicKeyCredentialParameters {
+    /// Create an array with the default algorithms in case
+    /// [`PublicKeyCredentialCreationOptions::pub_key_cred_params`] comes in empty.
+    ///
+    /// This array contains:
+    /// * [`iana::Algorithm::ES256`]
+    /// * [`iana::Algorithm::RS256`]
+    ///
+    /// <https://w3c.github.io/webauthn/#ref-for-list-size>
+    pub fn default_algorithms() -> Vec<Self> {
+        vec![
+            Self {
+                ty: PublicKeyCredentialType::PublicKey,
+                alg: iana::Algorithm::ES256,
+            },
+            Self {
+                ty: PublicKeyCredentialType::PublicKey,
+                alg: iana::Algorithm::RS256,
+            },
+        ]
+    }
+}
+
 /// [Relying Parties] may use this type to specify their requirements regarding authenticator attributes.
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-authenticatorselectioncriteria>
