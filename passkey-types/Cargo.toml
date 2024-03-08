@@ -31,3 +31,6 @@ strum = { version = "0.25", features = ["derive"] }
 typeshare = "1"
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
