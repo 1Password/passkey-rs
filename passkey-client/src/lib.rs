@@ -21,8 +21,11 @@ use coset::{iana::EnumI64, Algorithm};
 use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
 use passkey_types::{
     crypto::sha256,
-    ctap2, encoding, webauthn,
-    webauthn::{AuthenticatorExtensionsClientOutputs, CredentialPropertiesOutput},
+    ctap2, encoding,
+    webauthn::{
+        self, AuthenticatorExtensionsClientOutputs, CredentialPropertiesOutput,
+        UserVerificationRequirement,
+    },
     Passkey,
 };
 use typeshare::typeshare;
@@ -209,6 +212,14 @@ where
                 None
             };
 
+        let uv = matches!(
+            request
+                .authenticator_selection
+                .map(|s| s.user_verification)
+                .unwrap_or_default(), // Default is Preferred
+            UserVerificationRequirement::Required | UserVerificationRequirement::Preferred
+        );
+
         let ctap2_response = self
             .authenticator
             .make_credential(ctap2::make_credential::Request {
@@ -224,7 +235,7 @@ where
                 options: ctap2::make_credential::Options {
                     rk: true,
                     up: true,
-                    uv: true,
+                    uv,
                 },
                 pin_auth: None,
                 pin_protocol: None,
