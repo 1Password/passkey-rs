@@ -212,13 +212,8 @@ where
                 None
             };
 
-        let uv = matches!(
-            request
-                .authenticator_selection
-                .map(|s| s.user_verification)
-                .unwrap_or_default(), // Default is Preferred
-            UserVerificationRequirement::Required | UserVerificationRequirement::Preferred
-        );
+        let uv = request.authenticator_selection.map(|s| s.user_verification)
+            != Some(UserVerificationRequirement::Discouraged);
 
         let ctap2_response = self
             .authenticator
