@@ -172,11 +172,6 @@ mod tests {
         user_mock
             .expect_check_user_presence()
             .returning(|| Box::pin(async { true }));
-        // Always called by `get_info`
-        user_mock
-            .expect_is_verification_enabled()
-            .returning(|| Some(true));
-        user_mock.expect_is_presence_enabled().returning(|| true);
         user_mock
     }
 
