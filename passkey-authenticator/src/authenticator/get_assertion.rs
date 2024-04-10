@@ -185,7 +185,6 @@ mod tests {
             user_handle: None,
             counter: Some(9000),
         });
-        // let mut store = MemoryStore::new();
         let mut authenticator =
             Authenticator::new(Aaguid::new_empty(), store, test_user_mock_without_uv());
         let request = Request {
