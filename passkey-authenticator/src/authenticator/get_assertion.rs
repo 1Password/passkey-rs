@@ -1,3 +1,4 @@
+use log::info;
 use p256::ecdsa::{signature::SignerMut, SigningKey};
 use passkey_types::{
     ctap2::{
@@ -107,6 +108,17 @@ where
         //        the authenticator), terminate this procedure and return the
         //        CTAP2_ERR_OPERATION_DENIED error.
 
+        // [WebAuthn-9]. Increment the credential associated signature counter or the global signature
+        //               counter value, depending on which approach is implemented by the authenticator,
+        //               by some positive value. If the authenticator does not implement a signature
+        //               counter, let the signature counter value remain constant at zero.
+        if let Some(counter) = credential.counter {
+            credential.counter = Some(counter + 1);
+            self.store_mut()
+                .update_credential(credential.clone())
+                .await?;
+        }
+
         // 12. Sign the clientDataHash along with authData with the selected credential.
         //     Let signature be the assertion signature of the concatenation `authenticatorData` ||
         //     `clien_data_hash` using the privateKey of selectedCredential. A simple, undelimited
@@ -139,5 +151,88 @@ where
             }),
             number_of_credentials: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use coset::{CborSerializable, CoseKey};
+    use passkey_types::{
+        ctap2::{
+            get_assertion::{Options, Request},
+            Aaguid,
+        },
+        Passkey,
+    };
+
+    use crate::{Authenticator, MockUserValidationMethod};
+
+    fn test_user_mock_without_uv() -> MockUserValidationMethod {
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_check_user_presence()
+            .returning(|| Box::pin(async { true }));
+        // Always called by `get_info`
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| Some(true));
+        user_mock.expect_is_presence_enabled().returning(|| true);
+        user_mock
+    }
+
+    #[tokio::test]
+    async fn get_assertion_increments_signature_counter_when_counter_is_some() {
+        // Arrange
+        let store = Some(Passkey {
+            key: private_key_for_testing(),
+            credential_id: Default::default(),
+            rp_id: "example.com".into(),
+            user_handle: None,
+            counter: Some(9000),
+        });
+        // let mut store = MemoryStore::new();
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), store, test_user_mock_without_uv());
+        let request = Request {
+            rp_id: "example.com".into(),
+            client_data_hash: vec![0; 32].into(),
+            allow_list: None,
+            extensions: None,
+            pin_auth: None,
+            pin_protocol: None,
+            options: Options {
+                up: true,
+                uv: false,
+                rk: false,
+            },
+        };
+
+        // Act
+        let response = authenticator.get_assertion(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.auth_data.counter.unwrap(), 9001);
+        assert_eq!(
+            authenticator
+                .store()
+                .as_ref()
+                .and_then(|c| c.counter)
+                .unwrap(),
+            9001
+        );
+    }
+
+    fn private_key_for_testing() -> CoseKey {
+        // Hardcoded CoseKey for testing purposes
+        let bytes = vec![
+            166, 1, 2, 3, 38, 32, 1, 33, 88, 32, 200, 30, 161, 146, 196, 121, 165, 149, 92, 232,
+            49, 48, 245, 253, 73, 234, 204, 3, 209, 153, 166, 77, 59, 232, 70, 16, 206, 77, 84,
+            156, 28, 77, 34, 88, 32, 82, 141, 165, 28, 241, 82, 31, 33, 183, 206, 29, 91, 93, 111,
+            216, 216, 26, 62, 211, 49, 191, 86, 238, 118, 241, 124, 131, 106, 214, 95, 170, 160,
+            35, 88, 32, 147, 171, 4, 49, 68, 170, 47, 51, 74, 211, 94, 40, 212, 244, 95, 55, 154,
+            92, 171, 241, 0, 55, 84, 151, 79, 244, 151, 198, 135, 45, 97, 238,
+        ];
+
+        CoseKey::from_slice(bytes.as_slice()).unwrap()
     }
 }
