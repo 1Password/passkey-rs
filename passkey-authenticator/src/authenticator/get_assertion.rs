@@ -1,4 +1,3 @@
-use log::info;
 use p256::ecdsa::{signature::SignerMut, SigningKey};
 use passkey_types::{
     ctap2::{
