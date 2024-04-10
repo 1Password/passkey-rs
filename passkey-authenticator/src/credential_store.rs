@@ -26,13 +26,16 @@ pub trait CredentialStore {
         rp_id: &str,
     ) -> Result<Vec<Self::PasskeyItem>, StatusCode>;
 
-    /// Save the new/updated credential into your store
+    /// Save the new credential into your store
     async fn save_credential(
         &mut self,
         cred: Passkey,
         user: PublicKeyCredentialUserEntity,
         rp: PublicKeyCredentialRpEntity,
     ) -> Result<(), StatusCode>;
+
+    /// Update the credential in your store
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode>;
 }
 
 /// In-memory store for Passkeys
@@ -71,6 +74,11 @@ impl CredentialStore for MemoryStore {
         self.insert(cred.credential_id.clone().into(), cred);
         Ok(())
     }
+
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+        self.insert(cred.credential_id.clone().into(), cred);
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -103,6 +111,11 @@ impl CredentialStore for Option<Passkey> {
         self.replace(cred);
         Ok(())
     }
+
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+        self.replace(cred);
+        Ok(())
+    }
 }
 
 #[cfg(any(feature = "tokio", test))]
@@ -127,6 +140,10 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
         rp: PublicKeyCredentialRpEntity,
     ) -> Result<(), StatusCode> {
         self.lock().await.save_credential(cred, user, rp).await
+    }
+
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+        self.lock().await.update_credential(cred).await
     }
 }
 
@@ -153,6 +170,10 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
     ) -> Result<(), StatusCode> {
         self.write().await.save_credential(cred, user, rp).await
     }
+
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+        self.write().await.update_credential(cred).await
+    }
 }
 
 #[cfg(any(feature = "tokio", test))]
@@ -178,6 +199,10 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
     ) -> Result<(), StatusCode> {
         self.lock().await.save_credential(cred, user, rp).await
     }
+
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+        self.lock().await.update_credential(cred).await
+    }
 }
 
 #[cfg(any(feature = "tokio", test))]
@@ -202,5 +227,9 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
         rp: PublicKeyCredentialRpEntity,
     ) -> Result<(), StatusCode> {
         self.write().await.save_credential(cred, user, rp).await
+    }
+
+    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+        self.write().await.update_credential(cred).await
     }
 }
