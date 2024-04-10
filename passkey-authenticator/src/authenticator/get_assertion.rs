@@ -19,7 +19,7 @@ where
     /// This method is used by a host to request cryptographic proof of user authentication as well
     /// as user consent to a given transaction, using a previously generated credential that is
     /// bound to the authenticator and relying party identifier.
-    pub async fn get_assertion(&self, input: Request) -> Result<Response, StatusCode> {
+    pub async fn get_assertion(&mut self, input: Request) -> Result<Response, StatusCode> {
         // 1. Locate all credentials that are eligible for retrieval under the specified criteria:
         //     1. If an allowList is present and is non-empty, locate all denoted credentials
         //        present on this authenticator and bound to the specified rpId.
@@ -72,7 +72,7 @@ where
         let flags = self.check_user(&input.options).await?;
 
         // 8. If no credentials were located in step 1, return CTAP2_ERR_NO_CREDENTIALS.
-        let credential = maybe_credential?
+        let mut credential = maybe_credential?
             .into_iter()
             .next()
             .ok_or(Ctap2Error::NoCredentials)?
