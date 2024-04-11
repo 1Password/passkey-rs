@@ -166,27 +166,18 @@ mod tests {
 
     use crate::{Authenticator, MockUserValidationMethod};
 
-    fn test_user_mock_without_uv() -> MockUserValidationMethod {
-        let mut user_mock = MockUserValidationMethod::new();
-        user_mock
-            .expect_check_user_presence()
-            .returning(|| Box::pin(async { true }));
-        user_mock
-    }
-
-    #[tokio::test]
-    async fn get_assertion_increments_signature_counter_when_counter_is_some() {
-        // Arrange
-        let store = Some(Passkey {
+    fn create_passkey() -> Passkey {
+        Passkey {
             key: private_key_for_testing(),
             credential_id: Default::default(),
             rp_id: "example.com".into(),
             user_handle: None,
-            counter: Some(9000),
-        });
-        let mut authenticator =
-            Authenticator::new(Aaguid::new_empty(), store, test_user_mock_without_uv());
-        let request = Request {
+            counter: None,
+        }
+    }
+
+    fn good_request() -> Request {
+        Request {
             rp_id: "example.com".into(),
             client_data_hash: vec![0; 32].into(),
             allow_list: None,
@@ -195,24 +186,10 @@ mod tests {
             pin_protocol: None,
             options: Options {
                 up: true,
-                uv: false,
-                rk: false,
+                uv: true,
+                rk: true,
             },
-        };
-
-        // Act
-        let response = authenticator.get_assertion(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.auth_data.counter.unwrap(), 9001);
-        assert_eq!(
-            authenticator
-                .store()
-                .as_ref()
-                .and_then(|c| c.counter)
-                .unwrap(),
-            9001
-        );
+        }
     }
 
     fn private_key_for_testing() -> CoseKey {
@@ -227,5 +204,34 @@ mod tests {
         ];
 
         CoseKey::from_slice(bytes.as_slice()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn get_assertion_increments_signature_counter_when_counter_is_some() {
+        // Arrange
+        let request = good_request();
+        let store = Some(Passkey {
+            counter: Some(9000),
+            ..create_passkey()
+        });
+        let mut authenticator = Authenticator::new(
+            Aaguid::new_empty(),
+            store,
+            MockUserValidationMethod::verified_user(1),
+        );
+
+        // Act
+        let response = authenticator.get_assertion(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.auth_data.counter.unwrap(), 9001);
+        assert_eq!(
+            authenticator
+                .store()
+                .as_ref()
+                .and_then(|c| c.counter)
+                .unwrap(),
+            9001
+        );
     }
 }
