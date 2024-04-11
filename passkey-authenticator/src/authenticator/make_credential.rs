@@ -107,7 +107,10 @@ where
             rp_id: input.rp.id.clone(),
             credential_id: credential_id.into(),
             user_handle: input.options.rk.then_some(input.user.id.clone()),
-            counter: None,
+            counter: match self.make_credentials_with_signature_counter {
+                true => Some(0),
+                false => None,
+            },
         };
 
         // 10. If "rk" in options parameter is set to true:
@@ -269,5 +272,23 @@ mod tests {
             .expect_err("Succeeded with an unsupported algorithm");
 
         assert_eq!(err, Ctap2Error::UnsupportedAlgorithm.into());
+    }
+
+    #[tokio::test]
+    async fn make_credential_counter_is_some_0_when_counters_are_enabled() {
+        // Arrange
+        let shared_store = Arc::new(Mutex::new(None));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+        let request = good_request();
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+        authenticator.set_make_credentials_with_signature_counter(true);
+
+        // Act
+        authenticator.make_credential(request).await.unwrap();
+
+        // Assert
+        let store = shared_store.lock().await;
+        assert_eq!(store.as_ref().and_then(|c| c.counter).unwrap(), 0);
     }
 }
