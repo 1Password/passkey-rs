@@ -19,7 +19,7 @@ where
     /// This method is used by a host to request cryptographic proof of user authentication as well
     /// as user consent to a given transaction, using a previously generated credential that is
     /// bound to the authenticator and relying party identifier.
-    pub async fn get_assertion(&self, input: Request) -> Result<Response, StatusCode> {
+    pub async fn get_assertion(&mut self, input: Request) -> Result<Response, StatusCode> {
         // 1. Locate all credentials that are eligible for retrieval under the specified criteria:
         //     1. If an allowList is present and is non-empty, locate all denoted credentials
         //        present on this authenticator and bound to the specified rpId.
@@ -72,7 +72,7 @@ where
         let flags = self.check_user(&input.options).await?;
 
         // 8. If no credentials were located in step 1, return CTAP2_ERR_NO_CREDENTIALS.
-        let credential = maybe_credential?
+        let mut credential = maybe_credential?
             .into_iter()
             .next()
             .ok_or(Ctap2Error::NoCredentials)?
@@ -107,6 +107,17 @@ where
         //        the authenticator), terminate this procedure and return the
         //        CTAP2_ERR_OPERATION_DENIED error.
 
+        // [WebAuthn-9]. Increment the credential associated signature counter or the global signature
+        //               counter value, depending on which approach is implemented by the authenticator,
+        //               by some positive value. If the authenticator does not implement a signature
+        //               counter, let the signature counter value remain constant at zero.
+        if let Some(counter) = credential.counter {
+            credential.counter = Some(counter + 1);
+            self.store_mut()
+                .update_credential(credential.clone())
+                .await?;
+        }
+
         // 12. Sign the clientDataHash along with authData with the selected credential.
         //     Let signature be the assertion signature of the concatenation `authenticatorData` ||
         //     `clien_data_hash` using the privateKey of selectedCredential. A simple, undelimited
@@ -139,5 +150,88 @@ where
             }),
             number_of_credentials: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use coset::{CborSerializable, CoseKey};
+    use passkey_types::{
+        ctap2::{
+            get_assertion::{Options, Request},
+            Aaguid,
+        },
+        Passkey,
+    };
+
+    use crate::{Authenticator, MockUserValidationMethod};
+
+    fn create_passkey() -> Passkey {
+        Passkey {
+            key: private_key_for_testing(),
+            credential_id: Default::default(),
+            rp_id: "example.com".into(),
+            user_handle: None,
+            counter: None,
+        }
+    }
+
+    fn good_request() -> Request {
+        Request {
+            rp_id: "example.com".into(),
+            client_data_hash: vec![0; 32].into(),
+            allow_list: None,
+            extensions: None,
+            pin_auth: None,
+            pin_protocol: None,
+            options: Options {
+                up: true,
+                uv: true,
+                rk: true,
+            },
+        }
+    }
+
+    fn private_key_for_testing() -> CoseKey {
+        // Hardcoded CoseKey for testing purposes
+        let bytes = vec![
+            166, 1, 2, 3, 38, 32, 1, 33, 88, 32, 200, 30, 161, 146, 196, 121, 165, 149, 92, 232,
+            49, 48, 245, 253, 73, 234, 204, 3, 209, 153, 166, 77, 59, 232, 70, 16, 206, 77, 84,
+            156, 28, 77, 34, 88, 32, 82, 141, 165, 28, 241, 82, 31, 33, 183, 206, 29, 91, 93, 111,
+            216, 216, 26, 62, 211, 49, 191, 86, 238, 118, 241, 124, 131, 106, 214, 95, 170, 160,
+            35, 88, 32, 147, 171, 4, 49, 68, 170, 47, 51, 74, 211, 94, 40, 212, 244, 95, 55, 154,
+            92, 171, 241, 0, 55, 84, 151, 79, 244, 151, 198, 135, 45, 97, 238,
+        ];
+
+        CoseKey::from_slice(bytes.as_slice()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn get_assertion_increments_signature_counter_when_counter_is_some() {
+        // Arrange
+        let request = good_request();
+        let store = Some(Passkey {
+            counter: Some(9000),
+            ..create_passkey()
+        });
+        let mut authenticator = Authenticator::new(
+            Aaguid::new_empty(),
+            store,
+            MockUserValidationMethod::verified_user(1),
+        );
+
+        // Act
+        let response = authenticator.get_assertion(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.auth_data.counter.unwrap(), 9001);
+        assert_eq!(
+            authenticator
+                .store()
+                .as_ref()
+                .and_then(|c| c.counter)
+                .unwrap(),
+            9001
+        );
     }
 }
