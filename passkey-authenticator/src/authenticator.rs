@@ -134,24 +134,67 @@ where
     async fn check_user(
         &self,
         options: &passkey_types::ctap2::make_credential::Options,
+        credential: Option<<U as UserValidationMethod>::PasskeyItem>,
     ) -> Result<Flags, Ctap2Error> {
-        if options.uv {
-            let Some(true) = self.user_validation.is_verification_enabled() else {
-                return Err(Ctap2Error::UnsupportedOption);
-            };
-            if self.user_validation.check_user_verification().await {
-                Ok(Flags::UP | Flags::UV)
-            } else {
-                Err(Ctap2Error::OperationDenied)
-            }
-        } else if options.up {
-            if self.user_validation.check_user_presence().await {
-                Ok(Flags::UP)
-            } else {
-                Err(Ctap2Error::OperationDenied)
-            }
-        } else {
-            Ok(Flags::empty())
+        let check_result = self
+            .user_validation
+            .check_user(credential, options.up, options.uv)
+            .await?;
+
+        // if options.uv {
+        //     let Some(true) = self.user_validation.is_verification_enabled() else {
+        //         return Err(Ctap2Error::UnsupportedOption);
+        //     };
+        //     if self.user_validation.check_user_verification().await {
+        //         Ok(Flags::UP | Flags::UV)
+        //     } else {
+        //         Err(Ctap2Error::OperationDenied)
+        //     }
+        // } else if options.up {
+        //     if self.user_validation.check_user_presence().await {
+        //         Ok(Flags::UP)
+        //     } else {
+        //         Err(Ctap2Error::OperationDenied)
+        //     }
+
+        let mut flags = Flags::empty();
+        if check_result.presence {
+            flags |= Flags::UP;
         }
+        if check_result.verification {
+            flags |= Flags::UV;
+        }
+
+        Ok(flags)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use passkey_types::ctap2::Aaguid;
+
+    use crate::{Authenticator, MockUserValidationMethod};
+
+    #[tokio::test]
+    async fn check_users_does_not_request_up_or_uv_when_not_asked_for_it() {
+        // Arrange & Assert
+        let mut user = MockUserValidationMethod::new();
+        user.expect_check_user_presence().never();
+        user.expect_check_user_verification().never();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: false,
+            uv: false,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await.unwrap();
+
+        // Assert
+        assert_eq!(result, passkey_types::ctap2::Flags::empty());
     }
 }

@@ -13,8 +13,8 @@ use crate::{private_key_from_cose_key, Authenticator, CredentialStore, UserValid
 impl<S: CredentialStore + Sync, U> Authenticator<S, U>
 where
     S: CredentialStore + Sync,
-    U: UserValidationMethod + Sync,
-    Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
+    U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
+    Passkey: TryFrom<<S as CredentialStore>::PasskeyItem> + Clone,
 {
     /// This method is used by a host to request cryptographic proof of user authentication as well
     /// as user consent to a given transaction, using a previously generated credential that is
@@ -38,7 +38,10 @@ where
                     .filter(|inner| !inner.is_empty()),
                 &input.rp_id,
             )
-            .await;
+            .await
+            .and_then(|c| c.into_iter().next().ok_or(Ctap2Error::NoCredentials.into()));
+        // maybe_credential.is_ok_and(|r| r.into_iter().next().ok_or(Ctap2Error::NoCredentials));
+        // .and_then(|c| c.into_iter().next());
 
         // 2. If pinAuth parameter is present and pinProtocol is 1, verify it by matching it against
         //    first 16 bytes of HMAC-SHA-256 of clientDataHash parameter using
@@ -69,13 +72,12 @@ where
         // 7. Collect user consent if required. This step MUST happen before the following steps due
         //    to privacy reasons (i.e., authenticator cannot disclose existence of a credential
         //    until the user interacted with the device):
-        let flags = self.check_user(&input.options).await?;
+        let flags = self
+            .check_user(&input.options, maybe_credential.clone().ok())
+            .await?;
 
         // 8. If no credentials were located in step 1, return CTAP2_ERR_NO_CREDENTIALS.
         let mut credential = maybe_credential?
-            .into_iter()
-            .next()
-            .ok_or(Ctap2Error::NoCredentials)?
             .try_into()
             .ok()
             .ok_or(Ctap2Error::NoCredentials)?;
