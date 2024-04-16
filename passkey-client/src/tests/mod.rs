@@ -58,7 +58,7 @@ fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
         .times(times + 1);
     user_mock
         .expect_check_user_verification()
-        .returning(|| Box::pin(async { true }))
+        .returning(|| true)
         .times(times);
     user_mock
         .expect_is_presence_enabled()
@@ -295,7 +295,7 @@ fn user_mock_with_uv() -> MockUserValidationMethod {
         .returning(|| Some(true));
     user_mock
         .expect_check_user_verification()
-        .returning(|| Box::pin(async { true }));
+        .returning(|| true);
     // Always called by `get_info`
     user_mock
         .expect_is_verification_enabled()
@@ -306,9 +306,7 @@ fn user_mock_with_uv() -> MockUserValidationMethod {
 
 fn user_mock_without_uv() -> MockUserValidationMethod {
     let mut user_mock = MockUserValidationMethod::new();
-    user_mock
-        .expect_check_user_presence()
-        .returning(|| Box::pin(async { true }));
+    user_mock.expect_check_user_presence().returning(|| true);
     // Always called by `get_info`
     user_mock
         .expect_is_verification_enabled()
