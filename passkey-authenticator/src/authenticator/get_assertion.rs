@@ -73,7 +73,7 @@ where
         //    to privacy reasons (i.e., authenticator cannot disclose existence of a credential
         //    until the user interacted with the device):
         let flags = self
-            .check_user(&input.options, maybe_credential.clone().ok())
+            .check_user(&input.options, maybe_credential.as_ref().ok().cloned())
             .await?;
 
         // 8. If no credentials were located in step 1, return CTAP2_ERR_NO_CREDENTIALS.

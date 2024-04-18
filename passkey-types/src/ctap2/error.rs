@@ -3,7 +3,7 @@
 use crate::utils::repr_enum::CodeOutOfRange;
 
 /// <https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#error-responses>
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum StatusCode {
     /// Ctap1 or U2F error codes
     Ctap1(U2FError),
@@ -65,7 +65,7 @@ impl From<U2FError> for StatusCode {
 }
 
 /// Ctap2 error which may or may not be explicitly defined
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Ctap2Code {
     /// Known error codes
     Known(Ctap2Error),
@@ -221,7 +221,7 @@ impl From<Ctap2Error> for StatusCode {
 }
 
 /// Error values that are not defined or reserved for future use at the time of writing
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnknownSpecError(u8);
 
 impl TryFrom<u8> for UnknownSpecError {
@@ -262,7 +262,7 @@ impl From<UnknownSpecError> for StatusCode {
 }
 
 /// Extension error codes
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ExtensionError(u8);
 
 impl TryFrom<u8> for ExtensionError {
@@ -295,7 +295,7 @@ impl From<ExtensionError> for StatusCode {
 }
 
 /// Vendor specific error codes
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct VendorError(u8);
 
 impl TryFrom<u8> for VendorError {
