@@ -49,7 +49,7 @@ pub trait Ctap2Api: sealed::Sealed {
 impl<S, U> Ctap2Api for Authenticator<S, U>
 where
     S: CredentialStore + Sync + Send,
-    U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync + Send,
+    U: UserValidationMethod + Sync + Send,
 {
     async fn get_info(&self) -> get_info::Response {
         self.get_info()

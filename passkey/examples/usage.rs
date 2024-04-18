@@ -14,24 +14,16 @@ struct MyUserValidationMethod {}
 impl UserValidationMethod for MyUserValidationMethod {
     type PasskeyItem = Passkey;
 
-    async fn check_user_verification(&self) -> bool {
-        true
-    }
-
-    async fn check_user_presence(&self) -> bool {
-        true
-    }
-
     async fn check_user(
         &self,
-        _credential: Passkey,
+        _credential: Option<Passkey>,
         presence: bool,
         verification: bool,
-    ) -> UserCheck {
-        UserCheck {
+    ) -> Result<UserCheck, Ctap2Error> {
+        Ok(UserCheck {
             presence,
             verification,
-        }
+        })
     }
 
     fn is_verification_enabled(&self) -> Option<bool> {
