@@ -385,4 +385,43 @@ mod tests {
             Err(passkey_types::ctap2::Ctap2Error::UnsupportedOption)
         );
     }
+
+    #[tokio::test]
+    async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_but_performed_anyways(
+    ) {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| Some(true));
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(false),
+                mockall::predicate::eq(false),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: true,
+                    verification: true,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: false,
+            uv: false,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await.unwrap();
+
+        // Assert
+        assert_eq!(result, Flags::UP | Flags::UV);
+    }
 }
