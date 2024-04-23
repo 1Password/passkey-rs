@@ -40,8 +40,6 @@ where
             )
             .await
             .and_then(|c| c.into_iter().next().ok_or(Ctap2Error::NoCredentials.into()));
-        // maybe_credential.is_ok_and(|r| r.into_iter().next().ok_or(Ctap2Error::NoCredentials));
-        // .and_then(|c| c.into_iter().next());
 
         // 2. If pinAuth parameter is present and pinProtocol is 1, verify it by matching it against
         //    first 16 bytes of HMAC-SHA-256 of clientDataHash parameter using
