@@ -14,7 +14,7 @@ use passkey_types::{
 #[async_trait::async_trait]
 pub trait CredentialStore {
     /// Defines the return type of find_credentials(...)
-    type PasskeyItem: TryInto<Passkey>;
+    type PasskeyItem: TryInto<Passkey> + Clone + Send;
 
     /// Find all credentials matching the given `ids` and `rp_id`.
     ///

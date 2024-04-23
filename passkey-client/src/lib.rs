@@ -128,7 +128,7 @@ where
 impl<S, U, P> Client<S, U, P>
 where
     S: CredentialStore + Sync,
-    U: UserValidationMethod + Sync,
+    U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
     Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
 {

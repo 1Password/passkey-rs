@@ -17,7 +17,7 @@ where
     /// This method is invoked by the host to request generation of a new credential in the authenticator.
     pub async fn make_credential(&mut self, input: Request) -> Result<Response, StatusCode> {
         let flags = if input.options.up {
-            self.check_user(&input.options).await?
+            self.check_user(&input.options, None).await?
         } else {
             return Err(Ctap2Error::InvalidOption.into());
         };

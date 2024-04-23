@@ -1,6 +1,6 @@
 use super::*;
 use coset::iana;
-use passkey_authenticator::{MemoryStore, MockUserValidationMethod};
+use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_types::{ctap2, rand::random_vec, Bytes};
 use url::{ParseError, Url};
 
@@ -57,8 +57,18 @@ fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
         .returning(|| Some(true))
         .times(times + 1);
     user_mock
-        .expect_check_user_verification()
-        .returning(|| Box::pin(async { true }))
+        .expect_check_user()
+        .with(
+            mockall::predicate::always(),
+            mockall::predicate::eq(true),
+            mockall::predicate::eq(true),
+        )
+        .returning(|_, _, _| {
+            Ok(UserCheck {
+                presence: true,
+                verification: true,
+            })
+        })
         .times(times);
     user_mock
         .expect_is_presence_enabled()
@@ -293,9 +303,12 @@ fn user_mock_with_uv() -> MockUserValidationMethod {
     user_mock
         .expect_is_verification_enabled()
         .returning(|| Some(true));
-    user_mock
-        .expect_check_user_verification()
-        .returning(|| Box::pin(async { true }));
+    user_mock.expect_check_user().returning(|_, _, _| {
+        Ok(UserCheck {
+            presence: true,
+            verification: true,
+        })
+    });
     // Always called by `get_info`
     user_mock
         .expect_is_verification_enabled()
@@ -306,9 +319,12 @@ fn user_mock_with_uv() -> MockUserValidationMethod {
 
 fn user_mock_without_uv() -> MockUserValidationMethod {
     let mut user_mock = MockUserValidationMethod::new();
-    user_mock
-        .expect_check_user_presence()
-        .returning(|| Box::pin(async { true }));
+    user_mock.expect_check_user().returning(|_, _, _| {
+        Ok(UserCheck {
+            presence: true,
+            verification: false,
+        })
+    });
     // Always called by `get_info`
     user_mock
         .expect_is_verification_enabled()

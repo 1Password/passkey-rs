@@ -20,7 +20,7 @@ use coset::CoseKey;
 /// [cred-src]: https://w3c.github.io/webauthn/#public-key-credential-source
 // TODO: Implement Zeroize on this if/when rolling our own CoseKey type
 // TODO: use `#[non_exhaustive]` here with a builder pattern for building new passkeys
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Passkey {
     /// The private key in COSE key format.
     ///
