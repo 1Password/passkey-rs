@@ -23,8 +23,8 @@ use passkey_types::{
     crypto::sha256,
     ctap2, encoding,
     webauthn::{
-        self, AuthenticatorExtensionsClientOutputs, CredentialPropertiesOutput,
-        UserVerificationRequirement,
+        self, AuthenticatorExtensionsClientOutputs, AuthenticatorSelectionCriteria,
+        CredentialPropertiesOutput, ResidentKeyRequirement, UserVerificationRequirement,
     },
     Passkey,
 };
@@ -212,6 +212,7 @@ where
                 None
             };
 
+        // let rk = request.authenticator_selection.map(|s| s.resident_key);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
             != Some(UserVerificationRequirement::Discouraged);
 
@@ -367,6 +368,47 @@ where
             client_extension_results: AuthenticatorExtensionsClientOutputs::default(),
         })
     }
+
+    fn map_rk(&self, criteria: AuthenticatorSelectionCriteria) -> bool {
+        match criteria {
+            // > If pkOptions.authenticatorSelection.residentKey:
+            // > is present and set to required
+            AuthenticatorSelectionCriteria {
+                resident_key: Some(ResidentKeyRequirement::Required),
+                ..
+            // > Let requireResidentKey be true.
+            } => true,
+
+            // > is present and set to preferred
+            // >  And the authenticator is capable of client-side credential storage modality
+            AuthenticatorSelectionCriteria {
+                resident_key: Some(ResidentKeyRequirement::Preferred),
+                ..
+            // > Let requireResidentKey be true.
+            } => true,
+
+            // > is present and set to preferred
+            // >  And is not capable of client-side credential storage modality, or if the client cannot determine authenticator capability,
+            // >  Let requireResidentKey be false.
+            // `passkey-rs` requires the authenticator to be capable of client-side credential storage modality,
+            // so we do not need to check for this case.
+
+            // > is present and set to discouraged
+            AuthenticatorSelectionCriteria {
+                resident_key: Some(ResidentKeyRequirement::Discouraged),
+                ..
+            // > Let requireResidentKey be false.
+            } => false,
+
+            // > If pkOptions.authenticatorSelection.residentKey is not present
+            AuthenticatorSelectionCriteria {
+                resident_key: None,
+                require_resident_key,
+                ..
+            // > Let requireResidentKey be the value of pkOptions.authenticatorSelection.requireResidentKey.
+            } => require_resident_key,
+        }
+    }
 }
 
 /// Wrapper struct for verifying that a given RpId matches the request's origin.
@@ -442,5 +484,82 @@ where
         }
 
         Ok(effective_domain)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use passkey_authenticator::{Authenticator, MemoryStore, MockUserValidationMethod};
+    use passkey_types::{
+        ctap2,
+        webauthn::{
+            AuthenticatorSelectionCriteria, ResidentKeyRequirement, UserVerificationRequirement,
+        },
+    };
+
+    use crate::Client;
+
+    #[test]
+    fn map_rk_maps_criteria_to_rk_bool() {
+        #[derive(Debug)]
+        struct TestCase {
+            resident_key: Option<ResidentKeyRequirement>,
+            require_resident_key: bool,
+            expected_rk: bool,
+        }
+
+        let test_cases = vec![
+            // require_resident_key fallbacks
+            TestCase {
+                resident_key: None,
+                require_resident_key: false,
+                expected_rk: false,
+            },
+            TestCase {
+                resident_key: None,
+                require_resident_key: true,
+                expected_rk: true,
+            },
+            // resident_key values
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Discouraged),
+                require_resident_key: false,
+                expected_rk: false,
+            },
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Preferred),
+                require_resident_key: false,
+                expected_rk: true,
+            },
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Required),
+                require_resident_key: false,
+                expected_rk: true,
+            },
+            // resident_key overrides require_resident_key
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Discouraged),
+                require_resident_key: true,
+                expected_rk: false,
+            },
+        ];
+
+        for test_case in test_cases {
+            let criteria = AuthenticatorSelectionCriteria {
+                resident_key: test_case.resident_key,
+                require_resident_key: test_case.require_resident_key,
+                user_verification: UserVerificationRequirement::Discouraged,
+                authenticator_attachment: None,
+            };
+            let client = Client::new(Authenticator::new(
+                ctap2::Aaguid::new_empty(),
+                MemoryStore::new(),
+                MockUserValidationMethod::new(),
+            ));
+
+            let result = client.map_rk(criteria);
+
+            assert_eq!(result, test_case.expected_rk, "{:?}", test_case);
+        }
     }
 }
