@@ -212,7 +212,7 @@ where
                 None
             };
 
-        // let rk = request.authenticator_selection.map(|s| s.resident_key);
+        let rk = self.map_rk(&request.authenticator_selection);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
             != Some(UserVerificationRequirement::Discouraged);
 
@@ -228,11 +228,7 @@ where
                 pub_key_cred_params,
                 exclude_list: request.exclude_credentials,
                 extensions: request.extensions,
-                options: ctap2::make_credential::Options {
-                    rk: true,
-                    up: true,
-                    uv,
-                },
+                options: ctap2::make_credential::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
             })
@@ -369,8 +365,8 @@ where
         })
     }
 
-    fn map_rk(&self, criteria: AuthenticatorSelectionCriteria) -> bool {
-        match criteria {
+    fn map_rk(&self, criteria: &Option<AuthenticatorSelectionCriteria>) -> bool {
+        match criteria.as_ref().unwrap_or(&Default::default()) {
             // > If pkOptions.authenticatorSelection.residentKey:
             // > is present and set to required
             AuthenticatorSelectionCriteria {
@@ -406,7 +402,7 @@ where
                 require_resident_key,
                 ..
             // > Let requireResidentKey be the value of pkOptions.authenticatorSelection.requireResidentKey.
-            } => require_resident_key,
+            } => *require_resident_key,
         }
     }
 }
@@ -557,7 +553,7 @@ mod test {
                 MockUserValidationMethod::new(),
             ));
 
-            let result = client.map_rk(criteria);
+            let result = client.map_rk(&Some(criteria));
 
             assert_eq!(result, test_case.expected_rk, "{:?}", test_case);
         }
