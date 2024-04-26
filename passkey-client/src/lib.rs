@@ -28,6 +28,7 @@ use passkey_types::{
     },
     Passkey,
 };
+use serde::Serialize;
 use typeshare::typeshare;
 use url::Url;
 
@@ -75,6 +76,54 @@ impl From<ctap2::StatusCode> for WebauthnError {
                 WebauthnError::AuthenticatorError(ctap2code.into())
             }
         }
+    }
+}
+
+/// A trait describing how client data should be generated during a WebAuthn operation.
+pub trait ClientData<E: Serialize> {
+    /// Extra client data to be appended to the automatically generated client data.
+    fn extra_client_data(&self) -> Option<E>;
+
+    /// The hash of the client data to be used in the WebAuthn operation.
+    fn client_data_hash(&self) -> Option<Vec<u8>>;
+}
+
+/// The client data and its hash will be automatically generated from the request
+/// according to the WebAuthn specification.
+pub struct DefaultClientData;
+impl ClientData<()> for DefaultClientData {
+    fn extra_client_data(&self) -> Option<()> {
+        None
+    }
+    fn client_data_hash(&self) -> Option<Vec<u8>> {
+        None
+    }
+}
+
+/// The extra client data will be appended to the automatically generated client data.
+/// The hash will be automatically generated from the result client data according to the WebAuthn specification.
+pub struct DefaultClientDataWithExtra<E: Serialize>(E);
+
+/// The client data will be automatically generated from the request according to the WebAuthn specification
+/// but it will not be used as a base for the hash. The client data hash will instead be provided by the caller.
+pub struct DefaultClientDataWithCustomHash(Vec<u8>);
+impl ClientData<()> for DefaultClientDataWithCustomHash {
+    fn extra_client_data(&self) -> Option<()> {
+        None
+    }
+    fn client_data_hash(&self) -> Option<Vec<u8>> {
+        Some(self.0.clone())
+    }
+}
+
+/// Backwards compatibility with the previous `register` and `authenticate` functions
+/// which only took `Option<Vec<u8>>` as a client data hash.
+impl ClientData<()> for Option<Vec<u8>> {
+    fn extra_client_data(&self) -> Option<()> {
+        None
+    }
+    fn client_data_hash(&self) -> Option<Vec<u8>> {
+        self.clone()
     }
 }
 
@@ -163,11 +212,11 @@ where
     /// Register a webauthn `request` from the given `origin`.
     ///
     /// Returns either a [`webauthn::CreatedPublicKeyCredential`] on success or some [`WebauthnError`]
-    pub async fn register(
+    pub async fn register<D: ClientData<E>, E: Serialize>(
         &mut self,
         origin: &Url,
         request: webauthn::CredentialCreationOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
@@ -199,8 +248,9 @@ where
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let cred_props =
             if let Some(true) = request.extensions.as_ref().and_then(|ext| ext.cred_props) {
@@ -293,11 +343,11 @@ where
     /// Authenticate a Webauthn request.
     ///
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
-    pub async fn authenticate(
+    pub async fn authenticate<D: ClientData<E>, E: Serialize>(
         &mut self,
         origin: &Url,
         request: webauthn::CredentialRequestOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::AuthenticatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
         let request = request.public_key;
@@ -323,8 +373,9 @@ where
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let ctap2_response = self
             .authenticator

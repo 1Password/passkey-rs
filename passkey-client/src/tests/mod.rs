@@ -120,7 +120,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         public_key: good_credential_creation_options(),
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -164,7 +164,7 @@ async fn create_and_authenticate_without_rp_id() {
         },
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -208,7 +208,7 @@ async fn create_and_authenticate_without_cred_params() {
         },
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -355,7 +355,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
 
     // Act & Assert
     client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 }
@@ -382,7 +382,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
 
     // Act & Assert
     client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 }
