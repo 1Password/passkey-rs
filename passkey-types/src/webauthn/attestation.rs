@@ -578,7 +578,7 @@ pub struct AuthenticatorAttestationResponse {
 /// [5.8.1.1 Serialization]: https://w3c.github.io/webauthn/#clientdatajson-serialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CollectedClientData<E: Serialize = ()>
+pub struct CollectedClientData<E = ()>
 where
     E: Clone + Serialize,
 {
