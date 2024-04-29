@@ -666,12 +666,13 @@ mod tests {
         "crossOrigin":false
     }"#;
 
-    const ANDROID_CLIENT_DATA_JSON_STRING: &str = r#"{
-            "type": "webauthn.get",
-            "challenge": "ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
-            "origin": "http://localhost:4000",
-            "crossOrigin": false,
-            "androidPackageName": "com.android.chrome"
+    const EXTENDED_ANDROID_CLIENT_DATA_JSON_STRING: &str = r#"{
+        "type": "webauthn.get",
+        "challenge": "ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
+        "origin": "http://localhost:4000",
+        "crossOrigin": false,
+        "androidPackageName": "com.android.chrome",
+        "other_keys_can_be_added_here": "do not compare clientDataJSON against a template. See https://goo.gl/yabPex"
     }"#;
 
     /// This is a Secure Payment Confirmation (SPC) response. SPC assertion responses
@@ -814,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn test_client_data_deserialization_with_extra_data() {
+    fn test_client_data_deserialization_with_extra_and_unknown_data() {
         #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
         #[serde(rename_all = "camelCase")]
         struct AndroidExtraData {
@@ -829,22 +830,34 @@ mod tests {
             extra_data: AndroidExtraData {
                 android_package_name: "com.android.chrome".to_string(),
             },
-            unknown_keys: Default::default(),
+            unknown_keys: [(
+                "other_keys_can_be_added_here".to_string(),
+                serde_json::json!(
+                    "do not compare clientDataJSON against a template. See https://goo.gl/yabPex"
+                ),
+            )]
+            .iter()
+            .cloned()
+            .collect(),
         };
 
         // Deserialize CollectedClientData from JSON string
         let actual_collected_client_data: CollectedClientData<AndroidExtraData> =
-            serde_json::from_str(ANDROID_CLIENT_DATA_JSON_STRING).unwrap();
+            serde_json::from_str(EXTENDED_ANDROID_CLIENT_DATA_JSON_STRING).unwrap();
 
         // Check that serde_json byte serialization is also equivalent
         assert_eq!(
             actual_collected_client_data.extra_data,
             expected_collected_client_data.extra_data,
         );
+        assert_eq!(
+            actual_collected_client_data.unknown_keys,
+            expected_collected_client_data.unknown_keys,
+        );
     }
 
     #[test]
-    fn test_client_data_serialization_with_extra_data() {
+    fn test_client_data_serialization_with_extra_and_unknown_data() {
         #[derive(Debug, Clone, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct AndroidExtraData {
@@ -852,11 +865,11 @@ mod tests {
         }
 
         // This is the raw client data json byte buffer returned by an Android webauthn assertion
-        let expected_client_data_bytes = r#"{"type":"webauthn.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":false,"androidPackageName":"com.android.chrome"}"#.as_bytes();
+        let expected_client_data_bytes = r#"{"type":"webauthn.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":false,"androidPackageName":"com.android.chrome","other_keys_can_be_added_here":"do not compare clientDataJSON against a template. See https://goo.gl/yabPex"}"#.as_bytes();
 
         // Deserialize CollectedClientData from JSON string
         let actual_collected_client_data: CollectedClientData<AndroidExtraData> =
-            serde_json::from_str(ANDROID_CLIENT_DATA_JSON_STRING).unwrap();
+            serde_json::from_str(EXTENDED_ANDROID_CLIENT_DATA_JSON_STRING).unwrap();
 
         // Check that serde_json byte serialization is also equivalent
         let actual_client_data_bytes = serde_json::to_vec(&actual_collected_client_data).unwrap();
