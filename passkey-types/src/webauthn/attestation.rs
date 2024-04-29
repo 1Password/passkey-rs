@@ -578,7 +578,10 @@ pub struct AuthenticatorAttestationResponse {
 /// [5.8.1.1 Serialization]: https://w3c.github.io/webauthn/#clientdatajson-serialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CollectedClientData {
+pub struct CollectedClientData<E: Serialize = ()>
+where
+    E: Clone + Serialize,
+{
     /// This member contains the value [`ClientDataType::Create`] when creating new credentials, and
     /// [`ClientDataType::Get`] when getting an assertion from an existing credential. The purpose
     /// of this member is to prevent certain types of signature confusion attacks (where an attacker
@@ -602,6 +605,11 @@ pub struct CollectedClientData {
     /// was passed into the internal method
     #[serde(default, serialize_with = "truthiness")]
     pub cross_origin: Option<bool>,
+
+    /// CollectedClientData can be extended by the user of this library, this accounts for
+    /// keys that are unknown to the library, but may be known to the user.
+    #[serde(flatten)]
+    pub extra_data: E,
 
     /// CollectedClientData can be extended in the future, this accounts for unknown keys
     /// Uses an IndexMap to preserve order of keys for JSON byte serialization
@@ -645,6 +653,8 @@ impl fmt::Display for ClientDataType {
 
 #[cfg(test)]
 mod tests {
+    use serde::{Deserialize, Serialize};
+
     use super::CredentialCreationOptions;
     use crate::webauthn::{ClientDataType, CollectedClientData};
 
@@ -654,6 +664,14 @@ mod tests {
         "challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
         "origin":"http://localhost:4000",
         "crossOrigin":false
+    }"#;
+
+    const ANDROID_CLIENT_DATA_JSON_STRING: &str = r#"{
+            "type": "webauthn.get",
+            "challenge": "ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg",
+            "origin": "http://localhost:4000",
+            "crossOrigin": false,
+            "androidPackageName": "com.android.chrome"
     }"#;
 
     /// This is a Secure Payment Confirmation (SPC) response. SPC assertion responses
@@ -786,6 +804,59 @@ mod tests {
         // Deserialize CollectedClientData from JSON string
         let actual_collected_client_data: CollectedClientData =
             serde_json::from_str(CLIENT_DATA_JSON_STRING).unwrap();
+
+        // Check that serde_json byte serialization is also equivalent
+        let actual_client_data_bytes = serde_json::to_vec(&actual_collected_client_data).unwrap();
+        assert_eq!(
+            actual_client_data_bytes.as_slice(),
+            expected_client_data_bytes
+        )
+    }
+
+    #[test]
+    fn test_client_data_deserialization_with_extra_data() {
+        #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+        #[serde(rename_all = "camelCase")]
+        struct AndroidExtraData {
+            android_package_name: String,
+        }
+
+        let expected_collected_client_data = CollectedClientData {
+            ty: ClientDataType::Get,
+            challenge: "ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg".to_string(),
+            origin: "http://localhost:4000".to_owned(),
+            cross_origin: Some(false),
+            extra_data: AndroidExtraData {
+                android_package_name: "com.android.chrome".to_string(),
+            },
+            unknown_keys: Default::default(),
+        };
+
+        // Deserialize CollectedClientData from JSON string
+        let actual_collected_client_data: CollectedClientData<AndroidExtraData> =
+            serde_json::from_str(ANDROID_CLIENT_DATA_JSON_STRING).unwrap();
+
+        // Check that serde_json byte serialization is also equivalent
+        assert_eq!(
+            actual_collected_client_data.extra_data,
+            expected_collected_client_data.extra_data,
+        );
+    }
+
+    #[test]
+    fn test_client_data_serialization_with_extra_data() {
+        #[derive(Debug, Clone, Serialize, Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct AndroidExtraData {
+            android_package_name: String,
+        }
+
+        // This is the raw client data json byte buffer returned by an Android webauthn assertion
+        let expected_client_data_bytes = r#"{"type":"webauthn.get","challenge":"ZEvMflZDcwQJmarInnYi88px-6HZcv2Uoxw7-_JOOTg","origin":"http://localhost:4000","crossOrigin":false,"androidPackageName":"com.android.chrome"}"#.as_bytes();
+
+        // Deserialize CollectedClientData from JSON string
+        let actual_collected_client_data: CollectedClientData<AndroidExtraData> =
+            serde_json::from_str(ANDROID_CLIENT_DATA_JSON_STRING).unwrap();
 
         // Check that serde_json byte serialization is also equivalent
         let actual_client_data_bytes = serde_json::to_vec(&actual_collected_client_data).unwrap();

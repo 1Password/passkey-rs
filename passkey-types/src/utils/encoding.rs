@@ -22,7 +22,7 @@ pub(crate) fn try_from_base64(input: &str) -> Option<Vec<u8>> {
 
 /// Try parsing from base64url with or without padding
 pub fn try_from_base64url(input: &str) -> Option<Vec<u8>> {
-    let specs = BASE64URL.specification();
+    let specs: Specification = BASE64URL.specification();
     let padding = specs.padding.unwrap();
     let specs = Specification {
         check_trailing_bits: false,
