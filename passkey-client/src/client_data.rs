@@ -13,9 +13,8 @@ pub trait ClientData<E: Serialize> {
 /// according to the WebAuthn specification.
 pub struct DefaultClientData;
 impl ClientData<()> for DefaultClientData {
-    fn extra_client_data(&self) -> () {
-        ()
-    }
+    fn extra_client_data(&self) {}
+
     fn client_data_hash(&self) -> Option<Vec<u8>> {
         None
     }
@@ -37,9 +36,8 @@ impl<E: Serialize + Clone> ClientData<E> for DefaultClientDataWithExtra<E> {
 /// but it will not be used as a base for the hash. The client data hash will instead be provided by the caller.
 pub struct DefaultClientDataWithCustomHash(pub Vec<u8>);
 impl ClientData<()> for DefaultClientDataWithCustomHash {
-    fn extra_client_data(&self) -> () {
-        ()
-    }
+    fn extra_client_data(&self) {}
+
     fn client_data_hash(&self) -> Option<Vec<u8>> {
         Some(self.0.clone())
     }
@@ -48,9 +46,8 @@ impl ClientData<()> for DefaultClientDataWithCustomHash {
 /// Backwards compatibility with the previous `register` and `authenticate` functions
 /// which only took `Option<Vec<u8>>` as a client data hash.
 impl ClientData<()> for Option<Vec<u8>> {
-    fn extra_client_data(&self) -> () {
-        ()
-    }
+    fn extra_client_data(&self) {}
+
     fn client_data_hash(&self) -> Option<Vec<u8>> {
         self.clone()
     }
