@@ -164,7 +164,7 @@
 //! };
 //!
 //! let authenticated_cred = my_client
-//!     .authenticate(&origin, credential_request, None)
+//!     .authenticate(&origin, credential_request, DefaultClientData)
 //!     .await
 //!     .unwrap();
 //! # })

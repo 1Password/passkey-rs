@@ -94,7 +94,7 @@ async fn create_and_authenticate() {
         public_key: good_credential_creation_options(),
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -104,7 +104,7 @@ async fn create_and_authenticate() {
         public_key: good_credential_request_options(credential_id),
     };
     client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
 }
@@ -207,7 +207,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         public_key: good_credential_request_options(cred.raw_id),
     };
     let res = client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
@@ -254,7 +254,7 @@ async fn create_and_authenticate_without_rp_id() {
         },
     };
     let res = client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
@@ -289,7 +289,7 @@ async fn create_and_authenticate_without_cred_params() {
         public_key: good_credential_request_options(credential_id),
     };
     client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
 }
