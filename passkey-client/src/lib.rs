@@ -299,7 +299,7 @@ where
     /// Authenticate a Webauthn request.
     ///
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
-    pub async fn authenticate<D: ClientData<E>, E: Serialize>(
+    pub async fn authenticate<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: &Url,
         request: webauthn::CredentialRequestOptions,
@@ -319,12 +319,12 @@ where
             .rp_id_verifier
             .assert_domain(origin, request.rp_id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData::<()> {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Get,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.as_str().trim_end_matches('/').to_owned(),
             cross_origin: None, //Some(false),
-            extra_data: (),
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 

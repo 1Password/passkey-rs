@@ -130,12 +130,15 @@ async fn create_and_authenticate_with_extra_client_data() {
         android_package_name: "com.example.app".to_owned(),
     };
     let cred = client
-        .register(&origin, options, DefaultClientDataWithExtra(extra_data))
+        .register(
+            &origin,
+            options,
+            DefaultClientDataWithExtra(extra_data.clone()),
+        )
         .await
         .expect("failed to register with options");
 
     let returned_base64url_client_data_json: String = cred.response.client_data_json.into();
-    println!("client_data_json: {}", returned_base64url_client_data_json);
     let returned_client_data_json =
         try_from_base64url(returned_base64url_client_data_json.as_str())
             .expect("could not base64url decode client data");
@@ -152,10 +155,26 @@ async fn create_and_authenticate_with_extra_client_data() {
     let auth_options = webauthn::CredentialRequestOptions {
         public_key: good_credential_request_options(credential_id),
     };
-    client
-        .authenticate(&origin, auth_options, None)
+    let result = client
+        .authenticate(
+            &origin,
+            auth_options,
+            DefaultClientDataWithExtra(extra_data.clone()),
+        )
         .await
         .expect("failed to authenticate with freshly created credential");
+
+    let returned_base64url_client_data_json: String = result.response.client_data_json.into();
+    let returned_client_data_json =
+        try_from_base64url(returned_base64url_client_data_json.as_str())
+            .expect("could not base64url decode client data");
+    let returned_client_data: CollectedClientData<AndroidClientData> =
+        serde_json::from_slice(&returned_client_data_json)
+            .expect("could not json deserialize client data");
+    assert_eq!(
+        returned_client_data.extra_data.android_package_name,
+        "com.example.app"
+    );
 }
 
 #[tokio::test]
