@@ -9,7 +9,7 @@ handles client data and its hash.
 - Change `register` and `authenticate` to take a `ClientData<E>` instead of `Option<Vec<u8>>`.
 - Custom client data hashes are now specified using `DefaultClientDataWithCustomHash(Vec<u8>)` instead of 
   `Some(Vec<u8>)`.
-- Additional fields can be aedded to the client data using `DefaultClientDataWithExtra(ExtraData)`.
+- Additional fields can be added to the client data using `DefaultClientDataWithExtra(ExtraData)`.
 
 ### passkey-client v0.2.1
 
