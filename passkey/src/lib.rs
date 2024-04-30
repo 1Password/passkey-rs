@@ -65,7 +65,7 @@
 //! ```
 //! use passkey::{
 //!     authenticator::{Authenticator, UserValidationMethod, UserCheck},
-//!     client::{Client, WebauthnError},
+//!     client::{Client, DefaultClientData, WebauthnError},
 //!     types::{ctap2::*, rand::random_vec, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! };
 //!
@@ -143,7 +143,7 @@
 //! };
 //!
 //! // Now create the credential.
-//! let my_webauthn_credential = my_client.register(&origin, request, None).await.unwrap();
+//! let my_webauthn_credential = my_client.register(&origin, request, DefaultClientData).await.unwrap();
 //!
 //! // Let's try and authenticate.
 //! // Create a challenge that would usually come from the RP.
@@ -164,7 +164,7 @@
 //! };
 //!
 //! let authenticated_cred = my_client
-//!     .authenticate(&origin, credential_request, None)
+//!     .authenticate(&origin, credential_request, DefaultClientData)
 //!     .await
 //!     .unwrap();
 //! # })

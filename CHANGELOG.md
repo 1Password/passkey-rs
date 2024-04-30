@@ -1,5 +1,22 @@
 # Changelog
 
+## Paskey v0.3.1
+### passkey-client v0.3.1
+
+The client now supports additional user-defined properties in the client data, while also clarifying how the client
+handles client data and its hash.
+
+- Change `register` and `authenticate` to take a `ClientData<E>` instead of `Option<Vec<u8>>`.
+- Custom client data hashes are now specified using `DefaultClientDataWithCustomHash(Vec<u8>)` instead of 
+  `Some(Vec<u8>)`.
+- Additional fields can be added to the client data using `DefaultClientDataWithExtra(ExtraData)`.
+
+### passkey-client v0.2.1
+
+`CollectedClientData` is now generic and supports additional strongly typed fields.
+
+- `CollectedClientData` has changed to `CollectedClientData<E = ()>`
+
 ## Passkey v0.3.0
 ### passkey-authenticator v0.3.0
 
