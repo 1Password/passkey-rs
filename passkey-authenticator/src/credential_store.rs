@@ -11,6 +11,27 @@ use passkey_types::{
     Passkey,
 };
 
+/// A struct that defines the capabilities of a store.
+pub struct StoreInfo {
+    /// How the store handles discoverability.
+    pub discoverability: DiscoverabilitySupport,
+}
+
+/// Enum to define how the store handles discoverability.
+/// Note that this is does not say anything about which storage mode will be used.
+pub enum DiscoverabilitySupport {
+    /// The store supports both discoverable and non-credentials.
+    Full,
+
+    /// The store only supports non-discoverable credentials.
+    /// An error will be returned if a discoverable credential is requested.
+    OnlyNonDiscoverable,
+
+    /// The store only supports discoverable credential.
+    /// No error will be returned if a non-discoverable credential is requested.
+    ForcedDiscoverable,
+}
+
 /// Use this on a type that enables storage and fetching of credentials
 #[async_trait::async_trait]
 pub trait CredentialStore {
@@ -38,6 +59,9 @@ pub trait CredentialStore {
 
     /// Update the credential in your store
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode>;
+
+    /// Get information about the store
+    async fn get_info(&self) -> StoreInfo;
 }
 
 /// In-memory store for Passkeys
@@ -82,6 +106,12 @@ impl CredentialStore for MemoryStore {
         self.insert(cred.credential_id.clone().into(), cred);
         Ok(())
     }
+
+    async fn get_info(&self) -> StoreInfo {
+        StoreInfo {
+            discoverability: DiscoverabilitySupport::ForcedDiscoverable,
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -120,6 +150,12 @@ impl CredentialStore for Option<Passkey> {
         self.replace(cred);
         Ok(())
     }
+
+    async fn get_info(&self) -> StoreInfo {
+        StoreInfo {
+            discoverability: DiscoverabilitySupport::ForcedDiscoverable,
+        }
+    }
 }
 
 #[cfg(any(feature = "tokio", test))]
@@ -152,6 +188,10 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
 
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
         self.lock().await.update_credential(cred).await
+    }
+
+    async fn get_info(&self) -> StoreInfo {
+        self.lock().await.get_info().await
     }
 }
 
@@ -186,6 +226,10 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
         self.write().await.update_credential(cred).await
     }
+
+    async fn get_info(&self) -> StoreInfo {
+        self.read().await.get_info().await
+    }
 }
 
 #[cfg(any(feature = "tokio", test))]
@@ -219,6 +263,10 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
         self.lock().await.update_credential(cred).await
     }
+
+    async fn get_info(&self) -> StoreInfo {
+        self.lock().await.get_info().await
+    }
 }
 
 #[cfg(any(feature = "tokio", test))]
@@ -251,5 +299,9 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
 
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
         self.write().await.update_credential(cred).await
+    }
+
+    async fn get_info(&self) -> StoreInfo {
+        self.read().await.get_info().await
     }
 }
