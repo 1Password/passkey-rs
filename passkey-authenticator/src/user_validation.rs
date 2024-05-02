@@ -64,7 +64,11 @@ impl MockUserValidationMethod {
         user_mock
             .expect_is_verification_enabled()
             .returning(|| Some(true))
-            .times(times);
+            .times(..);
+        user_mock
+            .expect_is_presence_enabled()
+            .returning(|| true)
+            .times(..);
         user_mock
             .expect_check_user()
             .with(
@@ -87,8 +91,7 @@ impl MockUserValidationMethod {
         let mut user_mock = MockUserValidationMethod::new();
         user_mock
             .expect_is_verification_enabled()
-            .returning(|| Some(true))
-            .times(times);
+            .returning(|| Some(true));
         user_mock
             .expect_check_user()
             .with(

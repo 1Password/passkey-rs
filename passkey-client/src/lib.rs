@@ -175,7 +175,7 @@ where
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
-        let auth_info = self.authenticator.get_info();
+        let auth_info = self.authenticator.get_info().await;
 
         let pub_key_cred_params = if request.pub_key_cred_params.is_empty() {
             webauthn::PublicKeyCredentialParameters::default_algorithms()
