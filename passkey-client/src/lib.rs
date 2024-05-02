@@ -342,7 +342,7 @@ where
                 allow_list: request.allow_credentials,
                 extensions: request.extensions,
                 options: ctap2::get_assertion::Options {
-                    rk: true,
+                    rk: false,
                     up: true,
                     uv: true,
                 },
