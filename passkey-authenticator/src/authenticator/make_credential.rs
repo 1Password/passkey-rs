@@ -144,7 +144,7 @@ where
 
         // 10
         self.store_mut()
-            .save_credential(passkey, input.user.into(), input.rp)
+            .save_credential(passkey, input.user.into(), input.rp, input.options)
             .await?;
 
         Ok(response)

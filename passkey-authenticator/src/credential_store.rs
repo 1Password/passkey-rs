@@ -3,8 +3,9 @@ use std::sync::Arc;
 
 use passkey_types::{
     ctap2::{
-        make_credential::PublicKeyCredentialRpEntity,
-        make_credential::PublicKeyCredentialUserEntity, Ctap2Error, StatusCode,
+        get_assertion::Options,
+        make_credential::{PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity},
+        Ctap2Error, StatusCode,
     },
     webauthn::PublicKeyCredentialDescriptor,
     Passkey,
@@ -32,6 +33,7 @@ pub trait CredentialStore {
         cred: Passkey,
         user: PublicKeyCredentialUserEntity,
         rp: PublicKeyCredentialRpEntity,
+        options: Options,
     ) -> Result<(), StatusCode>;
 
     /// Update the credential in your store
@@ -70,6 +72,7 @@ impl CredentialStore for MemoryStore {
         cred: Passkey,
         _user: PublicKeyCredentialUserEntity,
         _rp: PublicKeyCredentialRpEntity,
+        _options: Options,
     ) -> Result<(), StatusCode> {
         self.insert(cred.credential_id.clone().into(), cred);
         Ok(())
@@ -107,6 +110,7 @@ impl CredentialStore for Option<Passkey> {
         cred: Passkey,
         _user: PublicKeyCredentialUserEntity,
         _rp: PublicKeyCredentialRpEntity,
+        _options: Options,
     ) -> Result<(), StatusCode> {
         self.replace(cred);
         Ok(())
@@ -138,8 +142,12 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
         cred: Passkey,
         user: PublicKeyCredentialUserEntity,
         rp: PublicKeyCredentialRpEntity,
+        options: Options,
     ) -> Result<(), StatusCode> {
-        self.lock().await.save_credential(cred, user, rp).await
+        self.lock()
+            .await
+            .save_credential(cred, user, rp, options)
+            .await
     }
 
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
@@ -167,8 +175,12 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
         cred: Passkey,
         user: PublicKeyCredentialUserEntity,
         rp: PublicKeyCredentialRpEntity,
+        options: Options,
     ) -> Result<(), StatusCode> {
-        self.write().await.save_credential(cred, user, rp).await
+        self.write()
+            .await
+            .save_credential(cred, user, rp, options)
+            .await
     }
 
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
@@ -196,8 +208,12 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
         cred: Passkey,
         user: PublicKeyCredentialUserEntity,
         rp: PublicKeyCredentialRpEntity,
+        options: Options,
     ) -> Result<(), StatusCode> {
-        self.lock().await.save_credential(cred, user, rp).await
+        self.lock()
+            .await
+            .save_credential(cred, user, rp, options)
+            .await
     }
 
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
@@ -225,8 +241,12 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
         cred: Passkey,
         user: PublicKeyCredentialUserEntity,
         rp: PublicKeyCredentialRpEntity,
+        options: Options,
     ) -> Result<(), StatusCode> {
-        self.write().await.save_credential(cred, user, rp).await
+        self.write()
+            .await
+            .save_credential(cred, user, rp, options)
+            .await
     }
 
     async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
