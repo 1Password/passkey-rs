@@ -334,6 +334,9 @@ where
             .client_data_hash()
             .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
+        let rk = false;
+        let uv = request.user_verification != UserVerificationRequirement::Discouraged;
+
         let ctap2_response = self
             .authenticator
             .get_assertion(ctap2::get_assertion::Request {
@@ -341,11 +344,7 @@ where
                 client_data_hash: client_data_json_hash.into(),
                 allow_list: request.allow_credentials,
                 extensions: request.extensions,
-                options: ctap2::get_assertion::Options {
-                    rk: false,
-                    up: true,
-                    uv: true,
-                },
+                options: ctap2::get_assertion::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
             })
