@@ -7,7 +7,7 @@ use p256::{
     SecretKey,
 };
 use passkey_types::{
-    ctap2::{get_assertion::Options, Flags, U2FError},
+    ctap2::{Flags, U2FError},
     u2f::{
         AuthenticationRequest, AuthenticationResponse, PublicKey, RegisterRequest, RegisterResponse,
     },
@@ -90,12 +90,11 @@ impl<S: CredentialStore + Sync + Send, U: UserValidationMethod + Sync + Send> U2
             signature,
         };
 
-        let (passkey, user, rp) = passkey_types::Passkey::wrap_u2f_registration_request(
-            &request, &response, handle, &private,
-        );
+        let (passkey, user, rp) =
+            Passkey::wrap_u2f_registration_request(&request, &response, handle, &private);
 
         // U2F registration does not use rk, uv, or up
-        let options = Options {
+        let options = passkey_types::ctap2::get_assertion::Options {
             rk: false,
             uv: false,
             up: false,

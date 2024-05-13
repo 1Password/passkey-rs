@@ -167,6 +167,12 @@ impl<T: Table> EffectiveTLDProvider for ListProvider<T> {
     }
 }
 
+impl<T: Table> Default for ListProvider<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Table> ListProvider<T> {
     /// Create a new ListProvider.
     pub const fn new() -> Self {

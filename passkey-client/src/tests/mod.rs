@@ -418,7 +418,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
         public_key: good_credential_creation_options(),
     };
     options.public_key.authenticator_selection = Some(AuthenticatorSelectionCriteria {
-        user_verification: webauthn::UserVerificationRequirement::Required,
+        user_verification: UserVerificationRequirement::Required,
         authenticator_attachment: Default::default(),
         resident_key: Default::default(),
         require_resident_key: Default::default(),
@@ -445,7 +445,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
         public_key: good_credential_creation_options(),
     };
     options.public_key.authenticator_selection = Some(AuthenticatorSelectionCriteria {
-        user_verification: webauthn::UserVerificationRequirement::Discouraged,
+        user_verification: UserVerificationRequirement::Discouraged,
         authenticator_attachment: Default::default(),
         resident_key: Default::default(),
         require_resident_key: Default::default(),

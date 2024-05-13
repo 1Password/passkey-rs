@@ -318,6 +318,7 @@ mod tests {
                 _id: Option<&[webauthn::PublicKeyCredentialDescriptor]>,
                 _rp_id: &str,
             ) -> Result<Vec<Self::PasskeyItem>, StatusCode> {
+                #![allow(clippy::unimplemented)]
                 unimplemented!("The test should not call find_credentials")
             }
 
@@ -328,10 +329,12 @@ mod tests {
                 _rp: PublicKeyCredentialRpEntity,
                 _options: Options,
             ) -> Result<(), StatusCode> {
+                #![allow(clippy::unimplemented)]
                 unimplemented!("The test should not call save_credential")
             }
 
             async fn update_credential(&mut self, _cred: Passkey) -> Result<(), StatusCode> {
+                #![allow(clippy::unimplemented)]
                 unimplemented!("The test should not call update_credential")
             }
 
