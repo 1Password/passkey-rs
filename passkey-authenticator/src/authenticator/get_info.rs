@@ -15,8 +15,8 @@ impl<S: CredentialStore, U: UserValidationMethod> Authenticator<S, U> {
             options: Some(Options {
                 rk: self.store.get_info().await.discoverability
                     != DiscoverabilitySupport::OnlyNonDiscoverable,
-                uv: self.user_validation.is_verification_enabled(),
-                up: self.user_validation.is_presence_enabled(),
+                uv: self.user_validation.is_verification_enabled().await,
+                up: self.user_validation.is_presence_enabled().await,
                 ..Default::default()
             }),
             max_msg_size: None,

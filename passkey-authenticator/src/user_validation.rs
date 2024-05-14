@@ -34,7 +34,7 @@ pub trait UserValidationMethod {
     ) -> Result<UserCheck, Ctap2Error>;
 
     /// Indicates whether this type is capable of testing user presence.
-    fn is_presence_enabled(&self) -> bool;
+    async fn is_presence_enabled(&self) -> bool;
 
     /// Indicates that this type is capable of verifying the user within itself.
     /// For example, devices with UI, biometrics fall into this category.
@@ -52,7 +52,7 @@ pub trait UserValidationMethod {
     ///
     /// If a device is capable of verifying the user within itself as well as able to do Client PIN,
     ///  it will return both `Some` and the Client PIN option.
-    fn is_verification_enabled(&self) -> Option<bool>;
+    async fn is_verification_enabled(&self) -> Option<bool>;
 }
 
 #[cfg(any(test, feature = "testable"))]

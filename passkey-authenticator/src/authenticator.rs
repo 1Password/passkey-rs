@@ -204,7 +204,7 @@ where
         options: &passkey_types::ctap2::make_credential::Options,
         credential: Option<&<U as UserValidationMethod>::PasskeyItem>,
     ) -> Result<Flags, Ctap2Error> {
-        if options.uv && self.user_validation.is_verification_enabled() != Some(true) {
+        if options.uv && self.user_validation.is_verification_enabled().await != Some(true) {
             return Err(Ctap2Error::UnsupportedOption);
         };
 

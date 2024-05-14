@@ -27,11 +27,11 @@ impl UserValidationMethod for MyUserValidationMethod {
         })
     }
 
-    fn is_verification_enabled(&self) -> Option<bool> {
+    async fn is_verification_enabled(&self) -> Option<bool> {
         Some(true)
     }
 
-    fn is_presence_enabled(&self) -> bool {
+    async fn is_presence_enabled(&self) -> bool {
         true
     }
 }
