@@ -284,7 +284,8 @@ impl AttestedCredentialData {
 
 impl AttestedCredentialData {
     /// Custom implementation rather than IntoIterator because the iterator type is complicated.
-    fn into_iter(self) -> impl Iterator<Item = u8> {
+    #[allow(clippy::should_implement_trait)]
+    pub fn into_iter(self) -> impl Iterator<Item = u8> {
         // SAFETY: if this unwrap fails, it is programmer error
         // unfortunately any serialization in Coset does not use serde::Serialize and takes by value ...
         let cose_key = self.key.to_vec().unwrap();
