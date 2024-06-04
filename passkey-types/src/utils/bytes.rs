@@ -100,7 +100,7 @@ impl Serialize for Bytes {
         S: serde::Serializer,
     {
         if cfg!(feature = "serialize_bytes_as_base64_string") {
-            serializer.serialize_str(&crate::encoding::base64url(&self.0))
+            serializer.serialize_str(&encoding::base64url(&self.0))
         } else {
             serializer.serialize_bytes(&self.0)
         }
