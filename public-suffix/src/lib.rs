@@ -285,6 +285,12 @@ impl<T: Table> ListProvider<T> {
     }
 }
 
+impl<T: Table> Default for ListProvider<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn after_or_all(dot: Option<usize>) -> RangeFrom<usize> {
     match dot {
         Some(dot) => (dot + 1)..,
