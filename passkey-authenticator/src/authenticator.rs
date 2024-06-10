@@ -204,7 +204,7 @@ mod tests {
         let result = authenticator.check_user(&options, None).await.unwrap();
 
         // Assert
-        assert_eq!(result, passkey_types::ctap2::Flags::empty());
+        assert_eq!(result, Flags::empty());
     }
 
     #[tokio::test]
