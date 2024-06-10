@@ -1,6 +1,6 @@
 //! Sample App for Passkeys
 use passkey::{
-    authenticator::{Authenticator, UserValidationMethod},
+    authenticator::{Authenticator, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
     types::{crypto::sha256, ctap2::*, rand::random_vec, webauthn::*, Bytes, Passkey},
 };
@@ -12,12 +12,18 @@ use url::Url;
 struct MyUserValidationMethod {}
 #[async_trait::async_trait]
 impl UserValidationMethod for MyUserValidationMethod {
-    async fn check_user_presence(&self) -> bool {
-        true
-    }
+    type PasskeyItem = Passkey;
 
-    async fn check_user_verification(&self) -> bool {
-        true
+    async fn check_user(
+        &self,
+        _credential: Option<Passkey>,
+        presence: bool,
+        verification: bool,
+    ) -> Result<UserCheck, Ctap2Error> {
+        Ok(UserCheck {
+            presence,
+            verification,
+        })
     }
 
     fn is_verification_enabled(&self) -> Option<bool> {

@@ -64,7 +64,7 @@
 //! In this example, we are going to manually create a `CredentialCreationOptions` struct with hypothetical values named `*_from_rp` to indicate that these are values that would usually be supplied by the Relying Party. For simplicity, most of the `CredentialCreationOptions` are being set to `None` here.
 //! ```
 //! use passkey::{
-//!     authenticator::{Authenticator, UserValidationMethod},
+//!     authenticator::{Authenticator, UserValidationMethod, UserCheck},
 //!     client::{Client, WebauthnError},
 //!     types::{ctap2::*, rand::random_vec, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! };
@@ -76,12 +76,15 @@
 //! # struct MyUserValidationMethod {}
 //! # #[async_trait::async_trait]
 //! # impl UserValidationMethod for MyUserValidationMethod {
-//! #     async fn check_user_presence(&self) -> bool {
-//! #         true
-//! #     }
+//! #     type PasskeyItem = Passkey;
 //! #
-//! #     async fn check_user_verification(&self) -> bool {
-//! #         true
+//! #     async fn check_user(
+//! #         &self,
+//! #         _credential: Option<Self::PasskeyItem>,
+//! #         presence: bool,
+//! #         verification: bool,
+//! #     ) -> Result<UserCheck, Ctap2Error> {
+//! #         Ok(UserCheck { presence: true, verification: true })
 //! #     }
 //! #
 //! #     fn is_verification_enabled(&self) -> Option<bool> {
@@ -172,7 +175,7 @@
 //!
 //! ```
 //! # use passkey::{
-//! #     authenticator::{Authenticator, UserValidationMethod},
+//! #     authenticator::{Authenticator, UserValidationMethod, UserCheck},
 //! #     client::{Client, WebauthnError},
 //! #     types::{ctap2::*, rand::random_vec, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! # };
@@ -184,12 +187,15 @@
 //! # struct MyUserValidationMethod {}
 //! # #[async_trait::async_trait]
 //! # impl UserValidationMethod for MyUserValidationMethod {
-//! #     async fn check_user_presence(&self) -> bool {
-//! #         true
-//! #     }
+//! #     type PasskeyItem = Passkey;
 //! #
-//! #     async fn check_user_verification(&self) -> bool {
-//! #         true
+//! #     async fn check_user(
+//! #         &self,
+//! #         _credential: Option<Self::PasskeyItem>,
+//! #         presence: bool,
+//! #         verification: bool,
+//! #     ) -> Result<UserCheck, Ctap2Error> {
+//! #         Ok(UserCheck { presence: true, verification: true })
 //! #     }
 //! #
 //! #     fn is_verification_enabled(&self) -> Option<bool> {

@@ -1,15 +1,29 @@
 # Changelog
 
+## Passkey v0.3.0
+### passkey-authenticator v0.3.0
+
+The changes in this version are centered around giving the users of this library more control over the validation process.
+The `UserValidationMethod` trait has been updated to give the implementation more information about the request, which can be
+used to decide whether additional validations are needed. To reflect this, the `UserValidationMethod` trait now also
+returns which validations were performed.
+
+- ⚠ BREAKING: Consolidated `UserValidationMethod::check_user_presence` and `UserValidationMethod::check_user_verification`
+  into a single `UserValidationMethod::check_user` method ([#5](https://github.com/bitwarden/passkey-rs/pull/5)).
+
+### passkey-client v0.3.0
+
+Updated to support the changes in `passkey-authenticator` v0.3.0.
+
 ## Passkey v0.2.1
 ### passkey-authenticator v0.2.1
 
-These changes add functionality without breaking previously working code. However, it does change
+These changes add functionality without breaking previously working stores. However, it does change
 the semantics of `save_credential` whose doc said that it should be used for both saving and updating.
-Because this function was never actually used for updating, the changes made in this version are
-deemed non-breaking.
+`update_credential` only needs to be implemented if the authenticator supports signature counters.
 
 - Add support for signature counters
-	- Add `update_credential` function to store ([#3](https://github.com/bitwarden/passkey-rs/pull/3)).
+	- ⚠ BREAKING: Add `update_credential` function to store ([#3](https://github.com/bitwarden/passkey-rs/pull/3)).
 	- Add `make_credentials_with_signature_counter` to `authenticator`.
 
 ### passkey-client v0.2.1
