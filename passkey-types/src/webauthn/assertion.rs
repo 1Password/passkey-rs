@@ -1,6 +1,7 @@
 //! Types used for public key authentication
 
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 use crate::{
@@ -22,7 +23,7 @@ use crate::{
 };
 
 /// The response to the successful authentication of a [`PublicKeyCredential`]
-#[typeshare(swift = "Equatable, Hashable")]
+#[cfg_attr(feature = "typeshare", typeshare(swift = "Equatable, Hashable"))]
 pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAssertionResponse>;
 
 /// This type supplies `get()` requests with the data it needs to generate an assertion.
@@ -31,7 +32,7 @@ pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAss
 /// <https://w3c.github.io/webauthn/#dictdef-publickeycredentialrequestoptions>
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[cfg_attr(feature = "typeshare", typeshare)]
 pub struct PublicKeyCredentialRequestOptions {
     /// This member specifies a challenge that the authenticator signs, along with other data, when
     /// producing an authentication assertion. See the [Cryptographic Challenges] security consideration.
@@ -173,7 +174,7 @@ pub struct PublicKeyCredentialRequestOptions {
 /// [`navigator.credentials.get`]: https://developer.mozilla.org/en-US/docs/Web/API/CredentialsContainer/get
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[cfg_attr(feature = "typeshare", typeshare)]
 pub struct CredentialRequestOptions {
     /// The key defining that this is a request for a webauthn credential.
     pub public_key: PublicKeyCredentialRequestOptions,
@@ -188,7 +189,7 @@ pub struct CredentialRequestOptions {
 /// <https://w3c.github.io/webauthn/#iface-authenticatorassertionresponse>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable, Hashable")]
+#[cfg_attr(feature = "typeshare", typeshare(swift = "Equatable, Hashable"))]
 pub struct AuthenticatorAssertionResponse {
     /// This attribute contains the JSON serialization of [`CollectedClientData`] passed to the
     /// authenticator by the client in order to generate this credential. The exact JSON serialization
