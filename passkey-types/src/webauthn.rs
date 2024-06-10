@@ -3,6 +3,7 @@
 //! [WebAuthn Level 3]: https://w3c.github.io/webauthn
 
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 use crate::{Bytes, utils::serde::ignore_unknown};
@@ -38,9 +39,12 @@ impl AuthenticatorResponse for AuthenticatorAttestationResponse {}
 /// <https://w3c.github.io/webauthn/#iface-pkcredential>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(
-    swift = "Equatable, Hashable",
-    swiftGenericConstraints = "R: Equatable & Hashable"
+#[cfg_attr(
+    feature = "typeshare",
+    typeshare(
+        swift = "Equatable, Hashable",
+        swiftGenericConstraints = "R: Equatable & Hashable"
+    )
 )]
 pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// The id contains the credential ID, chosen by the authenticator. This is usually the base64url
@@ -51,7 +55,7 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// authenticators.
     ///
     /// > NOTE: This API does not constrain the format or length of this identifier, except that it
-    /// MUST be sufficient for the authenticator to uniquely select a key.
+    /// > MUST be sufficient for the authenticator to uniquely select a key.
     pub id: String,
 
     /// The raw byte containing the credential ID, see [Self::id] for more information.

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 mod credential_properties;
@@ -18,7 +19,7 @@ use crate::webauthn::PublicKeyCredential;
 /// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[cfg_attr(feature = "typeshare", typeshare)]
 pub struct AuthenticationExtensionsClientInputs {
     /// Boolean to indicate that this extension is requested by the relying party.
     ///
@@ -73,7 +74,7 @@ impl AuthenticationExtensionsClientInputs {
 /// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable, Hashable")]
+#[cfg_attr(feature = "typeshare", typeshare(swift = "Equatable, Hashable"))]
 pub struct AuthenticationExtensionsClientOutputs {
     /// Contains properties of the given [`PublicKeyCredential`] when it is included.
     ///
