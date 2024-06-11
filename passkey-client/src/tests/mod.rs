@@ -287,3 +287,86 @@ fn validate_domain_with_private_list_provider() -> Result<(), ParseError> {
 
     Ok(())
 }
+
+fn user_mock_with_uv() -> MockUserValidationMethod {
+    let mut user_mock = MockUserValidationMethod::new();
+    user_mock
+        .expect_is_verification_enabled()
+        .returning(|| Some(true));
+    user_mock
+        .expect_check_user_verification()
+        .returning(|| Box::pin(async { true }));
+    // Always called by `get_info`
+    user_mock
+        .expect_is_verification_enabled()
+        .returning(|| Some(true));
+    user_mock.expect_is_presence_enabled().returning(|| true);
+    user_mock
+}
+
+fn user_mock_without_uv() -> MockUserValidationMethod {
+    let mut user_mock = MockUserValidationMethod::new();
+    user_mock
+        .expect_check_user_presence()
+        .returning(|| Box::pin(async { true }));
+    // Always called by `get_info`
+    user_mock
+        .expect_is_verification_enabled()
+        .returning(|| Some(true));
+    user_mock.expect_is_presence_enabled().returning(|| true);
+    user_mock
+}
+
+#[tokio::test]
+async fn client_register_triggers_uv_when_uv_is_required() {
+    // Arrange
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        user_mock_with_uv(),
+    );
+    let mut client = Client::new(auth);
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let mut options = webauthn::CredentialCreationOptions {
+        public_key: good_credential_creation_options(),
+    };
+    options.public_key.authenticator_selection = Some(webauthn::AuthenticatorSelectionCriteria {
+        user_verification: UserVerificationRequirement::Required,
+        authenticator_attachment: Default::default(),
+        resident_key: Default::default(),
+        require_resident_key: Default::default(),
+    });
+
+    // Act & Assert
+    client
+        .register(&origin, options, None)
+        .await
+        .expect("failed to register with options");
+}
+
+#[tokio::test]
+async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
+    // Arrange
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        user_mock_without_uv(),
+    );
+    let mut client = Client::new(auth);
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let mut options = webauthn::CredentialCreationOptions {
+        public_key: good_credential_creation_options(),
+    };
+    options.public_key.authenticator_selection = Some(webauthn::AuthenticatorSelectionCriteria {
+        user_verification: UserVerificationRequirement::Discouraged,
+        authenticator_attachment: Default::default(),
+        resident_key: Default::default(),
+        require_resident_key: Default::default(),
+    });
+
+    // Act & Assert
+    client
+        .register(&origin, options, None)
+        .await
+        .expect("failed to register with options");
+}
