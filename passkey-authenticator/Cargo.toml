@@ -1,6 +1,6 @@
 [package]
 name = "passkey-authenticator"
-version = "0.2.1"
+version = "0.2.0"
 description = "A webauthn authenticator supporting passkeys."
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
 readme = "README.md"
