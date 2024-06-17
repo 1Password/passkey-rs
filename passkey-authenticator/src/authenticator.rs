@@ -29,6 +29,10 @@ pub struct Authenticator<S, U> {
     display_name: Option<String>,
 
     /// Value to control whether the authenticator will save new credentials with a signature counter.
+    /// The default value is `false`.
+    ///
+    /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction
+    /// with the distributed nature of synced keys. It can also cause issues with backup and restore functionality.
     make_credentials_with_signature_counter: bool,
 }
 
