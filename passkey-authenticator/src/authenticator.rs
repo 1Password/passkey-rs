@@ -141,7 +141,7 @@ where
     async fn check_user(
         &self,
         options: &passkey_types::ctap2::make_credential::Options,
-        credential: Option<<U as UserValidationMethod>::PasskeyItem>,
+        credential: Option<&<U as UserValidationMethod>::PasskeyItem>,
     ) -> Result<Flags, Ctap2Error> {
         if options.uv && self.user_validation.is_verification_enabled() != Some(true) {
             return Err(Ctap2Error::UnsupportedOption);
@@ -149,7 +149,7 @@ where
 
         let check_result = self
             .user_validation
-            .check_user(credential.as_ref(), options.up, options.uv)
+            .check_user(credential, options.up, options.uv)
             .await?;
 
         if options.up && !check_result.presence {
