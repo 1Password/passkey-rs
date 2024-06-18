@@ -1,6 +1,6 @@
 [package]
 name = "passkey-client"
-version = "0.3.0"
+version = "0.2.0"
 description = "Webauthn client in Rust."
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
 readme = "README.md"

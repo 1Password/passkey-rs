@@ -1,6 +1,6 @@
 [package]
 name = "passkey"
-version = "0.3.0"
+version = "0.2.0"
 description = "A one stop library to implement a passkey client and authenticator"
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
 readme = "../README.md"
