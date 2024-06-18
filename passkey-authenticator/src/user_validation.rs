@@ -19,7 +19,7 @@ pub struct UserCheck {
 #[async_trait::async_trait]
 pub trait UserValidationMethod {
     /// The type of the passkey item that can be used to display additional information about the operation to the user.
-    type PasskeyItem: TryInto<Passkey> + Send;
+    type PasskeyItem: TryInto<Passkey> + Send + Sync;
 
     /// Check for the user's presence and obtain consent for the operation. The operation may
     /// also require the user to be verified.
