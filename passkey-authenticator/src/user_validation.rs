@@ -27,9 +27,9 @@ pub trait UserValidationMethod {
     /// * `crdential` - Can be used to display additional information about the operation to the user.
     /// * `presence` - Indicates whether the user's presence is required.
     /// * `verification` - Indicates whether the user should be verified.
-    async fn check_user(
+    async fn check_user<'a>(
         &self,
-        credential: Option<Self::PasskeyItem>,
+        credential: Option<&'a Self::PasskeyItem>,
         presence: bool,
         verification: bool,
     ) -> Result<UserCheck, Ctap2Error>;
@@ -69,30 +69,6 @@ impl MockUserValidationMethod {
             .expect_check_user()
             .with(
                 mockall::predicate::always(),
-                mockall::predicate::eq(true),
-                mockall::predicate::eq(true),
-            )
-            .returning(|_, _, _| {
-                Ok(UserCheck {
-                    presence: true,
-                    verification: true,
-                })
-            })
-            .times(times);
-        user_mock
-    }
-
-    /// Sets up the mock for returning true for the verification.
-    pub fn verified_user_with_credential(times: usize, credential: Passkey) -> Self {
-        let mut user_mock = MockUserValidationMethod::new();
-        user_mock
-            .expect_is_verification_enabled()
-            .returning(|| Some(true))
-            .times(times);
-        user_mock
-            .expect_check_user()
-            .with(
-                mockall::predicate::eq(Some(credential)),
                 mockall::predicate::eq(true),
                 mockall::predicate::eq(true),
             )

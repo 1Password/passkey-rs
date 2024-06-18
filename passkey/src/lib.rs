@@ -78,9 +78,9 @@
 //! # impl UserValidationMethod for MyUserValidationMethod {
 //! #     type PasskeyItem = Passkey;
 //! #
-//! #     async fn check_user(
+//! #     async fn check_user<'a>(
 //! #         &self,
-//! #         _credential: Option<Self::PasskeyItem>,
+//! #         _credential: Option<&'a Self::PasskeyItem>,
 //! #         presence: bool,
 //! #         verification: bool,
 //! #     ) -> Result<UserCheck, Ctap2Error> {
@@ -189,9 +189,9 @@
 //! # impl UserValidationMethod for MyUserValidationMethod {
 //! #     type PasskeyItem = Passkey;
 //! #
-//! #     async fn check_user(
+//! #     async fn check_user<'a>(
 //! #         &self,
-//! #         _credential: Option<Self::PasskeyItem>,
+//! #         _credential: Option<&'a Self::PasskeyItem>,
 //! #         presence: bool,
 //! #         verification: bool,
 //! #     ) -> Result<UserCheck, Ctap2Error> {

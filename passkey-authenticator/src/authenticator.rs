@@ -149,7 +149,7 @@ where
 
         let check_result = self
             .user_validation
-            .check_user(credential, options.up, options.uv)
+            .check_user(credential.as_ref(), options.up, options.uv)
             .await?;
 
         if options.up && !check_result.presence {
