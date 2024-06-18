@@ -69,6 +69,9 @@ where
     }
 
     /// Set whether the authenticator should save new credentials with a signature counter.
+    ///
+    /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction
+    /// with the distributed nature of synced keys. It can also cause issues with backup and restore functionality.
     pub fn set_make_credentials_with_signature_counter(&mut self, value: bool) {
         self.make_credentials_with_signature_counter = value;
     }
