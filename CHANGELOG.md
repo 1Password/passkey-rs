@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### passkey-authenticator
+
+- Added: support for signature counters
+	- ⚠ BREAKING: Add `update_credential` function to `CredentialStore` ([#23](https://github.com/1Password/passkey-rs/pull/23)).
+	- Add `make_credentials_with_signature_counter` to `Authenticator`.
+
+### passkey-client
+
+- Changed: The `Client` no longer hardcodes the UV value sent to the `Authenticator` ([#22](https://github.com/1Password/passkey-rs/pull/22)).
+
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
 

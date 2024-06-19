@@ -30,5 +30,8 @@ coset = "0.3"
 
 [dev-dependencies]
 coset = "0.3"
-passkey-authenticator = { path = "../passkey-authenticator", features = ["tokio", "testable"] }
+passkey-authenticator = { path = "../passkey-authenticator", features = [
+  "tokio",
+  "testable",
+] }
 tokio = { version = "1", features = ["macros", "rt"] }

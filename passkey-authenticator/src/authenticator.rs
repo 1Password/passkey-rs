@@ -27,6 +27,13 @@ pub struct Authenticator<S, U> {
 
     /// The display name given when a [`webauthn::CredentialPropertiesOutput`] is requested
     display_name: Option<String>,
+
+    /// Value to control whether the authenticator will save new credentials with a signature counter.
+    /// The default value is `false`.
+    ///
+    /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction
+    /// with the distributed nature of synced keys. It can also cause issues with backup and restore functionality.
+    make_credentials_with_signature_counter: bool,
 }
 
 impl<S, U> Authenticator<S, U>
@@ -47,6 +54,7 @@ where
             ],
             user_validation: user,
             display_name: None,
+            make_credentials_with_signature_counter: false,
         }
     }
 
@@ -58,6 +66,19 @@ where
     /// Get a reference to the authenticators display name to return in [`webauthn::CredentialPropertiesOutput`].
     pub fn display_name(&self) -> Option<&String> {
         self.display_name.as_ref()
+    }
+
+    /// Set whether the authenticator should save new credentials with a signature counter.
+    ///
+    /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction
+    /// with the distributed nature of synced keys. It can also cause issues with backup and restore functionality.
+    pub fn set_make_credentials_with_signature_counter(&mut self, value: bool) {
+        self.make_credentials_with_signature_counter = value;
+    }
+
+    /// Get whether the authenticator will save new credentials with a signature counter.
+    pub fn make_credentials_with_signature_counter(&self) -> bool {
+        self.make_credentials_with_signature_counter
     }
 
     /// Access the [`CredentialStore`] to look into what is stored.

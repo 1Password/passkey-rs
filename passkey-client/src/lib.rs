@@ -297,7 +297,7 @@ where
     ///
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
     pub async fn authenticate(
-        &self,
+        &mut self,
         origin: &Url,
         request: webauthn::CredentialRequestOptions,
         client_data_hash: Option<Vec<u8>>,
