@@ -33,6 +33,10 @@ url = "2"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-test = "0.4"
 async-trait = "0.1"
+passkey-client = { path = "../passkey-client", version = "0.2", features = [
+    "tokio",
+    "testable",
+] }
 passkey-authenticator = { path = "../passkey-authenticator", features = [
     "tokio",
     "testable",

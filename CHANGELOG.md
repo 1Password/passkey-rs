@@ -7,6 +7,11 @@
 - Added: support for signature counters
 	- ⚠ BREAKING: Add `update_credential` function to `CredentialStore` ([#23](https://github.com/1Password/passkey-rs/pull/23)).
 	- Add `make_credentials_with_signature_counter` to `Authenticator`.
+- ⚠ BREAKING: Merge functions in `UserValidationMethod` ([#24](https://github.com/1Password/passkey-rs/pull/24))
+	- Removed: `UserValidationMethod::check_user_presence`
+	- Removed: `UserValidationMethod::check_user_verification`
+	- Added: `UserValidationMethod::check_user`. This function now performs both user presence and user verification checks.
+		The function now also returns which validations were performed, even if they were not requested.
 
 ### passkey-client
 

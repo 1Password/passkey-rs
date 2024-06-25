@@ -141,24 +141,294 @@ where
     async fn check_user(
         &self,
         options: &passkey_types::ctap2::make_credential::Options,
+        credential: Option<&<U as UserValidationMethod>::PasskeyItem>,
     ) -> Result<Flags, Ctap2Error> {
-        if options.uv {
-            let Some(true) = self.user_validation.is_verification_enabled() else {
-                return Err(Ctap2Error::UnsupportedOption);
-            };
-            if self.user_validation.check_user_verification().await {
-                Ok(Flags::UP | Flags::UV)
-            } else {
-                Err(Ctap2Error::OperationDenied)
-            }
-        } else if options.up {
-            if self.user_validation.check_user_presence().await {
-                Ok(Flags::UP)
-            } else {
-                Err(Ctap2Error::OperationDenied)
-            }
-        } else {
-            Ok(Flags::empty())
+        if options.uv && self.user_validation.is_verification_enabled() != Some(true) {
+            return Err(Ctap2Error::UnsupportedOption);
+        };
+
+        let check_result = self
+            .user_validation
+            .check_user(credential, options.up, options.uv)
+            .await?;
+
+        if options.up && !check_result.presence {
+            return Err(Ctap2Error::OperationDenied);
         }
+
+        if options.uv && !check_result.verification {
+            return Err(Ctap2Error::OperationDenied);
+        }
+
+        let mut flags = Flags::empty();
+        if check_result.presence {
+            flags |= Flags::UP;
+        }
+
+        if check_result.verification {
+            flags |= Flags::UV;
+        }
+
+        Ok(flags)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use passkey_types::ctap2::{Aaguid, Flags};
+
+    use crate::{Authenticator, MockUserValidationMethod, UserCheck};
+
+    #[tokio::test]
+    async fn check_user_does_not_check_up_or_uv_when_not_requested() {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(false),
+                mockall::predicate::eq(false),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: false,
+                    verification: false,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: false,
+            uv: false,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await.unwrap();
+
+        // Assert
+        assert_eq!(result, Flags::empty());
+    }
+
+    #[tokio::test]
+    async fn check_user_checks_up_when_requested() {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(true),
+                mockall::predicate::eq(false),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: true,
+                    verification: false,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: true,
+            uv: false,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await.unwrap();
+
+        // Assert
+        assert_eq!(result, Flags::UP);
+    }
+
+    #[tokio::test]
+    async fn check_user_checks_uv_when_requested() {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| Some(true));
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(true),
+                mockall::predicate::eq(true),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: true,
+                    verification: true,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: true,
+            uv: true,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await.unwrap();
+
+        // Assert
+        assert_eq!(result, Flags::UP | Flags::UV);
+    }
+
+    #[tokio::test]
+    async fn check_user_returns_operation_denied_when_up_was_requested_but_not_returned() {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(true),
+                mockall::predicate::eq(false),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: false,
+                    verification: false,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: true,
+            uv: false,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await;
+
+        // Assert
+        assert_eq!(
+            result,
+            Err(passkey_types::ctap2::Ctap2Error::OperationDenied)
+        );
+    }
+
+    #[tokio::test]
+    async fn check_user_returns_operation_denied_when_uv_was_requested_but_not_returned() {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| Some(true));
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(true),
+                mockall::predicate::eq(true),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: true,
+                    verification: false,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: true,
+            uv: true,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await;
+
+        // Assert
+        assert_eq!(
+            result,
+            Err(passkey_types::ctap2::Ctap2Error::OperationDenied)
+        );
+    }
+
+    #[tokio::test]
+    async fn check_user_returns_unsupported_option_when_uv_was_requested_but_is_not_supported() {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| None);
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: true,
+            uv: true,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await;
+
+        // Assert
+        assert_eq!(
+            result,
+            Err(passkey_types::ctap2::Ctap2Error::UnsupportedOption)
+        );
+    }
+
+    #[tokio::test]
+    async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_but_performed_anyways(
+    ) {
+        // Arrange & Assert
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| Some(true));
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::always(),
+                mockall::predicate::eq(false),
+                mockall::predicate::eq(false),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: true,
+                    verification: true,
+                })
+            })
+            .once();
+
+        // Arrange
+        let store = None;
+        let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+        let options = passkey_types::ctap2::make_credential::Options {
+            up: false,
+            uv: false,
+            ..Default::default()
+        };
+
+        // Act
+        let result = authenticator.check_user(&options, None).await.unwrap();
+
+        // Assert
+        assert_eq!(result, Flags::UP | Flags::UV);
     }
 }
