@@ -16,6 +16,7 @@
 ### passkey-client
 
 - Changed: The `Client` no longer hardcodes the UV value sent to the `Authenticator` ([#22](https://github.com/1Password/passkey-rs/pull/22)).
+- Changed: The `Client` no longer hardcodes the RK value sent to the `Authenticator` ([#27](https://github.com/1Password/passkey-rs/pull/27)).
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
