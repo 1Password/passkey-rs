@@ -64,11 +64,38 @@ impl MockUserValidationMethod {
         user_mock
             .expect_is_verification_enabled()
             .returning(|| Some(true))
-            .times(times);
+            .times(..);
+        user_mock
+            .expect_is_presence_enabled()
+            .returning(|| true)
+            .times(..);
         user_mock
             .expect_check_user()
             .with(
                 mockall::predicate::always(),
+                mockall::predicate::eq(true),
+                mockall::predicate::eq(true),
+            )
+            .returning(|_, _, _| {
+                Ok(UserCheck {
+                    presence: true,
+                    verification: true,
+                })
+            })
+            .times(times);
+        user_mock
+    }
+
+    /// Sets up the mock for returning true for the verification.
+    pub fn verified_user_with_credential(times: usize, credential: Passkey) -> Self {
+        let mut user_mock = MockUserValidationMethod::new();
+        user_mock
+            .expect_is_verification_enabled()
+            .returning(|| Some(true));
+        user_mock
+            .expect_check_user()
+            .with(
+                mockall::predicate::eq(Some(credential)),
                 mockall::predicate::eq(true),
                 mockall::predicate::eq(true),
             )
