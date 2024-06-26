@@ -17,6 +17,7 @@ workspace = true
 [features]
 default = []
 serialize_bytes_as_base64_string = []
+testable = []
 
 [dependencies]
 bitflags = "2"

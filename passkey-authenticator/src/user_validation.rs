@@ -94,11 +94,7 @@ impl MockUserValidationMethod {
             .returning(|| Some(true));
         user_mock
             .expect_check_user()
-            .with(
-                mockall::predicate::eq(Some(credential)),
-                mockall::predicate::eq(true),
-                mockall::predicate::eq(true),
-            )
+            .withf(move |cred, up, uv| cred == &Some(&credential) && *up && *uv)
             .returning(|_, _, _| {
                 Ok(UserCheck {
                     presence: true,

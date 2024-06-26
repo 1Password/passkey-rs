@@ -21,6 +21,7 @@ use coset::CoseKey;
 // TODO: Implement Zeroize on this if/when rolling our own CoseKey type
 // TODO: use `#[non_exhaustive]` here with a builder pattern for building new passkeys
 #[derive(Clone)]
+#[cfg_attr(any(test, feature = "testable"), derive(PartialEq))]
 pub struct Passkey {
     /// The private key in COSE key format.
     ///
