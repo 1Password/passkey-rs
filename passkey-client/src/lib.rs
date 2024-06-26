@@ -14,6 +14,9 @@
 //! [version]: https://img.shields.io/crates/v/passkey-client?logo=rust&style=flat
 //! [documentation]: https://img.shields.io/docsrs/passkey-client/latest?logo=docs.rs&style=flat
 //! [Webauthn]: https://w3c.github.io/webauthn/
+mod client_data;
+pub use client_data::*;
+
 use std::borrow::Cow;
 
 use ciborium::{cbor, value::Value};
@@ -23,11 +26,12 @@ use passkey_types::{
     crypto::sha256,
     ctap2, encoding,
     webauthn::{
-        self, AuthenticatorExtensionsClientOutputs, CredentialPropertiesOutput,
-        UserVerificationRequirement,
+        self, AuthenticatorExtensionsClientOutputs, AuthenticatorSelectionCriteria,
+        CredentialPropertiesOutput, ResidentKeyRequirement, UserVerificationRequirement,
     },
     Passkey,
 };
+use serde::Serialize;
 use typeshare::typeshare;
 use url::Url;
 
@@ -163,11 +167,11 @@ where
     /// Register a webauthn `request` from the given `origin`.
     ///
     /// Returns either a [`webauthn::CreatedPublicKeyCredential`] on success or some [`WebauthnError`]
-    pub async fn register(
+    pub async fn register<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: &Url,
         request: webauthn::CredentialCreationOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
@@ -189,18 +193,20 @@ where
             .rp_id_verifier
             .assert_domain(origin, request.rp.id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Create,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.as_str().trim_end_matches('/').to_owned(),
             cross_origin: None,
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let cred_props =
             if let Some(true) = request.extensions.as_ref().and_then(|ext| ext.cred_props) {
@@ -212,6 +218,7 @@ where
                 None
             };
 
+        let rk = self.map_rk(&request.authenticator_selection);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
             != Some(UserVerificationRequirement::Discouraged);
 
@@ -227,11 +234,7 @@ where
                 pub_key_cred_params,
                 exclude_list: request.exclude_credentials,
                 extensions: request.extensions,
-                options: ctap2::make_credential::Options {
-                    rk: true,
-                    up: true,
-                    uv,
-                },
+                options: ctap2::make_credential::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
             })
@@ -296,11 +299,11 @@ where
     /// Authenticate a Webauthn request.
     ///
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
-    pub async fn authenticate(
+    pub async fn authenticate<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: &Url,
         request: webauthn::CredentialRequestOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::AuthenticatedPublicKeyCredential, WebauthnError> {
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
         let request = request.public_key;
@@ -316,18 +319,20 @@ where
             .rp_id_verifier
             .assert_domain(origin, request.rp_id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Get,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.as_str().trim_end_matches('/').to_owned(),
             cross_origin: None, //Some(false),
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let ctap2_response = self
             .authenticator
@@ -366,6 +371,47 @@ where
             authenticator_attachment: Some(self.authenticator().attachment_type()),
             client_extension_results: AuthenticatorExtensionsClientOutputs::default(),
         })
+    }
+
+    fn map_rk(&self, criteria: &Option<AuthenticatorSelectionCriteria>) -> bool {
+        match criteria.as_ref().unwrap_or(&Default::default()) {
+            // > If pkOptions.authenticatorSelection.residentKey:
+            // > is present and set to required
+            AuthenticatorSelectionCriteria {
+                resident_key: Some(ResidentKeyRequirement::Required),
+                ..
+            // > Let requireResidentKey be true.
+            } => true,
+
+            // > is present and set to preferred
+            // >  And the authenticator is capable of client-side credential storage modality
+            AuthenticatorSelectionCriteria {
+                resident_key: Some(ResidentKeyRequirement::Preferred),
+                ..
+            // > Let requireResidentKey be true.
+            } => true,
+
+            // > is present and set to preferred
+            // >  And is not capable of client-side credential storage modality, or if the client cannot determine authenticator capability,
+            // >  Let requireResidentKey be false.
+            // `passkey-rs` requires the authenticator to be capable of client-side credential storage modality,
+            // so we do not need to check for this case.
+
+            // > is present and set to discouraged
+            AuthenticatorSelectionCriteria {
+                resident_key: Some(ResidentKeyRequirement::Discouraged),
+                ..
+            // > Let requireResidentKey be false.
+            } => false,
+
+            // > If pkOptions.authenticatorSelection.residentKey is not present
+            AuthenticatorSelectionCriteria {
+                resident_key: None,
+                require_resident_key,
+                ..
+            // > Let requireResidentKey be the value of pkOptions.authenticatorSelection.requireResidentKey.
+            } => *require_resident_key,
+        }
     }
 }
 
@@ -442,5 +488,82 @@ where
         }
 
         Ok(effective_domain)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use passkey_authenticator::{Authenticator, MemoryStore, MockUserValidationMethod};
+    use passkey_types::{
+        ctap2,
+        webauthn::{
+            AuthenticatorSelectionCriteria, ResidentKeyRequirement, UserVerificationRequirement,
+        },
+    };
+
+    use crate::Client;
+
+    #[test]
+    fn map_rk_maps_criteria_to_rk_bool() {
+        #[derive(Debug)]
+        struct TestCase {
+            resident_key: Option<ResidentKeyRequirement>,
+            require_resident_key: bool,
+            expected_rk: bool,
+        }
+
+        let test_cases = vec![
+            // require_resident_key fallbacks
+            TestCase {
+                resident_key: None,
+                require_resident_key: false,
+                expected_rk: false,
+            },
+            TestCase {
+                resident_key: None,
+                require_resident_key: true,
+                expected_rk: true,
+            },
+            // resident_key values
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Discouraged),
+                require_resident_key: false,
+                expected_rk: false,
+            },
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Preferred),
+                require_resident_key: false,
+                expected_rk: true,
+            },
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Required),
+                require_resident_key: false,
+                expected_rk: true,
+            },
+            // resident_key overrides require_resident_key
+            TestCase {
+                resident_key: Some(ResidentKeyRequirement::Discouraged),
+                require_resident_key: true,
+                expected_rk: false,
+            },
+        ];
+
+        for test_case in test_cases {
+            let criteria = AuthenticatorSelectionCriteria {
+                resident_key: test_case.resident_key,
+                require_resident_key: test_case.require_resident_key,
+                user_verification: UserVerificationRequirement::Discouraged,
+                authenticator_attachment: None,
+            };
+            let client = Client::new(Authenticator::new(
+                ctap2::Aaguid::new_empty(),
+                MemoryStore::new(),
+                MockUserValidationMethod::new(),
+            ));
+
+            let result = client.map_rk(&Some(criteria));
+
+            assert_eq!(result, test_case.expected_rk, "{:?}", test_case);
+        }
     }
 }
