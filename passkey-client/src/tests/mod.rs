@@ -54,8 +54,7 @@ fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
     let mut user_mock = MockUserValidationMethod::new();
     user_mock
         .expect_is_verification_enabled()
-        .returning(|| Some(true))
-        .times(times + 1);
+        .returning(|| Some(true));
     user_mock
         .expect_check_user()
         .with(
@@ -70,10 +69,7 @@ fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
             })
         })
         .times(times);
-    user_mock
-        .expect_is_presence_enabled()
-        .returning(|| true)
-        .times(1);
+    user_mock.expect_is_presence_enabled().returning(|| true);
     user_mock
 }
 

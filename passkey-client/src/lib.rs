@@ -366,6 +366,8 @@ where
     }
 
     fn map_rk(&self, criteria: &Option<AuthenticatorSelectionCriteria>) -> bool {
+        let supports_rk = self.authenticator.get_info().options.is_some_and(|o| o.rk);
+
         match criteria.as_ref().unwrap_or(&Default::default()) {
             // > If pkOptions.authenticatorSelection.residentKey:
             // > is present and set to required
@@ -376,18 +378,14 @@ where
             } => true,
 
             // > is present and set to preferred
-            // >  And the authenticator is capable of client-side credential storage modality
             AuthenticatorSelectionCriteria {
                 resident_key: Some(ResidentKeyRequirement::Preferred),
                 ..
-            // > Let requireResidentKey be true.
-            } => true,
-
-            // > is present and set to preferred
-            // >  And is not capable of client-side credential storage modality, or if the client cannot determine authenticator capability,
-            // >  Let requireResidentKey be false.
-            // `passkey-rs` requires the authenticator to be capable of client-side credential storage modality,
-            // so we do not need to check for this case.
+            // >  And the authenticator is capable of client-side credential storage modality
+            //    > Let requireResidentKey be true.
+            // >  And the authenticator is not capable of client-side credential storage modality, or if the client cannot determine authenticator capability,
+            //    > Let requireResidentKey be false.
+            } => supports_rk,
 
             // > is present and set to discouraged
             AuthenticatorSelectionCriteria {
@@ -550,7 +548,7 @@ mod test {
             let client = Client::new(Authenticator::new(
                 ctap2::Aaguid::new_empty(),
                 MemoryStore::new(),
-                MockUserValidationMethod::new(),
+                MockUserValidationMethod::verified_user(0),
             ));
 
             let result = client.map_rk(&Some(criteria));
