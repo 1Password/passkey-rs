@@ -322,7 +322,7 @@ impl PublicKeyCredentialParameters {
 /// <https://w3c.github.io/webauthn/#dictdef-authenticatorselectioncriteria>
 ///
 /// [Relying Parties]: https://w3c.github.io/webauthn/#webauthn-relying-party
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[typeshare]
 pub struct AuthenticatorSelectionCriteria {

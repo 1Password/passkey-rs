@@ -61,10 +61,10 @@ impl MockUserValidationMethod {
     /// Sets up the mock for returning true for the verification.
     pub fn verified_user(times: usize) -> Self {
         let mut user_mock = MockUserValidationMethod::new();
+        user_mock.expect_is_presence_enabled().returning(|| true);
         user_mock
             .expect_is_verification_enabled()
-            .returning(|| Some(true))
-            .times(times);
+            .returning(|| Some(true));
         user_mock
             .expect_check_user()
             .with(
