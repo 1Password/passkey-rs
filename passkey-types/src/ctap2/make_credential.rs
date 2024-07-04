@@ -1,15 +1,13 @@
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorMakeCredential>
 
+use ciborium::{Value, cbor};
 use serde::{Deserialize, Serialize};
 
 use crate::{Bytes, ctap2::AuthenticatorData, webauthn};
 
 #[cfg(doc)]
-use {
-    crate::webauthn::{
-        CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
-    },
-    ciborium::value::Value,
+use crate::webauthn::{
+    CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
 };
 
 use super::extensions::{AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs, HmacGetSecretInput};
@@ -272,7 +270,7 @@ serde_workaround! {
         // TODO: Change to a flattened enum when `content, type` serde enums can use numbers as
         // the keys
         #[serde(rename = 0x03)]
-        pub att_stmt: ciborium::value::Value,
+        pub att_stmt: Value,
 
         /// Indicates whether an enterprise attestation was returned for this credential.
         /// If `ep_att` is absent or present and set to false, then an enterprise attestation was not returned.
@@ -293,6 +291,31 @@ serde_workaround! {
         /// Clients MUST treat an empty map the same as an omitted field.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
         pub unsigned_extension_outputs: Option<UnsignedExtensionOutputs>,
+    }
+}
+
+impl Response {
+    // Note: Technically the authenticator response should be a CBOR object, but we add this method instead
+    // for backwards compatibility with previous versions of this library.
+    // [WebAuthn]: Return the attestation object as a CBOR map with the following syntax, filled in with variables initialized by this algorithm
+
+    /// Convert response into a CBOR encoded byte array.
+    pub fn as_bytes(&self) -> Bytes {
+        let mut attestation_object = Vec::with_capacity(128);
+        // SAFETY: The Results here are from serializing all the internals of `cbor!` into `ciborium::Value`
+        // then serializing said value to bytes. The unwraps here are safe because it would otherwise be
+        // programmer error.
+        // TODO: Create strong attestation type definitions, part of CTAP2
+        let attestation_object_value = cbor!({
+               // TODO: Follow preference and/or implement AnonCA https://w3c.github.io/webauthn/#anonymization-ca
+               "fmt" => "none",
+                "attStmt" => {},
+                // Explicitly define these fields as bytes since specialization is still fairly far
+               "authData" => Value::Bytes(self.auth_data.to_vec()),
+        })
+        .unwrap();
+        ciborium::ser::into_writer(&attestation_object_value, &mut attestation_object).unwrap();
+        attestation_object.into()
     }
 }
 
