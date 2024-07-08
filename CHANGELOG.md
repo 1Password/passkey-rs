@@ -17,6 +17,8 @@
 
 - Changed: The `Client` no longer hardcodes the UV value sent to the `Authenticator` ([#22](https://github.com/1Password/passkey-rs/pull/22)).
 - Changed: The `Client` no longer hardcodes the RK value sent to the `Authenticator` ([#27](https://github.com/1Password/passkey-rs/pull/27)).
+- Added: The `Client` now has the ability to adjust the response for quirky relying parties
+	when a fully featured response would break their server side validation. ([#31](https://github.com/1Password/passkey-rs/pull/31))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

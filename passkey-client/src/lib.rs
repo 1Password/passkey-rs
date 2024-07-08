@@ -31,6 +31,9 @@ use passkey_types::{
 use typeshare::typeshare;
 use url::Url;
 
+mod quirks;
+use quirks::QuirkyRp;
+
 #[cfg(test)]
 mod tests;
 
@@ -287,7 +290,9 @@ where
             client_extension_results: AuthenticatorExtensionsClientOutputs { cred_props },
         };
 
-        Ok(response)
+        // Sanitize output before sending it back to the RP
+        let maybe_quirky_rp = QuirkyRp::from_rp_id(rp_id);
+        Ok(maybe_quirky_rp.map_create_credential(response))
     }
 
     /// Authenticate a Webauthn request.
