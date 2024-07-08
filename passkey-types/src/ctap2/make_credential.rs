@@ -65,7 +65,7 @@ serde_workaround! {
         /// Parameters to influence authenticator operation, as specified in [`webauthn`].
         /// These parameters might be authenticator specific.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
-        pub extensions: Option<webauthn::AuthenticationExtensionsClientInputs>,
+        pub extensions: Option<ExtensionInputs>,
 
         /// Parameters to influence authenticator operation, see [`Options`] for more details.
         #[serde(rename = 0x07, default)]
@@ -198,6 +198,10 @@ impl Default for Options {
 const fn default_true() -> bool {
     true
 }
+
+/// All supported Authenticator extensions inputs during credential creation
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ExtensionInputs {}
 
 serde_workaround! {
     /// Upon successful creation of a credential, the authenticator returns an attestation object.

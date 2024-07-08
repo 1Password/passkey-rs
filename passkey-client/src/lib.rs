@@ -24,13 +24,14 @@ use passkey_types::{
     ctap2, encoding,
     webauthn::{
         self, AuthenticationExtensionsClientOutputs, AuthenticatorSelectionCriteria,
-        CredentialPropertiesOutput, ResidentKeyRequirement, UserVerificationRequirement,
+        ResidentKeyRequirement, UserVerificationRequirement,
     },
     Passkey,
 };
 use typeshare::typeshare;
 use url::Url;
 
+mod extensions;
 mod quirks;
 use quirks::QuirkyRp;
 
@@ -250,15 +251,9 @@ where
         let client_data_json_hash =
             client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
-        let cred_props =
-            if let Some(true) = request.extensions.as_ref().and_then(|ext| ext.cred_props) {
-                Some(CredentialPropertiesOutput {
-                    discoverable: Some(true), // Set to true because it is set in the Options of make_credential.
-                    authenticator_display_name: self.authenticator.display_name().cloned(),
-                })
-            } else {
-                None
-            };
+        let extension_request = request.extensions.and_then(|e| e.zip_contents());
+
+        let ctap_extensions = self.registration_extension_ctap2_input(extension_request.as_ref());
 
         let rk = self.map_rk(&request.authenticator_selection, &auth_info);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
@@ -275,7 +270,7 @@ where
                 user: request.user,
                 pub_key_cred_params,
                 exclude_list: request.exclude_credentials,
-                extensions: request.extensions,
+                extensions: ctap_extensions,
                 options: ctap2::make_credential::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
@@ -319,6 +314,9 @@ where
                 .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
         );
 
+        let client_extension_results =
+            self.registration_extension_outputs(extension_request.as_ref(), rk);
+
         let response = webauthn::CreatedPublicKeyCredential {
             id: encoding::base64url(credential_id.credential_id()),
             raw_id: credential_id.credential_id().to_vec().into(),
@@ -332,10 +330,7 @@ where
                 transports: auth_info.transports,
             },
             authenticator_attachment: Some(self.authenticator().attachment_type()),
-            client_extension_results: AuthenticationExtensionsClientOutputs {
-                cred_props,
-                prf: None,
-            },
+            client_extension_results,
         };
 
         // Sanitize output before sending it back to the RP
@@ -381,13 +376,15 @@ where
         let client_data_json_hash =
             client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
+        let ctap_extensions = self.auth_extension_ctap2_input(request.extensions.as_ref());
+
         let ctap2_response = self
             .authenticator
             .get_assertion(ctap2::get_assertion::Request {
                 rp_id: rp_id.to_owned(),
                 client_data_hash: client_data_json_hash.into(),
                 allow_list: request.allow_credentials,
-                extensions: request.extensions,
+                extensions: ctap_extensions,
                 options: ctap2::get_assertion::Options {
                     rk: true,
                     up: true,

@@ -28,6 +28,7 @@
 ### passkey-types
 
 - ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs.
+- ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs.
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

@@ -30,6 +30,20 @@ pub struct AuthenticationExtensionsClientInputs {
     pub prf: Option<AuthenticationExtensionsPrfInputs>,
 }
 
+impl AuthenticationExtensionsClientInputs {
+    /// Validates that there is at least one extension field that is `Some`
+    /// and that they are in turn not empty. If all fields are `None`
+    /// then this returns `None` as well.
+    pub fn zip_contents(self) -> Option<Self> {
+        let Self { cred_props, prf } = &self;
+
+        let has_cred_props = cred_props.is_some();
+        let has_prf = prf.is_some();
+
+        (has_cred_props || has_prf).then_some(self)
+    }
+}
+
 /// This is a dictionary containing the client extension output values for zero or more
 /// [WebAuthn Extensions].
 ///

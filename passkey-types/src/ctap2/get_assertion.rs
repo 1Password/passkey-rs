@@ -1,10 +1,9 @@
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorGetAssertion>
+use serde::{Deserialize, Serialize};
+
 use crate::{
     ctap2::AuthenticatorData,
-    webauthn::{
-        AuthenticationExtensionsClientInputs, PublicKeyCredentialDescriptor,
-        PublicKeyCredentialUserEntity,
-    },
+    webauthn::{PublicKeyCredentialDescriptor, PublicKeyCredentialUserEntity},
     Bytes,
 };
 
@@ -36,7 +35,7 @@ serde_workaround! {
         /// Parameters to influence authenticator operation. These parameters might be authenticator
         /// specific.
         #[serde(rename = 0x04, default, skip_serializing_if = Option::is_none)]
-        pub extensions: Option<AuthenticationExtensionsClientInputs>,
+        pub extensions: Option<ExtensionInputs>,
 
         /// Parameters to influence authenticator operation, see [`Options`] for more details.
         #[serde(rename = 0x05, default)]
@@ -52,6 +51,10 @@ serde_workaround! {
         pub pin_protocol: Option<u8>,
     }
 }
+
+/// All supported Authenticator extensions inputs during credential assertion
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ExtensionInputs {}
 
 serde_workaround! {
     /// Type returned from `Authenticator::get_assertion` on success.
