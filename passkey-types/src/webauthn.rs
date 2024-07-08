@@ -73,5 +73,5 @@ pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// This object is a map containing extension identifier → client extension output entries
     /// produced by the extension’s client extension processing.
     #[serde(default)]
-    pub client_extension_results: AuthenticatorExtensionsClientOutputs,
+    pub client_extension_results: AuthenticationExtensionsClientOutputs,
 }

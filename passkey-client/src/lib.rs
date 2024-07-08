@@ -23,7 +23,7 @@ use passkey_types::{
     crypto::sha256,
     ctap2, encoding,
     webauthn::{
-        self, AuthenticatorExtensionsClientOutputs, AuthenticatorSelectionCriteria,
+        self, AuthenticationExtensionsClientOutputs, AuthenticatorSelectionCriteria,
         CredentialPropertiesOutput, ResidentKeyRequirement, UserVerificationRequirement,
     },
     Passkey,
@@ -332,7 +332,10 @@ where
                 transports: auth_info.transports,
             },
             authenticator_attachment: Some(self.authenticator().attachment_type()),
-            client_extension_results: AuthenticatorExtensionsClientOutputs { cred_props },
+            client_extension_results: AuthenticationExtensionsClientOutputs {
+                cred_props,
+                prf: None,
+            },
         };
 
         // Sanitize output before sending it back to the RP
@@ -413,7 +416,7 @@ where
                 attestation_object: None,
             },
             authenticator_attachment: Some(self.authenticator().attachment_type()),
-            client_extension_results: AuthenticatorExtensionsClientOutputs::default(),
+            client_extension_results: AuthenticationExtensionsClientOutputs::default(),
         })
     }
 

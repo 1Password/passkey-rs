@@ -25,6 +25,10 @@
 	- `RpIdValidator::assert_domain` takes an `&Origin` instead of a `&Url`
 - ⚠ BREAKING: The collected client data will now have the android app signature as the origin when a request comes from an app directly. ([#32](https://github.com/1Password/passkey-rs/pull/27))
 
+### passkey-types
+
+- ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs.
+
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
 
