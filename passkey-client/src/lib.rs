@@ -212,7 +212,7 @@ where
                 None
             };
 
-        let rk = self.map_rk(&request.authenticator_selection);
+        let rk = self.map_rk(&request.authenticator_selection, &auth_info);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
             != Some(UserVerificationRequirement::Discouraged);
 
@@ -365,8 +365,12 @@ where
         })
     }
 
-    fn map_rk(&self, criteria: &Option<AuthenticatorSelectionCriteria>) -> bool {
-        let supports_rk = self.authenticator.get_info().options.is_some_and(|o| o.rk);
+    fn map_rk(
+        &self,
+        criteria: &Option<AuthenticatorSelectionCriteria>,
+        auth_info: &ctap2::get_info::Response,
+    ) -> bool {
+        let supports_rk = auth_info.options.as_ref().is_some_and(|o| o.rk);
 
         match criteria.as_ref().unwrap_or(&Default::default()) {
             // > If pkOptions.authenticatorSelection.residentKey:
@@ -545,13 +549,28 @@ mod test {
                 user_verification: UserVerificationRequirement::Discouraged,
                 authenticator_attachment: None,
             };
+            let auth_info = ctap2::get_info::Response {
+                versions: vec![],
+                extensions: None,
+                aaguid: ctap2::Aaguid::new_empty(),
+                options: Some(ctap2::get_info::Options {
+                    rk: true,
+                    uv: Some(true),
+                    up: true,
+                    plat: true,
+                    client_pin: None,
+                }),
+                max_msg_size: None,
+                pin_protocols: None,
+                transports: None,
+            };
             let client = Client::new(Authenticator::new(
                 ctap2::Aaguid::new_empty(),
                 MemoryStore::new(),
                 MockUserValidationMethod::verified_user(0),
             ));
 
-            let result = client.map_rk(&Some(criteria));
+            let result = client.map_rk(&Some(criteria), &auth_info);
 
             assert_eq!(result, test_case.expected_rk, "{:?}", test_case);
         }
