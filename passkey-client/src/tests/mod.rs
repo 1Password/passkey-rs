@@ -54,8 +54,7 @@ fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
     let mut user_mock = MockUserValidationMethod::new();
     user_mock
         .expect_is_verification_enabled()
-        .returning(|| Some(true))
-        .times(times + 1);
+        .returning(|| Some(true));
     user_mock
         .expect_check_user()
         .with(
@@ -70,10 +69,7 @@ fn uv_mock_with_creation(times: usize) -> MockUserValidationMethod {
             })
         })
         .times(times);
-    user_mock
-        .expect_is_presence_enabled()
-        .returning(|| true)
-        .times(1);
+    user_mock.expect_is_presence_enabled().returning(|| true);
     user_mock
 }
 
@@ -346,7 +342,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
     let mut options = webauthn::CredentialCreationOptions {
         public_key: good_credential_creation_options(),
     };
-    options.public_key.authenticator_selection = Some(webauthn::AuthenticatorSelectionCriteria {
+    options.public_key.authenticator_selection = Some(AuthenticatorSelectionCriteria {
         user_verification: UserVerificationRequirement::Required,
         authenticator_attachment: Default::default(),
         resident_key: Default::default(),
@@ -373,7 +369,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
     let mut options = webauthn::CredentialCreationOptions {
         public_key: good_credential_creation_options(),
     };
-    options.public_key.authenticator_selection = Some(webauthn::AuthenticatorSelectionCriteria {
+    options.public_key.authenticator_selection = Some(AuthenticatorSelectionCriteria {
         user_verification: UserVerificationRequirement::Discouraged,
         authenticator_attachment: Default::default(),
         resident_key: Default::default(),
