@@ -97,7 +97,7 @@ async fn create_and_authenticate() {
         public_key: good_credential_request_options(credential_id),
     };
     client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(origin, auth_options, None)
         .await
         .expect("failed to authenticate with freshly created credential");
 }
@@ -132,7 +132,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         public_key: good_credential_request_options(cred.raw_id),
     };
     let res = client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(origin, auth_options, None)
         .await
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
@@ -179,7 +179,7 @@ async fn create_and_authenticate_without_rp_id() {
         },
     };
     let res = client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(origin, auth_options, None)
         .await
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
@@ -214,7 +214,7 @@ async fn create_and_authenticate_without_cred_params() {
         public_key: good_credential_request_options(credential_id),
     };
     client
-        .authenticate(&origin, auth_options, None)
+        .authenticate(origin, auth_options, None)
         .await
         .expect("failed to authenticate with freshly created credential");
 }
@@ -223,26 +223,26 @@ async fn create_and_authenticate_without_cred_params() {
 fn validate_rp_id() -> Result<(), ParseError> {
     let client = RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER);
 
-    let example = "https://example.com".parse()?;
+    let example = Url::parse("https://example.com")?.into();
     let com_tld = client.assert_domain(&example, Some("com"));
     assert_eq!(com_tld, Err(WebauthnError::InvalidRpId));
 
-    let example_dots = "https://example...com".parse()?;
+    let example_dots = Url::parse("https://example...com")?.into();
     let bunch_of_dots = client.assert_domain(&example_dots, Some("...com"));
     assert_eq!(bunch_of_dots, Err(WebauthnError::InvalidRpId));
 
-    let future = "https://www.future.1password.com".parse()?;
+    let future = Url::parse("https://www.future.1password.com")?.into();
     let sub_domain_ignored = client.assert_domain(&future, Some("future.1password.com"));
     assert_eq!(sub_domain_ignored, Ok("future.1password.com"));
 
     let use_effective_domain = client.assert_domain(&future, None);
     assert_eq!(use_effective_domain, Ok("www.future.1password.com"));
 
-    let not_protected = "http://example.com".parse()?;
+    let not_protected = Url::parse("http://example.com")?.into();
     let not_https = client.assert_domain(&not_protected, Some("example.com"));
     assert_eq!(not_https, Err(WebauthnError::UnprotectedOrigin));
 
-    let localhost = "http://localhost:8080".parse()?;
+    let localhost = Url::parse("http://localhost:8080")?.into();
     let should_still_match = client.assert_domain(&localhost, Some("example.com"));
     assert_eq!(should_still_match, Err(WebauthnError::OriginRpMissmatch));
 
@@ -286,7 +286,7 @@ fn validate_domain_with_private_list_provider() -> Result<(), ParseError> {
     // Notice that, in this test, this is a legitimate origin/rp_id combination
     // We assert that this produces an error to prove that we are indeed using our
     // BrokenTLDProvider which always returns Err() regardless of the TLD.
-    let origin = "https://www.future.1password.com".parse()?;
+    let origin = Url::parse("https://www.future.1password.com")?.into();
     let rp_id = "future.1password.com";
     let result = client.assert_domain(&origin, Some(rp_id));
     assert_eq!(result, Err(WebauthnError::InvalidRpId));
@@ -351,7 +351,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
 
     // Act & Assert
     client
-        .register(&origin, options, None)
+        .register(origin, options, None)
         .await
         .expect("failed to register with options");
 }
@@ -378,7 +378,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
 
     // Act & Assert
     client
-        .register(&origin, options, None)
+        .register(origin, options, None)
         .await
         .expect("failed to register with options");
 }
