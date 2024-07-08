@@ -34,6 +34,12 @@ use url::Url;
 mod quirks;
 use quirks::QuirkyRp;
 
+#[cfg(feature = "android-asset-validation")]
+mod android;
+
+#[cfg(feature = "android-asset-validation")]
+pub use self::android::{valid_fingerprint, UnverifiedAssetLink, ValidationError};
+
 #[cfg(test)]
 mod tests;
 
