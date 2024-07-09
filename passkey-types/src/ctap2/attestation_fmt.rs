@@ -12,7 +12,7 @@ use crate::{
     ctap2::{Aaguid, Flags},
 };
 
-use super::{make_credential, Ctap2Error};
+use super::{get_assertion, make_credential, Ctap2Error};
 
 /// The authenticator data structure encodes contextual bindings made by the authenticator. These
 /// bindings are controlled by the authenticator itself, and derive their trust from the WebAuthn
@@ -94,6 +94,21 @@ impl AuthenticatorData {
     pub fn set_make_credential_extensions(
         mut self,
         extensions: Option<make_credential::SignedExtensionOutputs>,
+    ) -> Result<Self, Ctap2Error> {
+        let Some(ext) = extensions.and_then(|e| e.zip_contents()) else {
+            return Ok(self);
+        };
+
+        self.extensions =
+            Some(Value::serialized(&ext).map_err(|_| Ctap2Error::CborUnexpectedType)?);
+
+        Ok(self.set_flags(Flags::ED))
+    }
+
+    /// Set assertion authenticator extensions
+    pub fn set_assertion_extensions(
+        mut self,
+        extensions: Option<get_assertion::SignedExtensionOutputs>,
     ) -> Result<Self, Ctap2Error> {
         let Some(ext) = extensions.and_then(|e| e.zip_contents()) else {
             return Ok(self);
@@ -509,6 +524,20 @@ mod test {
         // Make credential with empty extension
         let make_auth_data = AuthenticatorData::new("1password.com", None)
             .set_make_credential_extensions(Some(make_credential::SignedExtensionOutputs {
+                hmac_secret: None,
+            }))
+            .expect("falsely tried to serialize");
+        assert!(!make_auth_data.flags.contains(Flags::ED));
+
+        // Get assertion with None
+        let make_auth_data = AuthenticatorData::new("1password.com", None)
+            .set_assertion_extensions(None)
+            .expect("falsely tried to serialize");
+        assert!(!make_auth_data.flags.contains(Flags::ED));
+
+        // Get assertion with empty extension
+        let make_auth_data = AuthenticatorData::new("1password.com", None)
+            .set_assertion_extensions(Some(get_assertion::SignedExtensionOutputs {
                 hmac_secret: None,
             }))
             .expect("falsely tried to serialize");

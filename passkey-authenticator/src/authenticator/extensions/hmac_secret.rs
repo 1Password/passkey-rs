@@ -1,7 +1,14 @@
 use std::ops::Not;
 
 use passkey_types::{
-    ctap2::{extensions::AuthenticatorPrfMakeOutputs, StatusCode},
+    crypto::hmac_sha256,
+    ctap2::{
+        extensions::{
+            AuthenticatorPrfGetOutputs, AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs,
+            AuthenticatorPrfValues, HmacSecretSaltOrOutput,
+        },
+        Ctap2Error, StatusCode, U2FError,
+    },
     rand::random_vec,
 };
 
@@ -31,6 +38,10 @@ impl HmacSecretConfig {
         Self {
             credentials: HmacSecretCredentialSupport::WithoutUv,
         }
+    }
+
+    fn supports_no_uv(&self) -> bool {
+        self.credentials.without_uv()
     }
 }
 
@@ -92,4 +103,76 @@ impl<S, U> Authenticator<S, U> {
             results: None,
         }))
     }
+
+    pub(super) fn get_prf(
+        &self,
+        credential_id: &[u8],
+        passkey_ext: Option<&passkey_types::StoredHmacSecret>,
+        salts: AuthenticatorPrfInputs,
+        uv: bool,
+    ) -> Result<Option<AuthenticatorPrfGetOutputs>, StatusCode> {
+        let Some(ref config) = self.extensions.hmac_secret else {
+            return Ok(None);
+        };
+
+        let hmac_creds = passkey_ext.ok_or(U2FError::InvalidParameter)?;
+
+        let Some(request) = select_salts(credential_id, salts) else {
+            return Ok(None);
+        };
+
+        let results = calculate_hmac_secret(hmac_creds, request, config, uv)?;
+
+        Ok(Some(AuthenticatorPrfGetOutputs {
+            results: AuthenticatorPrfValues {
+                first: results.first().try_into().unwrap(),
+                second: results.second().map(|b| b.try_into().unwrap()),
+            },
+        }))
+    }
+}
+
+fn calculate_hmac_secret(
+    hmac_creds: &passkey_types::StoredHmacSecret,
+    salts: HmacSecretSaltOrOutput,
+    config: &HmacSecretConfig,
+    uv: bool,
+) -> Result<HmacSecretSaltOrOutput, StatusCode> {
+    let cred_random = if uv {
+        &hmac_creds.cred_with_uv
+    } else {
+        hmac_creds
+            .cred_without_uv
+            .as_ref()
+            .ok_or(Ctap2Error::UserVerificationBlocked)?
+    };
+
+    let output1 = hmac_sha256(cred_random, salts.first());
+    let output2 = salts.second().and_then(|salt2| {
+        config
+            .supports_no_uv()
+            .then(|| hmac_sha256(cred_random, salt2))
+    });
+
+    let result = HmacSecretSaltOrOutput::new(output1, output2);
+
+    Ok(result)
+}
+
+fn select_salts(
+    credential_id: &[u8],
+    request: AuthenticatorPrfInputs,
+) -> Option<HmacSecretSaltOrOutput> {
+    if let Some(eval_by_cred) = request.eval_by_credential {
+        let eval = eval_by_cred
+            .into_iter()
+            .find(|(key, _)| key.as_slice() == credential_id);
+        if let Some((_, eval)) = eval {
+            return Some(HmacSecretSaltOrOutput::new(eval.first, eval.second));
+        }
+    }
+
+    let eval = request.eval?;
+
+    Some(HmacSecretSaltOrOutput::new(eval.first, eval.second))
 }

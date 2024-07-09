@@ -9,7 +9,10 @@
 //! [webauthn]: https://w3c.github.io/webauthn/#sctn-defined-extensions
 //! [AuthenticatorDisplayName]: https://w3c.github.io/webauthn/#dom-credentialpropertiesoutput-authenticatordisplayname
 
-use passkey_types::ctap2::{get_info, make_credential, StatusCode};
+use passkey_types::{
+    ctap2::{get_assertion, get_info, make_credential, StatusCode},
+    Passkey,
+};
 
 mod hmac_secret;
 pub use hmac_secret::{HmacSecretConfig, HmacSecretCredentialSupport};
@@ -48,6 +51,12 @@ pub(super) struct MakeExtensionOutputs {
     pub credential: passkey_types::CredentialExtensions,
 }
 
+#[derive(Default)]
+pub(super) struct GetExtensionOutputs {
+    pub signed: Option<get_assertion::SignedExtensionOutputs>,
+    pub unsigned: Option<get_assertion::UnsignedExtensionOutputs>,
+}
+
 impl<S, U> Authenticator<S, U> {
     pub(super) fn make_extensions(
         &self,
@@ -81,5 +90,34 @@ impl<S, U> Authenticator<S, U> {
         let hmac_secret = self.make_hmac_secret(should_build_hmac_secret);
 
         passkey_types::CredentialExtensions { hmac_secret }
+    }
+
+    pub(super) fn get_extensions(
+        &self,
+        passkey: &Passkey,
+        request: Option<get_assertion::ExtensionInputs>,
+        uv: bool,
+    ) -> Result<GetExtensionOutputs, StatusCode> {
+        let Some(ext) = request.and_then(get_assertion::ExtensionInputs::zip_contents) else {
+            return Ok(Default::default());
+        };
+
+        let prf = ext
+            .prf
+            .and_then(|salts| {
+                self.get_prf(
+                    &passkey.credential_id,
+                    passkey.extensions.hmac_secret.as_ref(),
+                    salts,
+                    uv,
+                )
+                .transpose()
+            })
+            .transpose()?;
+
+        Ok(GetExtensionOutputs {
+            signed: None,
+            unsigned: get_assertion::UnsignedExtensionOutputs { prf }.zip_contents(),
+        })
     }
 }
