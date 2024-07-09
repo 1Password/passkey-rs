@@ -23,8 +23,7 @@ use passkey_types::{
     crypto::sha256,
     ctap2, encoding,
     webauthn::{
-        self, AuthenticationExtensionsClientOutputs, AuthenticatorSelectionCriteria,
-        ResidentKeyRequirement, UserVerificationRequirement,
+        self, AuthenticatorSelectionCriteria, ResidentKeyRequirement, UserVerificationRequirement,
     },
     Passkey,
 };
@@ -322,8 +321,11 @@ where
                 .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
         );
 
-        let client_extension_results =
-            self.registration_extension_outputs(extension_request.as_ref(), rk);
+        let client_extension_results = self.registration_extension_outputs(
+            extension_request.as_ref(),
+            rk,
+            ctap2_response.unsigned_extension_outputs,
+        );
 
         let response = webauthn::CreatedPublicKeyCredential {
             id: encoding::base64url(credential_id.credential_id()),
@@ -408,6 +410,9 @@ where
             .await
             .map_err(Into::<WebauthnError>::into)?;
 
+        let client_extension_results =
+            self.auth_extension_outputs(ctap2_response.unsigned_extension_outputs);
+
         // SAFETY: This unwrap is safe because ctap2_response was created immedately
         // above and the postcondition of that function is that response.credential
         // will yield a credential. If none was found, we will have already returned
@@ -425,7 +430,7 @@ where
                 attestation_object: None,
             },
             authenticator_attachment: Some(self.authenticator().attachment_type()),
-            client_extension_results: AuthenticationExtensionsClientOutputs::default(),
+            client_extension_results,
         })
     }
 

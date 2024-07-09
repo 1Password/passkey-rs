@@ -46,6 +46,7 @@ where
         &self,
         request: Option<&AuthenticationExtensionsClientInputs>,
         rk: bool,
+        authenticator_response: Option<make_credential::UnsignedExtensionOutputs>,
     ) -> AuthenticationExtensionsClientOutputs {
         let cred_props = if let Some(true) = request.and_then(|ext| ext.cred_props) {
             Some(CredentialPropertiesOutput {
@@ -56,10 +57,12 @@ where
             None
         };
 
-        AuthenticationExtensionsClientOutputs {
-            cred_props,
-            prf: None,
-        }
+        // Handling the prf extension outputs.
+        let prf = authenticator_response
+            .and_then(|ext_out| ext_out.prf)
+            .map(Into::into);
+
+        AuthenticationExtensionsClientOutputs { cred_props, prf }
     }
 
     /// Create the extension inputs to be passed to an authenticator over CTAP2
@@ -70,5 +73,24 @@ where
         supported_extensions: &[get_info::Extension],
     ) -> Result<Option<get_assertion::ExtensionInputs>, WebauthnError> {
         prf::auth_prf_to_ctap2_input(request, supported_extensions)
+    }
+
+    /// Build the extension outputs for the WebAuthn client in an authentication request.
+    pub(super) fn auth_extension_outputs(
+        &self,
+        authenticator_response: Option<get_assertion::UnsignedExtensionOutputs>,
+    ) -> AuthenticationExtensionsClientOutputs {
+        // Handling the prf extension output.
+        // NOTE: currently very simple because prf is the only
+        // extension that we support for ctap2. When adding new extensions,
+        // take care to properly unpack all outputs to Options.
+        let prf = authenticator_response
+            .and_then(|ext_out| ext_out.prf)
+            .map(Into::into);
+
+        AuthenticationExtensionsClientOutputs {
+            prf,
+            ..Default::default()
+        }
     }
 }
