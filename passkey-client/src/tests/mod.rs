@@ -4,6 +4,8 @@ use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_types::{ctap2, rand::random_vec, Bytes};
 use url::{ParseError, Url};
 
+mod ext_prf;
+
 fn good_credential_creation_options() -> webauthn::PublicKeyCredentialCreationOptions {
     webauthn::PublicKeyCredentialCreationOptions {
         rp: webauthn::PublicKeyCredentialRpEntity {

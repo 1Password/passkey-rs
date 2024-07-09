@@ -8,7 +8,7 @@ impl<S: CredentialStore, U: UserValidationMethod> Authenticator<S, U> {
     pub fn get_info(&self) -> Response {
         Response {
             versions: vec!["FIDO_2_0".into(), "U2F_V2".into()],
-            extensions: None,
+            extensions: self.extensions.list_extensions(),
             aaguid: *self.aaguid(),
             options: Some(Options {
                 rk: true,

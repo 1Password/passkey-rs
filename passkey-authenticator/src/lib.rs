@@ -42,7 +42,7 @@ use p256::{
 use passkey_types::{ctap2::Ctap2Error, Bytes};
 
 pub use self::{
-    authenticator::Authenticator,
+    authenticator::{extensions, Authenticator},
     credential_store::{CredentialStore, MemoryStore},
     ctap2::Ctap2Api,
     u2f::U2fApi,
