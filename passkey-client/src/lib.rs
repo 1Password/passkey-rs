@@ -65,6 +65,10 @@ pub enum WebauthnError {
     InvalidRpId,
     /// Internal authenticator error whose value represents a `ctap2::StatusCode`
     AuthenticatorError(u8),
+    /// The operation is not supported.
+    NotSupportedError,
+    /// The string did not match the expected pattern.
+    SyntaxError,
 }
 
 impl WebauthnError {
@@ -254,7 +258,10 @@ where
 
         let extension_request = request.extensions.and_then(|e| e.zip_contents());
 
-        let ctap_extensions = self.registration_extension_ctap2_input(extension_request.as_ref());
+        let ctap_extensions = self.registration_extension_ctap2_input(
+            extension_request.as_ref(),
+            auth_info.extensions.as_deref().unwrap_or_default(),
+        )?;
 
         let rk = self.map_rk(&request.authenticator_selection, &auth_info);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
@@ -352,6 +359,7 @@ where
 
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
         let request = request.public_key;
+        let auth_info = self.authenticator().get_info();
 
         // TODO: Handle given timeout here, If the value is not within what we consider a reasonable range
         // override to our default
@@ -377,7 +385,10 @@ where
         let client_data_json_hash =
             client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
-        let ctap_extensions = self.auth_extension_ctap2_input(request.extensions.as_ref());
+        let ctap_extensions = self.auth_extension_ctap2_input(
+            &request,
+            auth_info.extensions.unwrap_or_default().as_slice(),
+        )?;
 
         let ctap2_response = self
             .authenticator
