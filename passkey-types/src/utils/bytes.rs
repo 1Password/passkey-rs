@@ -17,7 +17,7 @@ use super::encoding;
 ///
 /// It also supports deserializing from `base64` and `base64url` formatted strings.
 #[typeshare(transparent)]
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Hash)]
 #[repr(transparent)]
 pub struct Bytes(Vec<u8>);
 
@@ -38,6 +38,12 @@ impl DerefMut for Bytes {
 impl From<Vec<u8>> for Bytes {
     fn from(inner: Vec<u8>) -> Self {
         Bytes(inner)
+    }
+}
+
+impl From<&[u8]> for Bytes {
+    fn from(value: &[u8]) -> Self {
+        Bytes(value.to_vec())
     }
 }
 
@@ -152,6 +158,12 @@ impl<'de> Deserialize<'de> for Bytes {
                     buf.push(byte);
                 }
                 Ok(Bytes(buf))
+            }
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(Bytes(v.to_vec()))
             }
         }
         deserializer.deserialize_any(Base64Visitor)

@@ -9,6 +9,7 @@ mod attestation_fmt;
 mod error;
 mod flags;
 
+pub mod extensions;
 pub mod get_assertion;
 pub mod get_info;
 pub mod make_credential;

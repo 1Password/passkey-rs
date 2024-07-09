@@ -12,6 +12,8 @@ pub use crate::ctap2::make_credential::Options;
 #[cfg(doc)]
 use crate::webauthn::{CollectedClientData, PublicKeyCredentialRequestOptions};
 
+use super::extensions::{AuthenticatorPrfInputs, HmacGetSecretInput};
+
 serde_workaround! {
     /// While similar in structure to [`PublicKeyCredentialRequestOptions`],
     /// it is not completely identical, namely the presence of the `options` key.
@@ -54,7 +56,38 @@ serde_workaround! {
 
 /// All supported Authenticator extensions inputs during credential assertion
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct ExtensionInputs {}
+pub struct ExtensionInputs {
+    /// The input salts for fetching and deriving a symmetric secret.
+    ///
+    /// <https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#sctn-hmac-secret-extension>
+    #[serde(
+        rename = "hmac-secret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub hmac_secret: Option<HmacGetSecretInput>,
+
+    /// The direct input from a on-system client for the prf extension.
+    ///
+    /// The output from a request using the `prf` extension will not be signed
+    /// and will be un-encrypted.
+    /// This input should already be hashed by the client.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prf: Option<AuthenticatorPrfInputs>,
+}
+
+impl ExtensionInputs {
+    /// Validates that there is at least one extension field that is `Some`.
+    /// If all fields are `None` then this returns `None` as well.
+    pub fn zip_contents(self) -> Option<Self> {
+        let Self { hmac_secret, prf } = &self;
+
+        let has_hmac_secret = hmac_secret.is_some();
+        let has_prf = prf.is_some();
+
+        (has_hmac_secret || has_prf).then_some(self)
+    }
+}
 
 serde_workaround! {
     /// Type returned from `Authenticator::get_assertion` on success.

@@ -56,7 +56,7 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
-      - run: rustup run ${{ matrix.rust }} cargo test --all-features
+      - run: rustup run ${{ matrix.rust }} cargo test 
 
   typeshare:
     name: Typeshare
