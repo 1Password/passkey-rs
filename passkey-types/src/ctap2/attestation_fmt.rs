@@ -12,6 +12,8 @@ use crate::{
     ctap2::{Aaguid, Flags},
 };
 
+use super::{make_credential, Ctap2Error};
+
 /// The authenticator data structure encodes contextual bindings made by the authenticator. These
 /// bindings are controlled by the authenticator itself, and derive their trust from the WebAuthn
 /// Relying Party's assessment of the security properties of the authenticator. In one extreme case,
@@ -86,6 +88,21 @@ impl AuthenticatorData {
     /// Get read access to the RP ID hash
     pub fn rp_id_hash(&self) -> &[u8] {
         &self.rp_id_hash
+    }
+
+    /// Set make credential authenticator extensions
+    pub fn set_make_credential_extensions(
+        mut self,
+        extensions: Option<make_credential::SignedExtensionOutputs>,
+    ) -> Result<Self, Ctap2Error> {
+        let Some(ext) = extensions.and_then(|e| e.zip_contents()) else {
+            return Ok(self);
+        };
+
+        self.extensions =
+            Some(Value::serialized(&ext).map_err(|_| Ctap2Error::CborUnexpectedType)?);
+
+        Ok(self.set_flags(Flags::ED))
     }
 }
 
@@ -479,5 +496,22 @@ mod test {
             AuthenticatorData::from_slice(&auth_data_bytes).expect("could not deserialize");
 
         assert_eq!(expected, auth_data);
+    }
+
+    #[test]
+    fn add_empty_extensions_does_not_add_flag() {
+        // Make credential with None
+        let make_auth_data = AuthenticatorData::new("1password.com", None)
+            .set_make_credential_extensions(None)
+            .expect("falsely tried to serialize");
+        assert!(!make_auth_data.flags.contains(Flags::ED));
+
+        // Make credential with empty extension
+        let make_auth_data = AuthenticatorData::new("1password.com", None)
+            .set_make_credential_extensions(Some(make_credential::SignedExtensionOutputs {
+                hmac_secret: None,
+            }))
+            .expect("falsely tried to serialize");
+        assert!(!make_auth_data.flags.contains(Flags::ED));
     }
 }
