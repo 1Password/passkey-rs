@@ -174,6 +174,7 @@ mod tests {
             rp_id: "example.com".into(),
             user_handle: None,
             counter: None,
+            extensions: Default::default(),
         }
     }
 

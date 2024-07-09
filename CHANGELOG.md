@@ -30,6 +30,7 @@
 - ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs.
 - ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs.
 - ⚠ BREAKING: Add unsigned extension outputs for the CTAP authenticator outputs.
+- ⚠ BREAKING: Add ability for `Passkey` to store associated extension data.
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

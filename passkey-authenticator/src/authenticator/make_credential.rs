@@ -108,6 +108,7 @@ where
             credential_id: credential_id.into(),
             user_handle: input.options.rk.then_some(input.user.id.clone()),
             counter: self.make_credentials_with_signature_counter.then_some(0),
+            extensions: Default::default(),
         };
 
         // 10. If "rk" in options parameter is set to true:
@@ -232,6 +233,7 @@ mod tests {
             credential_id: cred_id.clone(),
             user_handle: Some(response.user.id.clone()),
             counter: None,
+            extensions: Default::default(),
         };
         let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
         let user_mock = MockUserValidationMethod::verified_user(1);
