@@ -95,7 +95,12 @@ pub struct PublicKeyCredentialRequestOptions {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "ignore_unknown_opt_vec"
+        deserialize_with = "ignore_unknown_opt_vec",
+        // On older versions of google play services, hybrid requests were not being transcribed
+        // correctly from the CTAP format to the webauthn format as is required by the credential
+        // manager API. This alias is present to mitigate the issue on devices that may not have
+        // received the update. It will be removed at a later date so do not rely on it.
+        alias = "allowList"
     )]
     pub allow_credentials: Option<Vec<PublicKeyCredentialDescriptor>>,
 
