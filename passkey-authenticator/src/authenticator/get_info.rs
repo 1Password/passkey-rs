@@ -1,4 +1,4 @@
-use passkey_types::ctap2::get_info::{Options, Response};
+use passkey_types::ctap2::get_info::{Options, Response, Version};
 
 use crate::{Authenticator, CredentialStore, UserValidationMethod};
 
@@ -7,7 +7,7 @@ impl<S: CredentialStore, U: UserValidationMethod> Authenticator<S, U> {
     /// supported protocol versions, supported extensions, AAGUID of the device, and its capabilities.
     pub fn get_info(&self) -> Response {
         Response {
-            versions: vec!["FIDO_2_0".into(), "U2F_V2".into()],
+            versions: vec![Version::FIDO_2_0, Version::U2F_V2],
             extensions: self.extensions.list_extensions(),
             aaguid: *self.aaguid(),
             options: Some(Options {

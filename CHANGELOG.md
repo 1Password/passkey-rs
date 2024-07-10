@@ -31,6 +31,7 @@
 - ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs.
 - ⚠ BREAKING: Add unsigned extension outputs for the CTAP authenticator outputs.
 - ⚠ BREAKING: Add ability for `Passkey` to store associated extension data.
+- ⚠ BREAKING: Change version and extension information in `ctap2::get_info` from strings to enums.
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
