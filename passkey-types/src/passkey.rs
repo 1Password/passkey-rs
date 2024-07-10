@@ -96,7 +96,7 @@ pub struct Passkey {
 }
 
 impl Passkey {
-    /// Standardised way to "upgrade" a U2F register request into a passkey
+    /// Standardized way to "upgrade" a U2F register request into a passkey
     pub fn from_u2f_register_response(
         request: &RegisterRequest,
         response: &RegisterResponse,
@@ -113,7 +113,7 @@ impl Passkey {
         }
     }
 
-    /// Updgrade a U2F Authentication Request into a Passkey
+    /// Upgrade a U2F Authentication Request into a Passkey
     pub fn from_u2f_auth_request(
         request: &AuthenticationRequest,
         counter: u32,

@@ -175,7 +175,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     #[test]
-    fn deserialize_many_formats_into_base64urlvec() {
+    fn deserialize_many_formats_into_base64url_vec() {
         let json = r#"{
             "array": [101,195,212,161,191,112,75,189,152,52,121,17,62,113,114,164],
             "base64url": "ZcPUob9wS72YNHkRPnFypA",

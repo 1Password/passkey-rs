@@ -40,7 +40,7 @@ serde_workaround! {
 
         /// List of supported PIN Protocol versions.
         ///
-        /// If we ever end up with more than 256 pin protocols, an enhacement request should be filed.
+        /// If we ever end up with more than 256 pin protocols, an enhancement request should be filed.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
         pub pin_protocols: Option<Vec<u8>>,
 
