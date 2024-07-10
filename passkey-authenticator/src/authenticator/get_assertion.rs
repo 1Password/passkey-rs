@@ -160,26 +160,32 @@ where
 
 #[cfg(test)]
 mod tests {
-    use coset::{CborSerializable, CoseKey};
     use passkey_types::{
         ctap2::{
-            get_assertion::{Options, Request},
+            get_assertion::{ExtensionInputs, Options, Request},
             Aaguid,
         },
-        Passkey,
+        rand::random_vec,
+        Passkey, StoredHmacSecret,
     };
 
-    use crate::{Authenticator, MockUserValidationMethod};
+    use crate::{
+        extensions::{self, prf_eval_request},
+        Authenticator, MockUserValidationMethod,
+    };
 
-    fn create_passkey() -> Passkey {
-        Passkey {
-            key: private_key_for_testing(),
-            credential_id: Default::default(),
-            rp_id: "example.com".into(),
-            user_handle: None,
-            counter: None,
-            extensions: Default::default(),
+    fn create_passkey(hmac_secret: Option<Vec<u8>>) -> Passkey {
+        let builder = Passkey::mock("example.com".into());
+
+        if let Some(hs) = hmac_secret {
+            builder.hmac_secret(StoredHmacSecret {
+                cred_with_uv: hs,
+                cred_without_uv: None,
+            })
+        } else {
+            builder
         }
+        .build()
     }
 
     fn good_request() -> Request {
@@ -198,27 +204,13 @@ mod tests {
         }
     }
 
-    fn private_key_for_testing() -> CoseKey {
-        // Hardcoded CoseKey for testing purposes
-        let bytes = vec![
-            166, 1, 2, 3, 38, 32, 1, 33, 88, 32, 200, 30, 161, 146, 196, 121, 165, 149, 92, 232,
-            49, 48, 245, 253, 73, 234, 204, 3, 209, 153, 166, 77, 59, 232, 70, 16, 206, 77, 84,
-            156, 28, 77, 34, 88, 32, 82, 141, 165, 28, 241, 82, 31, 33, 183, 206, 29, 91, 93, 111,
-            216, 216, 26, 62, 211, 49, 191, 86, 238, 118, 241, 124, 131, 106, 214, 95, 170, 160,
-            35, 88, 32, 147, 171, 4, 49, 68, 170, 47, 51, 74, 211, 94, 40, 212, 244, 95, 55, 154,
-            92, 171, 241, 0, 55, 84, 151, 79, 244, 151, 198, 135, 45, 97, 238,
-        ];
-
-        CoseKey::from_slice(bytes.as_slice()).unwrap()
-    }
-
     #[tokio::test]
     async fn get_assertion_increments_signature_counter_when_counter_is_some() {
         // Arrange
         let request = good_request();
         let store = Some(Passkey {
             counter: Some(9000),
-            ..create_passkey()
+            ..create_passkey(None)
         });
         let mut authenticator = Authenticator::new(
             Aaguid::new_empty(),
@@ -239,5 +231,122 @@ mod tests {
                 .unwrap(),
             9001
         );
+    }
+
+    #[tokio::test]
+    async fn unsupported_extension_with_request_gives_no_ext_output() {
+        let shared_store = Some(create_passkey(None));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+        let request = Request {
+            extensions: Some(ExtensionInputs {
+                prf: Some(prf_eval_request(Some(random_vec(32)))),
+                ..Default::default()
+            }),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .get_assertion(request)
+            .await
+            .expect("error happened while trying to authenticate a credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
+        let shared_store = Some(create_passkey(None));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+        let request = Request {
+            extensions: Some(ExtensionInputs::default()),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .get_assertion(request)
+            .await
+            .expect("error happened while trying to authenticate a credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn supported_extension_with_empty_request_gives_no_ext_output() {
+        let shared_store = Some(create_passkey(Some(random_vec(32))));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = Request {
+            extensions: Some(ExtensionInputs::default()),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .get_assertion(request)
+            .await
+            .expect("error happened while trying to authenticate a credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn supported_extension_without_extension_request_gives_no_ext_output() {
+        let shared_store = Some(create_passkey(Some(random_vec(32))));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = good_request();
+
+        let res = authenticator
+            .get_assertion(request)
+            .await
+            .expect("error happened while trying to authenticate a credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn supported_extension_with_request_gives_output() {
+        let shared_store = Some(create_passkey(Some(random_vec(32))));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = Request {
+            extensions: Some(ExtensionInputs {
+                prf: Some(prf_eval_request(Some(random_vec(32)))),
+                ..Default::default()
+            }),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .get_assertion(request)
+            .await
+            .expect("error happened while trying to authenticate a credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_some());
+        assert!(res.unsigned_extension_outputs.unwrap().prf.is_some());
     }
 }

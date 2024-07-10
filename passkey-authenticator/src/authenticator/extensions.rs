@@ -17,6 +17,9 @@ use passkey_types::{
 mod hmac_secret;
 pub use hmac_secret::{HmacSecretConfig, HmacSecretCredentialSupport};
 
+#[cfg(test)]
+pub(crate) use hmac_secret::tests::prf_eval_request;
+
 #[cfg(docs)]
 use passkey_types::webauthn;
 
@@ -61,14 +64,15 @@ impl<S, U> Authenticator<S, U> {
     pub(super) fn make_extensions(
         &self,
         request: Option<make_credential::ExtensionInputs>,
+        uv: bool,
     ) -> Result<MakeExtensionOutputs, StatusCode> {
         let request = request.and_then(|r| r.zip_contents());
         let pk_extensions = self.make_passkey_extensions(request.as_ref());
 
         let prf = request
             .and_then(|ext| {
-                ext.prf.and_then(|_input| {
-                    self.make_prf(pk_extensions.hmac_secret.as_ref())
+                ext.prf.and_then(|input| {
+                    self.make_prf(pk_extensions.hmac_secret.as_ref(), input, uv)
                         .transpose()
                 })
             })

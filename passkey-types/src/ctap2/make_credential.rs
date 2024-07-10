@@ -293,16 +293,30 @@ pub struct SignedExtensionOutputs {
         skip_serializing_if = "Option::is_none"
     )]
     pub hmac_secret: Option<bool>,
+
+    /// Outputs the symmetric secrets after successfull processing. The output MUST be encrypted.
+    ///
+    /// TODO: link to the hmac-secret-mc extension in the spec once it's published.
+    #[serde(
+        rename = "hmac-secret-mc",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub hmac_secret_mc: Option<Bytes>,
 }
 
 impl SignedExtensionOutputs {
     /// Validates that there is at least one extension field that is `Some`.
     /// If all fields are `None` then this returns `None` as well.
     pub fn zip_contents(self) -> Option<Self> {
-        let Self { hmac_secret } = &self;
+        let Self {
+            hmac_secret,
+            hmac_secret_mc,
+        } = &self;
         let has_hmac_secret = hmac_secret.is_some();
+        let has_hmac_secret_mc = hmac_secret_mc.is_some();
 
-        (has_hmac_secret).then_some(self)
+        (has_hmac_secret || has_hmac_secret_mc).then_some(self)
     }
 }
 

@@ -525,6 +525,7 @@ mod test {
         let make_auth_data = AuthenticatorData::new("1password.com", None)
             .set_make_credential_extensions(Some(make_credential::SignedExtensionOutputs {
                 hmac_secret: None,
+                hmac_secret_mc: None,
             }))
             .expect("falsely tried to serialize");
         assert!(!make_auth_data.flags.contains(Flags::ED));

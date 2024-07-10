@@ -5,6 +5,12 @@ use crate::{ctap2::make_credential as ctap2, webauthn, Bytes};
 use coset::CoseKey;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+#[cfg(feature = "mocks")]
+mod mock;
+
+#[cfg(feature = "mocks")]
+pub use self::mock::PasskeyBuilder;
+
 /// The private WebAuthn credential containing all relevant required and optional information for an
 /// authentication ceremony.
 ///
@@ -152,6 +158,15 @@ impl Passkey {
         };
 
         (passkey, user_entity, rp)
+    }
+
+    /// Create a passkey mock builder.
+    ///
+    /// The default credential Id length is 16, change it with the [`PasskeyBuilder::credential_id`]
+    /// method.
+    #[cfg(feature = "mocks")]
+    pub fn mock(rp_id: String) -> PasskeyBuilder {
+        PasskeyBuilder::new(rp_id)
     }
 }
 

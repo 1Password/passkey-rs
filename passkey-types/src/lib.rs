@@ -45,3 +45,6 @@ pub use self::{
         crypto, encoding, rand,
     },
 };
+
+#[cfg(feature = "mocks")]
+pub use self::passkey::PasskeyBuilder;
