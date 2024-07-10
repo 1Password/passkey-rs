@@ -22,7 +22,22 @@ pub(super) fn registration_prf_to_ctap2_input(
     request: Option<&AuthenticationExtensionsClientInputs>,
     supported_extensions: &[get_info::Extension],
 ) -> Result<Option<make_credential::ExtensionInputs>> {
-    make_ctap_extension(request.and_then(|r| r.prf.as_ref()), supported_extensions)
+    let maybe_prf = make_ctap_extension(
+        request.and_then(|r| r.prf.as_ref()),
+        supported_extensions,
+        true,
+    )?;
+
+    if maybe_prf.is_none() {
+        // Then try prfAlreadyHashed
+        make_ctap_extension(
+            request.and_then(|r| r.prf_already_hashed.as_ref()),
+            supported_extensions,
+            false,
+        )
+    } else {
+        Ok(maybe_prf)
+    }
 }
 
 fn validate_no_eval_by_cred(
@@ -39,10 +54,27 @@ fn validate_no_eval_by_cred(
 
 fn convert_eval_to_ctap(
     eval: &AuthenticationExtensionsPrfValues,
+    should_hash: bool,
 ) -> Result<AuthenticatorPrfValues> {
-    let (first, second) = {
+    let (first, second) = if should_hash {
         let salt1 = make_salt(&eval.first);
         let salt2 = eval.second.as_ref().map(make_salt);
+        (salt1, salt2)
+    } else {
+        let salt1 = eval
+            .first
+            .as_slice()
+            .try_into()
+            .map_err(|_| WebauthnError::ValidationError)?;
+        let salt2 = eval
+            .second
+            .as_ref()
+            .map(|b| {
+                b.as_slice()
+                    .try_into()
+                    .map_err(|_| WebauthnError::ValidationError)
+            })
+            .transpose()?;
         (salt1, salt2)
     };
 
@@ -52,6 +84,7 @@ fn convert_eval_to_ctap(
 fn make_ctap_extension(
     prf: Option<&AuthenticationExtensionsPrfInputs>,
     supported_extensions: &[get_info::Extension],
+    should_hash: bool,
 ) -> Result<Option<make_credential::ExtensionInputs>> {
     // Check if PRF extension input is provided and process it.
     //
@@ -72,7 +105,7 @@ fn make_ctap_extension(
             // Only create prf extension input if it's enabled on the authenticator.
             prf.eval
                 .as_ref()
-                .map(convert_eval_to_ctap)
+                .map(|values| convert_eval_to_ctap(values, should_hash))
                 .transpose()
                 .map(|eval| AuthenticatorPrfInputs {
                     eval,
@@ -96,17 +129,34 @@ pub(super) fn auth_prf_to_ctap2_input(
     request: &PublicKeyCredentialRequestOptions,
     supported_extensions: &[get_info::Extension],
 ) -> Result<Option<get_assertion::ExtensionInputs>> {
-    get_ctap_extension(
+    let maybe_prf = get_ctap_extension(
         request.allow_credentials.as_deref(),
         request.extensions.as_ref().and_then(|ext| ext.prf.as_ref()),
         supported_extensions,
-    )
+        true,
+    )?;
+
+    if maybe_prf.is_none() {
+        // Then try prfAlreadyHashed
+        get_ctap_extension(
+            request.allow_credentials.as_deref(),
+            request
+                .extensions
+                .as_ref()
+                .and_then(|ext| ext.prf_already_hashed.as_ref()),
+            supported_extensions,
+            false,
+        )
+    } else {
+        Ok(maybe_prf)
+    }
 }
 
 fn get_ctap_extension(
     allow_credentials: Option<&[PublicKeyCredentialDescriptor]>,
     prf_input: Option<&AuthenticationExtensionsPrfInputs>,
     supported_extensions: &[get_info::Extension],
+    should_hash: bool,
 ) -> Result<Option<get_assertion::ExtensionInputs>> {
     // Check if the authenticator supports prf before continuing
     if !supported_extensions.contains(&get_info::Extension::Prf) {
@@ -163,13 +213,17 @@ fn get_ctap_extension(
     let new_eval_by_cred = precomputed_eval_cred
         .map(|map| {
             map.into_iter()
-                .map(|(k, values)| convert_eval_to_ctap(values).map(|v| (k, v)))
+                .map(|(k, values)| convert_eval_to_ctap(values, should_hash).map(|v| (k, v)))
                 .collect::<Result<HashMap<_, _>>>()
         })
         .transpose()?;
 
     let eval = prf_input
-        .and_then(|prf| prf.eval.as_ref().map(convert_eval_to_ctap))
+        .and_then(|prf| {
+            prf.eval
+                .as_ref()
+                .map(|prf_values| convert_eval_to_ctap(prf_values, should_hash))
+        })
         .transpose()?;
 
     let prf = prf_input.map(|_| AuthenticatorPrfInputs {

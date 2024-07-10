@@ -68,6 +68,8 @@ pub enum WebauthnError {
     NotSupportedError,
     /// The string did not match the expected pattern.
     SyntaxError,
+    /// The input failed validation
+    ValidationError,
 }
 
 impl WebauthnError {
