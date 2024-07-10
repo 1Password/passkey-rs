@@ -141,6 +141,8 @@ where
             auth_data,
             fmt: "None".into(),
             att_stmt: vec![0xa0].into(), // CBOR equivalent to empty map
+            ep_att: None,
+            large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,
         };
 

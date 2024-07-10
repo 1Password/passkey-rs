@@ -154,6 +154,8 @@ where
                 name: "".into(),
             }),
             number_of_credentials: None,
+            user_selected: None,
+            large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,
         })
     }
