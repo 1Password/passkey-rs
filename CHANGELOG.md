@@ -32,6 +32,8 @@
 - ⚠ BREAKING: Add unsigned extension outputs for the CTAP authenticator outputs.
 - ⚠ BREAKING: Add ability for `Passkey` to store associated extension data.
 - ⚠ BREAKING: Change version and extension information in `ctap2::get_info` from strings to enums.
+- ⚠ BREAKING: Add missing CTAP2.1 fields to `make_credential::Response` and `get_assertion::Response`.
+- Make the `PublicKeyCredential` outputs equatable in swift.
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

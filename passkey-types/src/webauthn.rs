@@ -37,7 +37,7 @@ impl AuthenticatorResponse for AuthenticatorAttestationResponse {}
 /// <https://w3c.github.io/webauthn/#iface-pkcredential>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[typeshare(swift = "Equatable", swiftGenericConstraints = "R: Equatable")]
 pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// The id contains the credential ID, chosen by the authenticator. This is usually the base64url
     /// encoded data of [Self::raw_id]

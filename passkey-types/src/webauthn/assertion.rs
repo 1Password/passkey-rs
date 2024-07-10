@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// The response to the successful authentication of a [`PublicKeyCredential`]
-#[typeshare]
+#[typeshare(swift = "Equatable")]
 pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAssertionResponse>;
 
 /// This type supplies `get()` requests with the data it needs to generate an assertion.
@@ -183,7 +183,7 @@ pub struct CredentialRequestOptions {
 /// <https://w3c.github.io/webauthn/#iface-authenticatorassertionresponse>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[typeshare(swift = "Equatable")]
 pub struct AuthenticatorAssertionResponse {
     /// This attribute contains the JSON serialization of [`CollectedClientData`] passed to the
     /// authenticator by the client in order to generate this credential. The exact JSON serialization
