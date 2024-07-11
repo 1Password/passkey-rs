@@ -17,6 +17,7 @@ workspace = true
 [features]
 tokio = ["dep:tokio"]
 testable = ["dep:mockall"]
+android-asset-validation = ["dep:nom"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -33,12 +34,13 @@ idna = "0.5"
 url = "2"
 coset = "0.3"
 tokio = { version = "1", features = ["sync"], optional = true }
+nom = { version = "7", features = ["alloc"], optional = true }
 
 [dev-dependencies]
 coset = "0.3"
 mockall = { version = "0.11" }
 passkey-authenticator = { path = "../passkey-authenticator", features = [
-  "tokio",
-  "testable",
+    "tokio",
+    "testable",
 ] }
 tokio = { version = "1", features = ["macros", "rt"] }

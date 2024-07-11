@@ -14,7 +14,7 @@
 //! [version]: https://img.shields.io/crates/v/passkey-client?logo=rust&style=flat
 //! [documentation]: https://img.shields.io/docsrs/passkey-client/latest?logo=docs.rs&style=flat
 //! [Webauthn]: https://w3c.github.io/webauthn/
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Display};
 
 use ciborium::{cbor, value::Value};
 use coset::{iana::EnumI64, Algorithm};
@@ -33,6 +33,12 @@ use url::Url;
 
 mod quirks;
 use quirks::QuirkyRp;
+
+#[cfg(feature = "android-asset-validation")]
+mod android;
+
+#[cfg(feature = "android-asset-validation")]
+pub use self::android::{valid_fingerprint, UnverifiedAssetLink, ValidationError};
 
 #[cfg(test)]
 mod tests;
@@ -89,6 +95,43 @@ fn decode_host(host: &str) -> Option<Cow<str>> {
         result.ok().map(|_| Cow::from(decoded))
     } else {
         Some(Cow::from(host))
+    }
+}
+
+/// The origin of a WebAuthn request.
+pub enum Origin<'a> {
+    /// A Url, meant for a request in the web browser.
+    Web(Cow<'a, Url>),
+    /// An android digital asset fingerprint.
+    /// Meant for a request coming from an android application.
+    #[cfg(feature = "android-asset-validation")]
+    Android(UnverifiedAssetLink<'a>),
+}
+
+impl From<Url> for Origin<'_> {
+    fn from(value: Url) -> Self {
+        Origin::Web(Cow::Owned(value))
+    }
+}
+
+impl<'a> From<&'a Url> for Origin<'a> {
+    fn from(value: &'a Url) -> Self {
+        Origin::Web(Cow::Borrowed(value))
+    }
+}
+
+impl Display for Origin<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Origin::Web(url) => write!(f, "{}", url.as_str().trim_end_matches('/')),
+            Origin::Android(target_link) => {
+                write!(
+                    f,
+                    "android:apk-key-hash:{}",
+                    encoding::base64url(target_link.sha256_cert_fingerprint())
+                )
+            }
+        }
     }
 }
 
@@ -168,10 +211,12 @@ where
     /// Returns either a [`webauthn::CreatedPublicKeyCredential`] on success or some [`WebauthnError`]
     pub async fn register(
         &mut self,
-        origin: &Url,
+        origin: impl Into<Origin<'_>>,
         request: webauthn::CredentialCreationOptions,
         client_data_hash: Option<Vec<u8>>,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
+        let origin = origin.into();
+
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
         let auth_info = self.authenticator.get_info();
@@ -190,12 +235,12 @@ where
 
         let rp_id = self
             .rp_id_verifier
-            .assert_domain(origin, request.rp.id.as_deref())?;
+            .assert_domain(&origin, request.rp.id.as_deref())?;
 
         let collected_client_data = webauthn::CollectedClientData {
             ty: webauthn::ClientDataType::Create,
             challenge: encoding::base64url(&request.challenge),
-            origin: origin.as_str().trim_end_matches('/').to_owned(),
+            origin: origin.to_string(),
             cross_origin: None,
             unknown_keys: Default::default(),
         };
@@ -300,10 +345,12 @@ where
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
     pub async fn authenticate(
         &mut self,
-        origin: &Url,
+        origin: impl Into<Origin<'_>>,
         request: webauthn::CredentialRequestOptions,
         client_data_hash: Option<Vec<u8>>,
     ) -> Result<webauthn::AuthenticatedPublicKeyCredential, WebauthnError> {
+        let origin = origin.into();
+
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
         let request = request.public_key;
 
@@ -316,12 +363,12 @@ where
 
         let rp_id = self
             .rp_id_verifier
-            .assert_domain(origin, request.rp_id.as_deref())?;
+            .assert_domain(&origin, request.rp_id.as_deref())?;
 
         let collected_client_data = webauthn::CollectedClientData {
             ty: webauthn::ClientDataType::Get,
             challenge: encoding::base64url(&request.challenge),
-            origin: origin.as_str().trim_end_matches('/').to_owned(),
+            origin: origin.to_string(),
             cross_origin: None, //Some(false),
             unknown_keys: Default::default(),
         };
@@ -450,6 +497,18 @@ where
     /// Returns the effective domain on success or some [`WebauthnError`]
     pub fn assert_domain<'a>(
         &self,
+        origin: &'a Origin,
+        rp_id: Option<&'a str>,
+    ) -> Result<&'a str, WebauthnError> {
+        match origin {
+            Origin::Web(url) => self.assert_web_rp_id(url, rp_id),
+            #[cfg(feature = "android-asset-validation")]
+            Origin::Android(unverified) => self.assert_android_rp_id(unverified, rp_id),
+        }
+    }
+
+    fn assert_web_rp_id<'a>(
+        &self,
         origin: &'a Url,
         rp_id: Option<&'a str>,
     ) -> Result<&'a str, WebauthnError> {
@@ -487,6 +546,37 @@ where
         }
 
         Ok(effective_domain)
+    }
+
+    #[cfg(feature = "android-asset-validation")]
+    fn assert_android_rp_id<'a>(
+        &self,
+        target_link: &'a UnverifiedAssetLink,
+        rp_id: Option<&'a str>,
+    ) -> Result<&'a str, WebauthnError> {
+        let mut effective_rp_id = target_link.host();
+
+        if let Some(rp_id) = rp_id {
+            // subset from assert_web_rp_id
+            if !effective_rp_id.ends_with(rp_id) {
+                return Err(WebauthnError::OriginRpMissmatch);
+            }
+            effective_rp_id = rp_id;
+        }
+
+        if decode_host(effective_rp_id)
+            .as_ref()
+            .and_then(|s| self.tld_provider.effective_tld_plus_one(s).ok())
+            .is_none()
+        {
+            return Err(WebauthnError::InvalidRpId);
+        }
+
+        // TODO: Find an ergonomic and caching friendly way to fetch the remote
+        // assetlinks and validate them here.
+        // https://github.com/1Password/passkey-rs/issues/13
+
+        Ok(effective_rp_id)
     }
 }
 
