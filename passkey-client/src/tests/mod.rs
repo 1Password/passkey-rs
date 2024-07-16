@@ -155,7 +155,7 @@ async fn create_and_authenticate_with_extra_client_data() {
         .authenticate(
             &origin,
             auth_options,
-            DefaultClientDataWithExtra(extra_data.clone()),
+            DefaultClientDataWithExtra(extra_data),
         )
         .await
         .expect("failed to authenticate with freshly created credential");
