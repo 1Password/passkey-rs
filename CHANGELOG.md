@@ -25,6 +25,13 @@ handles client data and its hash.
 	- Added: Additional fields can be added to the client data using `DefaultClientDataWithExtra(ExtraData)`.
 - `CollectedClientData` is now generic and supports additional strongly typed fields.
 	- Changed: `CollectedClientData` has changed to `CollectedClientData<E = ()>`
+- Added: The `Client` now has the ability to adjust the response for quirky relying parties
+	when a fully featured response would break their server side validation. ([#31](https://github.com/1Password/passkey-rs/pull/31))
+- ⚠ BREAKING: Added the `Origin` enum which is now the origin parameter for the following methods ([#32](https://github.com/1Password/passkey-rs/pull/27)):
+	- `Client::register` takes an `impl Into<Origin>` instead of a `&Url`
+	- `Client::authenticate` takes an `impl Into<Origin>` instead of a `&Url`
+	- `RpIdValidator::assert_domain` takes an `&Origin` instead of a `&Url`
+- ⚠ BREAKING: The collected client data will now have the android app signature as the origin when a request comes from an app directly. ([#32](https://github.com/1Password/passkey-rs/pull/27))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
