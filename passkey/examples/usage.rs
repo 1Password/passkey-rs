@@ -6,6 +6,7 @@ use passkey::{
 };
 
 use coset::iana;
+use passkey_client::DefaultClientData;
 use url::Url;
 
 // MyUserValidationMethod is a stub impl of the UserValidationMethod trait, used later.
@@ -76,7 +77,9 @@ async fn client_setup(
     };
 
     // Now create the credential.
-    let my_webauthn_credential = my_client.register(origin, request, None).await?;
+    let my_webauthn_credential = my_client
+        .register(origin, request, DefaultClientData)
+        .await?;
 
     // Let's try and authenticate.
     // Create a challenge that would usually come from the RP.
@@ -97,7 +100,7 @@ async fn client_setup(
     };
 
     let authenticated_cred = my_client
-        .authenticate(origin, credential_request, None)
+        .authenticate(origin, credential_request, DefaultClientData)
         .await?;
 
     Ok((my_webauthn_credential, authenticated_cred))
