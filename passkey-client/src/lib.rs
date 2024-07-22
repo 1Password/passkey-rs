@@ -14,6 +14,9 @@
 //! [version]: https://img.shields.io/crates/v/passkey-client?logo=rust&style=flat
 //! [documentation]: https://img.shields.io/docsrs/passkey-client/latest?logo=docs.rs&style=flat
 //! [Webauthn]: https://w3c.github.io/webauthn/
+mod client_data;
+pub use client_data::*;
+
 use std::{borrow::Cow, fmt::Display};
 
 use ciborium::{cbor, value::Value};
@@ -28,6 +31,7 @@ use passkey_types::{
     },
     Passkey,
 };
+use serde::Serialize;
 use typeshare::typeshare;
 use url::Url;
 
@@ -125,6 +129,7 @@ impl Display for Origin<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Origin::Web(url) => write!(f, "{}", url.as_str().trim_end_matches('/')),
+            #[cfg(feature = "android-asset-validation")]
             Origin::Android(target_link) => {
                 write!(
                     f,
@@ -210,11 +215,11 @@ where
     /// Register a webauthn `request` from the given `origin`.
     ///
     /// Returns either a [`webauthn::CreatedPublicKeyCredential`] on success or some [`WebauthnError`]
-    pub async fn register(
+    pub async fn register<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: impl Into<Origin<'_>>,
         request: webauthn::CredentialCreationOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         let origin = origin.into();
 
@@ -238,18 +243,20 @@ where
             .rp_id_verifier
             .assert_domain(&origin, request.rp.id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Create,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.to_string(),
             cross_origin: None,
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let extension_request = request.extensions.and_then(|e| e.zip_contents());
 
@@ -341,11 +348,11 @@ where
     /// Authenticate a Webauthn request.
     ///
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
-    pub async fn authenticate(
+    pub async fn authenticate<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: impl Into<Origin<'_>>,
         request: webauthn::CredentialRequestOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::AuthenticatedPublicKeyCredential, WebauthnError> {
         let origin = origin.into();
 
@@ -363,18 +370,20 @@ where
             .rp_id_verifier
             .assert_domain(&origin, request.rp_id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Get,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.to_string(),
             cross_origin: None, //Some(false),
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let ctap_extensions = self.auth_extension_ctap2_input(request.extensions.as_ref());
 

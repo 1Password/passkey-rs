@@ -17,6 +17,12 @@
 
 - Changed: The `Client` no longer hardcodes the UV value sent to the `Authenticator` ([#22](https://github.com/1Password/passkey-rs/pull/22)).
 - Changed: The `Client` no longer hardcodes the RK value sent to the `Authenticator` ([#27](https://github.com/1Password/passkey-rs/pull/27)).
+- The client now supports additional user-defined properties in the client data, while also clarifying how the client
+handles client data and its hash.
+	- ⚠ BREAKING: Changed: `register` and `authenticate` take `ClientData<E>` instead of `Option<Vec<u8>>`.
+	- ⚠ BREAKING: Changed: Custom client data hashes are now specified using `DefaultClientDataWithCustomHash(Vec<u8>)` instead of
+		`Some(Vec<u8>)`.
+	- Added: Additional fields can be added to the client data using `DefaultClientDataWithExtra(ExtraData)`.
 - Added: The `Client` now has the ability to adjust the response for quirky relying parties
 	when a fully featured response would break their server side validation. ([#31](https://github.com/1Password/passkey-rs/pull/31))
 - ⚠ BREAKING: Added the `Origin` enum which is now the origin parameter for the following methods ([#32](https://github.com/1Password/passkey-rs/pull/27)):
@@ -25,10 +31,12 @@
 	- `RpIdValidator::assert_domain` takes an `&Origin` instead of a `&Url`
 - ⚠ BREAKING: The collected client data will now have the android app signature as the origin when a request comes from an app directly. ([#32](https://github.com/1Password/passkey-rs/pull/27))
 
-### passkey-types
+## passkey-types
 
-- ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs.
-- ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs.
+- `CollectedClientData` is now generic and supports additional strongly typed fields. ([#28](https://github.com/1Password/passkey-rs/pull/28))
+	- Changed: `CollectedClientData` has changed to `CollectedClientData<E = ()>`
+- ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
+- ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
