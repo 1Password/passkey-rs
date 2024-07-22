@@ -1,7 +1,10 @@
 use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
-use passkey_types::{ctap2, rand::random_vec, Bytes};
+use passkey_types::{
+    ctap2, encoding::try_from_base64url, rand::random_vec, webauthn::CollectedClientData, Bytes,
+};
+use serde::Deserialize;
 use url::{ParseError, Url};
 
 fn good_credential_creation_options() -> webauthn::PublicKeyCredentialCreationOptions {
@@ -87,7 +90,7 @@ async fn create_and_authenticate() {
         public_key: good_credential_creation_options(),
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -97,9 +100,77 @@ async fn create_and_authenticate() {
         public_key: good_credential_request_options(credential_id),
     };
     client
-        .authenticate(origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
+}
+
+#[tokio::test]
+async fn create_and_authenticate_with_extra_client_data() {
+    #[derive(Clone, Serialize, Deserialize)]
+    struct AndroidClientData {
+        android_package_name: String,
+    }
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(2),
+    );
+    let mut client = Client::new(auth);
+
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let options = webauthn::CredentialCreationOptions {
+        public_key: good_credential_creation_options(),
+    };
+    let extra_data = AndroidClientData {
+        android_package_name: "com.example.app".to_owned(),
+    };
+    let cred = client
+        .register(
+            &origin,
+            options,
+            DefaultClientDataWithExtra(extra_data.clone()),
+        )
+        .await
+        .expect("failed to register with options");
+
+    let returned_base64url_client_data_json: String = cred.response.client_data_json.into();
+    let returned_client_data_json =
+        try_from_base64url(returned_base64url_client_data_json.as_str())
+            .expect("could not base64url decode client data");
+    let returned_client_data: CollectedClientData<AndroidClientData> =
+        serde_json::from_slice(&returned_client_data_json)
+            .expect("could not json deserialize client data");
+    assert_eq!(
+        returned_client_data.extra_data.android_package_name,
+        "com.example.app"
+    );
+
+    let credential_id = cred.raw_id;
+
+    let auth_options = webauthn::CredentialRequestOptions {
+        public_key: good_credential_request_options(credential_id),
+    };
+    let result = client
+        .authenticate(
+            &origin,
+            auth_options,
+            DefaultClientDataWithExtra(extra_data),
+        )
+        .await
+        .expect("failed to authenticate with freshly created credential");
+
+    let returned_base64url_client_data_json: String = result.response.client_data_json.into();
+    let returned_client_data_json =
+        try_from_base64url(returned_base64url_client_data_json.as_str())
+            .expect("could not base64url decode client data");
+    let returned_client_data: CollectedClientData<AndroidClientData> =
+        serde_json::from_slice(&returned_client_data_json)
+            .expect("could not json deserialize client data");
+    assert_eq!(
+        returned_client_data.extra_data.android_package_name,
+        "com.example.app"
+    );
 }
 
 #[tokio::test]
@@ -116,7 +187,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         public_key: good_credential_creation_options(),
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -132,7 +203,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         public_key: good_credential_request_options(cred.raw_id),
     };
     let res = client
-        .authenticate(origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
@@ -160,7 +231,7 @@ async fn create_and_authenticate_without_rp_id() {
         },
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -179,7 +250,7 @@ async fn create_and_authenticate_without_rp_id() {
         },
     };
     let res = client
-        .authenticate(origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
@@ -204,7 +275,7 @@ async fn create_and_authenticate_without_cred_params() {
         },
     };
     let cred = client
-        .register(&origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 
@@ -214,7 +285,7 @@ async fn create_and_authenticate_without_cred_params() {
         public_key: good_credential_request_options(credential_id),
     };
     client
-        .authenticate(origin, auth_options, None)
+        .authenticate(&origin, auth_options, DefaultClientData)
         .await
         .expect("failed to authenticate with freshly created credential");
 }
@@ -351,7 +422,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
 
     // Act & Assert
     client
-        .register(origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 }
@@ -378,7 +449,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
 
     // Act & Assert
     client
-        .register(origin, options, None)
+        .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
 }
