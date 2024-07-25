@@ -143,6 +143,7 @@ where
             auth_data,
             fmt: "None".into(),
             att_stmt: vec![0xa0].into(), // CBOR exquivalent to empty map
+            unsigned_extension_outputs: None,
         };
 
         // 10

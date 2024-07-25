@@ -35,7 +35,7 @@ where
         &self,
         request: Option<&AuthenticationExtensionsClientInputs>,
     ) -> Option<make_credential::ExtensionInputs> {
-        request.map(|_| make_credential::ExtensionInputs {})
+        request.map(|_| make_credential::ExtensionInputs::default())
     }
 
     /// Build the extension outputs for the WebAuthn client in a registration request.
@@ -73,6 +73,6 @@ where
         &self,
         request: Option<&AuthenticationExtensionsClientInputs>,
     ) -> Option<get_assertion::ExtensionInputs> {
-        request.map(|_| get_assertion::ExtensionInputs {})
+        request.map(|_| get_assertion::ExtensionInputs::default())
     }
 }

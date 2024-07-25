@@ -42,6 +42,7 @@ handles client data and its hash.
 - The `Client` now returns `CredProps::rk` depending on the authenticator's capabilities. ([#29](https://github.com/1Password/passkey-rs/pull/29))
 - ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 - ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
+- ⚠ BREAKING: Add unsigned extension outputs for the CTAP authenticator outputs. ([#34](https://github.com/1Password/passkey-rs/pull/33))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

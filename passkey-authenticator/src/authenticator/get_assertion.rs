@@ -155,6 +155,7 @@ where
                 name: "".into(),
             }),
             number_of_credentials: None,
+            unsigned_extension_outputs: None,
         })
     }
 }
