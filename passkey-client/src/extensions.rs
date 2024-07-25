@@ -8,7 +8,9 @@
 //! [webauthn]: https://w3c.github.io/webauthn/#sctn-defined-extensions
 //! [credprops]: https://w3c.github.io/webauthn/#sctn-authenticator-credential-properties-extension
 
-use passkey_authenticator::{CredentialStore, UserValidationMethod};
+use passkey_authenticator::{
+    CredentialStore, DiscoverabilitySupport, StoreInfo, UserValidationMethod,
+};
 use passkey_types::{
     ctap2::{get_assertion, make_credential},
     webauthn::{
@@ -40,11 +42,19 @@ where
     pub(super) fn registration_extension_outputs(
         &self,
         request: Option<&AuthenticationExtensionsClientInputs>,
+        store_info: StoreInfo,
         rk: bool,
     ) -> AuthenticationExtensionsClientOutputs {
-        let cred_props = if let Some(true) = request.and_then(|ext| ext.cred_props) {
+        let cred_props_requested = request.and_then(|ext| ext.cred_props) == Some(true);
+        let cred_props = if cred_props_requested {
+            let discoverable = match store_info.discoverability {
+                DiscoverabilitySupport::Full => rk,
+                DiscoverabilitySupport::OnlyNonDiscoverable => false,
+                DiscoverabilitySupport::ForcedDiscoverable => true,
+            };
+
             Some(CredentialPropertiesOutput {
-                discoverable: Some(rk),
+                discoverable: Some(discoverable),
                 authenticator_display_name: self.authenticator.display_name().cloned(),
             })
         } else {

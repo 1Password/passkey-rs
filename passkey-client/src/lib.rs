@@ -225,7 +225,7 @@ where
 
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
-        let auth_info = self.authenticator.get_info();
+        let auth_info = self.authenticator.get_info().await;
 
         let pub_key_cred_params = if request.pub_key_cred_params.is_empty() {
             webauthn::PublicKeyCredentialParameters::default_algorithms()
@@ -321,8 +321,9 @@ where
                 .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
         );
 
+        let store_info = self.authenticator.store().get_info().await;
         let client_extension_results =
-            self.registration_extension_outputs(extension_request.as_ref(), rk);
+            self.registration_extension_outputs(extension_request.as_ref(), store_info, rk);
 
         let response = webauthn::CreatedPublicKeyCredential {
             id: encoding::base64url(credential_id.credential_id()),
@@ -386,6 +387,8 @@ where
             .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let ctap_extensions = self.auth_extension_ctap2_input(request.extensions.as_ref());
+        let rk = false;
+        let uv = request.user_verification != UserVerificationRequirement::Discouraged;
 
         let ctap2_response = self
             .authenticator
@@ -394,11 +397,7 @@ where
                 client_data_hash: client_data_json_hash.into(),
                 allow_list: request.allow_credentials,
                 extensions: ctap_extensions,
-                options: ctap2::get_assertion::Options {
-                    rk: true,
-                    up: true,
-                    uv: true,
-                },
+                options: ctap2::get_assertion::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
             })

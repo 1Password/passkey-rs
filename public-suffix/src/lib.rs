@@ -41,6 +41,7 @@
 //!  - "www.books.amazon.co.uk"
 //!  - "books.amazon.co.uk"
 //!  - "amazon.co.uk"
+//!
 //! Specifically, the eTLD+1 is "amazon.co.uk", because the eTLD is "co.uk".
 //!
 //! ```
@@ -86,12 +87,12 @@
 //! 0. Make sure you have golang installed.
 //! 1. Make the public-suffix crate the current working directory.
 //! 2. `wget https://publicsuffix.org/list/public_suffix_list.dat`, which will
-//! overwrite the old version of this file.
+//!    overwrite the old version of this file.
 //! 3. Run `./gen.sh` to regenerate the list from the updated `public_suffix_list.dat`.
-//! The first time you run this, you'll need network connectivity to `go get` the
-//! dependencies.
+//!    The first time you run this, you'll need network connectivity to `go get` the
+//!    dependencies.
 //! 4. Commit the changed generated source code and the updated
-//! `public_suffix_list.dat`.
+//!    `public_suffix_list.dat`.
 //!
 //! We intentionally do not try to download the latest version of the public suffix
 //! list during the build to keep the build deterministic and networking-free.
@@ -164,6 +165,12 @@ impl<T: Table> EffectiveTLDProvider for ListProvider<T> {
         }
 
         Ok(&domain[after_or_all(domain[..i].rfind('.'))])
+    }
+}
+
+impl<T: Table> Default for ListProvider<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -282,12 +289,6 @@ impl<T: Table> ListProvider<T> {
         }
         let response = self.public_suffix(domain);
         response == domain
-    }
-}
-
-impl<T: Table> Default for ListProvider<T> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
