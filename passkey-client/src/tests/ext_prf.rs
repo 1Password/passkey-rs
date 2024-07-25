@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use passkey_authenticator::extensions::HmacSecretConfig;
-use passkey_types::ctap2::{AuthenticatorData, Flags};
+use passkey_types::{
+    crypto::hmac_sha256,
+    ctap2::{AuthenticatorData, Flags},
+};
 
 use super::*;
 
@@ -799,4 +802,190 @@ async fn two_eval_by_credential_entries() {
 
     assert_eq!(treatment_prf_res.first, control_prf_res.first);
     assert_eq!(treatment_prf_res.second, control_prf_res.second);
+}
+
+#[tokio::test]
+async fn prf_already_hashed_does_not_hash_again() {
+    let salt = [2; 32];
+
+    let hashed_salt = sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
+
+    let origin = Url::parse("https://future.1password.com").unwrap();
+
+    let auth = Authenticator::new(ctap2::Aaguid::new_empty(), None, uv_mock_with_creation(2))
+        .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
+    let mut client = Client::new(auth);
+    let create_request = webauthn::CredentialCreationOptions {
+        public_key: webauthn::PublicKeyCredentialCreationOptions {
+            extensions: Some(webauthn::AuthenticationExtensionsClientInputs {
+                prf_already_hashed: Some(webauthn::AuthenticationExtensionsPrfInputs {
+                    eval: Some(webauthn::AuthenticationExtensionsPrfValues {
+                        first: hashed_salt.as_slice().into(),
+                        second: None,
+                    }),
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_credential_creation_options()
+        },
+    };
+    let created = client
+        .register(&origin, create_request, None)
+        .await
+        .expect("could not register a new passkey with PRF already hashed");
+
+    let passkey = client
+        .authenticator
+        .store()
+        .clone()
+        .expect("no passkey was stored after its creation");
+
+    let hmac_secret = passkey
+        .extensions
+        .hmac_secret
+        .as_ref()
+        .expect("no HMAC secret was created with PRF already hashed")
+        .cred_with_uv
+        .clone();
+
+    let expected_output = hmac_sha256(&hmac_secret, &hashed_salt);
+
+    let prf_results = created
+        .client_extension_results
+        .prf
+        .expect("no PRF was returned")
+        .results
+        .expect("no results were returned with make credential support");
+    assert_eq!(prf_results.first.as_slice(), expected_output.as_slice());
+
+    let request = webauthn::CredentialRequestOptions {
+        public_key: webauthn::PublicKeyCredentialRequestOptions {
+            allow_credentials: None,
+            extensions: Some(webauthn::AuthenticationExtensionsClientInputs {
+                prf_already_hashed: Some(webauthn::AuthenticationExtensionsPrfInputs {
+                    eval: Some(webauthn::AuthenticationExtensionsPrfValues {
+                        first: hashed_salt.as_slice().into(),
+                        second: None,
+                    }),
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_credential_request_options(vec![])
+        },
+    };
+
+    let response = client
+        .authenticate(&origin, request, None)
+        .await
+        .expect("could not authenticate with PRF already hashed");
+
+    let prf = response
+        .client_extension_results
+        .prf
+        .expect("no PRF output was provided");
+
+    let prf_results = prf
+        .results
+        .expect("no PRF results were included in the output");
+
+    assert_eq!(prf_results.first.as_slice(), expected_output.as_slice());
+}
+
+#[tokio::test]
+async fn prf_takes_precedence_over_prf_already_hashed() {
+    let salt = [2; 32];
+
+    let hashed_salt = sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
+
+    let origin = Url::parse("https://future.1password.com").unwrap();
+
+    let auth = Authenticator::new(ctap2::Aaguid::new_empty(), None, uv_mock_with_creation(2))
+        .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
+    let mut client = Client::new(auth);
+    let create_request = webauthn::CredentialCreationOptions {
+        public_key: webauthn::PublicKeyCredentialCreationOptions {
+            extensions: Some(webauthn::AuthenticationExtensionsClientInputs {
+                prf_already_hashed: Some(webauthn::AuthenticationExtensionsPrfInputs {
+                    eval: Some(webauthn::AuthenticationExtensionsPrfValues {
+                        first: hashed_salt.as_slice().into(),
+                        second: None,
+                    }),
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_credential_creation_options()
+        },
+    };
+    let created = client
+        .register(&origin, create_request, None)
+        .await
+        .expect("could not register a new passkey with PRF already hashed");
+
+    let passkey = client
+        .authenticator
+        .store()
+        .clone()
+        .expect("no passkey was stored after its creation");
+
+    let hmac_secret = passkey
+        .extensions
+        .hmac_secret
+        .as_ref()
+        .expect("no HMAC secret was created with PRF already hashed")
+        .cred_with_uv
+        .clone();
+
+    let expected_output = hmac_sha256(&hmac_secret, &hashed_salt);
+
+    let prf_results = created
+        .client_extension_results
+        .prf
+        .expect("no PRF was returned")
+        .results
+        .expect("no results were returned with make credential support");
+    assert_eq!(prf_results.first.as_slice(), expected_output.as_slice());
+
+    let request = webauthn::CredentialRequestOptions {
+        public_key: webauthn::PublicKeyCredentialRequestOptions {
+            allow_credentials: None,
+            extensions: Some(webauthn::AuthenticationExtensionsClientInputs {
+                prf: Some(webauthn::AuthenticationExtensionsPrfInputs {
+                    eval: Some(webauthn::AuthenticationExtensionsPrfValues {
+                        first: salt.as_slice().into(),
+                        second: None,
+                    }),
+                    eval_by_credential: None,
+                }),
+                prf_already_hashed: Some(webauthn::AuthenticationExtensionsPrfInputs {
+                    eval: Some(webauthn::AuthenticationExtensionsPrfValues {
+                        // Input nonsense here so if it is selected it fails
+                        first: [3; 32].as_slice().into(),
+                        second: None,
+                    }),
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_credential_request_options(vec![])
+        },
+    };
+
+    let response = client
+        .authenticate(&origin, request, None)
+        .await
+        .expect("could not authenticate with PRF already hashed");
+
+    let prf = response
+        .client_extension_results
+        .prf
+        .expect("no PRF output was provided");
+
+    let prf_results = prf
+        .results
+        .expect("no PRF results were included in the output");
+
+    assert_eq!(prf_results.first.as_slice(), expected_output.as_slice());
 }

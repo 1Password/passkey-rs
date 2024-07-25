@@ -28,6 +28,19 @@ pub struct AuthenticationExtensionsClientInputs {
     /// See [`AuthenticationExtensionsPrfInputs`] for more information.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prf: Option<AuthenticationExtensionsPrfInputs>,
+
+    /// Inputs for the pseudo-random function extension where the inputs are already hashed
+    /// by another client following the `sha256("WebAuthn PRF" || salt)` format.
+    ///
+    /// This is not an official extension, rather a field that occurs in some cases on Android
+    /// as well as the field that MUST be used when mapping from Apple's Authentication Services
+    /// [`ASAuthorizationPublicKeyCredentialPRFAssertionInput`].
+    ///
+    /// This field SHOULD NOT be present alongside the [`Self::prf`] field as that field will take precedence.
+    ///
+    /// [`ASAuthorizationPublicKeyCredentialPRFAssertionInput`]: https://developer.apple.com/documentation/authenticationservices/asauthorizationpublickeycredentialprfassertioninput-swift.struct
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prf_already_hashed: Option<AuthenticationExtensionsPrfInputs>,
 }
 
 impl AuthenticationExtensionsClientInputs {
@@ -35,12 +48,17 @@ impl AuthenticationExtensionsClientInputs {
     /// and that they are in turn not empty. If all fields are `None`
     /// then this returns `None` as well.
     pub fn zip_contents(self) -> Option<Self> {
-        let Self { cred_props, prf } = &self;
-
+        let Self {
+            cred_props,
+            prf,
+            prf_already_hashed,
+        } = &self;
         let has_cred_props = cred_props.is_some();
-        let has_prf = prf.is_some();
 
-        (has_cred_props || has_prf).then_some(self)
+        let has_prf = prf.is_some();
+        let has_prf_already_hashed = prf_already_hashed.is_some();
+
+        (has_cred_props || has_prf || has_prf_already_hashed).then_some(self)
     }
 }
 
