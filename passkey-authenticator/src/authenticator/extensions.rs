@@ -17,7 +17,7 @@ use passkey_types::{
 mod hmac_secret;
 pub use hmac_secret::{HmacSecretConfig, HmacSecretCredentialSupport};
 
-#[cfg(docs)]
+#[cfg(doc)]
 use passkey_types::webauthn;
 
 use crate::Authenticator;
