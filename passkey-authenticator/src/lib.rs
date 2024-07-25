@@ -43,7 +43,7 @@ use passkey_types::{ctap2::Ctap2Error, Bytes};
 
 pub use self::{
     authenticator::{extensions, Authenticator},
-    credential_store::{CredentialStore, MemoryStore},
+    credential_store::{CredentialStore, DiscoverabilitySupport, MemoryStore, StoreInfo},
     ctap2::Ctap2Api,
     u2f::U2fApi,
     user_validation::{UserCheck, UserValidationMethod},
