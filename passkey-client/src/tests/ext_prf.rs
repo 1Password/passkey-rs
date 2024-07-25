@@ -60,6 +60,52 @@ async fn registration_without_eval() {
     assert!(prf_out.results.is_none());
 }
 
+#[tokio::test]
+async fn registration_with_single_input_eval() {
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(1),
+    )
+    .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
+    let mut client = Client::new(auth);
+
+    let first = vec![
+        101, 195, 212, 161, 191, 112, 75, 189, 152, 52, 121, 17, 62, 113, 114, 164,
+    ];
+
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let options = webauthn::CredentialCreationOptions {
+        public_key: webauthn::PublicKeyCredentialCreationOptions {
+            extensions: Some(webauthn::AuthenticationExtensionsClientInputs {
+                prf: Some(webauthn::AuthenticationExtensionsPrfInputs {
+                    eval: Some(webauthn::AuthenticationExtensionsPrfValues {
+                        first: Bytes::from(first),
+                        second: None,
+                    }),
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_credential_creation_options()
+        },
+    };
+    let cred = client
+        .register(&origin, options, None)
+        .await
+        .expect("failed to register with options and prf ext");
+
+    let prf_out = cred
+        .client_extension_results
+        .prf
+        .expect("client extension results should contain PRF output");
+
+    assert!(prf_out.enabled.expect("PRF should be enabled"));
+    // CTAP2's new extension hmac-secret-mc allows us to evaluate PRF inputs
+    // at creation time. This is implemented by our in-memory authenticator.
+    assert!(prf_out.results.is_some());
+}
+
 fn uv_mock_user_check_skip(times: usize) -> MockUserValidationMethod {
     let mut user_mock = MockUserValidationMethod::new();
     user_mock

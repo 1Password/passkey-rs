@@ -103,7 +103,7 @@ where
             SecretKey::random(&mut rng)
         };
 
-        let extensions = self.make_extensions(input.extensions)?;
+        let extensions = self.make_extensions(input.extensions, input.options.uv)?;
 
         // Encoding of the keypair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested
@@ -166,7 +166,7 @@ mod tests {
     use coset::iana;
     use passkey_types::{
         ctap2::{
-            extensions::AuthenticatorPrfInputs,
+            extensions::{AuthenticatorPrfInputs, AuthenticatorPrfValues},
             make_credential::{
                 ExtensionInputs, Options, PublicKeyCredentialRpEntity,
                 PublicKeyCredentialUserEntity,
@@ -417,6 +417,92 @@ mod tests {
             extensions: Some(ExtensionInputs {
                 prf: Some(AuthenticatorPrfInputs {
                     eval: None,
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_some());
+        let exts = res.unsigned_extension_outputs.unwrap();
+        assert!(exts.prf.is_some());
+        let prf = exts.prf.unwrap();
+        assert!(prf.enabled);
+        assert!(prf.results.is_none())
+    }
+
+    #[tokio::test]
+    async fn hmac_secret_mc_happy_path() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock).hmac_secret(
+                extensions::HmacSecretConfig::new_with_uv_only().enable_on_make_credential(),
+            );
+
+        let request = Request {
+            extensions: Some(ExtensionInputs {
+                prf: Some(AuthenticatorPrfInputs {
+                    eval: Some(AuthenticatorPrfValues {
+                        first: random_vec(32).try_into().unwrap(),
+                        second: Some(random_vec(32).try_into().unwrap()),
+                    }),
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+
+        assert!(res.unsigned_extension_outputs.is_some());
+        let exts = res.unsigned_extension_outputs.unwrap();
+
+        assert!(exts.prf.is_some());
+        let prf = exts.prf.unwrap();
+
+        assert!(prf.enabled);
+        assert!(prf.results.is_some());
+        let values = prf.results.unwrap();
+
+        assert!(!values.first.is_empty());
+        // We expect this to be None because the authenticator requires UV.
+        // When calculating hmac secrets, it will skip the second input if
+        // the authenticator does not support "no UV".
+        assert!(values.second.is_none());
+    }
+
+    #[tokio::test]
+    async fn hmac_secret_mc_without_hmac_secret_support() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                //support on make credential is not set.
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = Request {
+            extensions: Some(ExtensionInputs {
+                prf: Some(AuthenticatorPrfInputs {
+                    eval: Some(AuthenticatorPrfValues {
+                        first: random_vec(32).try_into().unwrap(),
+                        second: None,
+                    }),
                     eval_by_credential: None,
                 }),
                 ..Default::default()

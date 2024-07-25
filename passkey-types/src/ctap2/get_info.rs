@@ -136,6 +136,11 @@ pub enum Extension {
     /// [`hmac-secret`]: https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#sctn-hmac-secret-extension
     #[serde(rename = "hmac-secret")]
     HmacSecret,
+    /// The authenticator supports the [`hmac-secret-mc`] extension.
+    ///
+    /// TODO: link to the hmac-secret-mc extension in the spec once it's published.
+    #[serde(rename = "hmac-secret-mc")]
+    HmacSecretMakeCredential,
     /// The authenticator supports the unsigned [`prf`] extension
     ///
     /// [`prf`]: https://w3c.github.io/webauthn/#prf-extension

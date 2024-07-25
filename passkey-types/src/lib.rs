@@ -45,3 +45,6 @@ pub use self::{
         crypto, encoding, rand,
     },
 };
+
+#[cfg(feature = "testable")]
+pub use self::passkey::PasskeyBuilder;
