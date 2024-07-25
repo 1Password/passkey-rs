@@ -52,7 +52,7 @@ where
     U: UserValidationMethod + Sync + Send,
 {
     async fn get_info(&self) -> get_info::Response {
-        self.get_info()
+        self.get_info().await
     }
 
     async fn make_credential(

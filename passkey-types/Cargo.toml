@@ -3,7 +3,7 @@ name = "passkey-types"
 description = "Rust type definitions for the webauthn and CTAP specifications"
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
 readme = "README.md"
-version = "0.2.0"
+version = "0.2.1"
 authors.workspace = true
 repository.workspace = true
 edition.workspace = true
@@ -17,7 +17,7 @@ workspace = true
 [features]
 default = []
 serialize_bytes_as_base64_string = []
-mocks = ["dep:p256"]
+testable = ["dep:p256"]
 
 [dependencies]
 bitflags = "2"
@@ -34,7 +34,11 @@ typeshare = "1"
 zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = "0.3"
-p256 = { version = "0.13", features = ["pem", "arithmetic", "jwk"], optional = true }
+p256 = { version = "0.13", features = [
+    "pem",
+    "arithmetic",
+    "jwk",
+], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

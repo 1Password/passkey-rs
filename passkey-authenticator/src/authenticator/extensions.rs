@@ -20,7 +20,7 @@ pub use hmac_secret::{HmacSecretConfig, HmacSecretCredentialSupport};
 #[cfg(test)]
 pub(crate) use hmac_secret::tests::prf_eval_request;
 
-#[cfg(docs)]
+#[cfg(doc)]
 use passkey_types::webauthn;
 
 use crate::Authenticator;
