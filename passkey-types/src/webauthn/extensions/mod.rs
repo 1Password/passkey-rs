@@ -7,7 +7,7 @@ mod pseudo_random_function;
 pub use credential_properties::*;
 pub use pseudo_random_function::*;
 
-#[cfg(docs)]
+#[cfg(doc)]
 use crate::webauthn::PublicKeyCredential;
 
 /// This is a dictionary containing the client extension input values for zero or more

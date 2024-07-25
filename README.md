@@ -99,8 +99,7 @@ let request = CredentialCreationOptions {
 };
 
 // Now create the credential.
-let my_webauthn_credential: CreatedPublicKeyCredential = my_client.register(origin, request, None).await?;
-
+let my_webauthn_credential: CreatedPublicKeyCredential = my_client.register(origin, request, DefaultClientData).await?;
 ```
 
 The above example shows how a Webauthn credential can be created. Now, we can go ahead and try to authenticate the user.

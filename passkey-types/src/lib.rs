@@ -46,5 +46,5 @@ pub use self::{
     },
 };
 
-#[cfg(feature = "mocks")]
+#[cfg(feature = "testable")]
 pub use self::passkey::PasskeyBuilder;
