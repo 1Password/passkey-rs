@@ -93,7 +93,16 @@ impl<S: CredentialStore + Sync + Send, U: UserValidationMethod + Sync + Send> U2
         let (passkey, user, rp) =
             Passkey::wrap_u2f_registration_request(&request, &response, handle, &private);
 
-        let result = self.store_mut().save_credential(passkey, user, rp).await;
+        // U2F registration does not use rk, uv, or up
+        let options = passkey_types::ctap2::get_assertion::Options {
+            rk: false,
+            uv: false,
+            up: false,
+        };
+        let result = self
+            .store_mut()
+            .save_credential(passkey, user, rp, options)
+            .await;
 
         match result {
             Ok(_) => Ok(response),

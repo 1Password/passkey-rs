@@ -21,7 +21,9 @@ use std::{borrow::Cow, fmt::Display};
 
 use ciborium::{cbor, value::Value};
 use coset::{iana::EnumI64, Algorithm};
-use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
+use passkey_authenticator::{
+    Authenticator, CredentialStore, DiscoverabilitySupport, UserValidationMethod,
+};
 use passkey_types::{
     crypto::sha256,
     ctap2, encoding,
@@ -224,7 +226,7 @@ where
 
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
-        let auth_info = self.authenticator.get_info();
+        let auth_info = self.authenticator.get_info().await;
 
         let pub_key_cred_params = if request.pub_key_cred_params.is_empty() {
             webauthn::PublicKeyCredentialParameters::default_algorithms()
@@ -257,15 +259,8 @@ where
             .client_data_hash()
             .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
-        let cred_props =
-            if let Some(true) = request.extensions.as_ref().and_then(|ext| ext.cred_props) {
-                Some(CredentialPropertiesOutput {
-                    discoverable: Some(true), // Set to true because it is set in the Options of make_credential.
-                    authenticator_display_name: self.authenticator.display_name().cloned(),
-                })
-            } else {
-                None
-            };
+        let cred_props_requested =
+            request.extensions.as_ref().and_then(|ext| ext.cred_props) == Some(true);
 
         let rk = self.map_rk(&request.authenticator_selection, &auth_info);
         let uv = request.authenticator_selection.map(|s| s.user_verification)
@@ -325,6 +320,22 @@ where
             passkey_authenticator::public_key_der_from_cose_key(&credential_id.key)
                 .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
         );
+
+        let cred_props = if cred_props_requested {
+            let auth_discoverability = self.authenticator.store().get_info().await.discoverability;
+            let discoverable = match auth_discoverability {
+                DiscoverabilitySupport::Full => rk,
+                DiscoverabilitySupport::OnlyNonDiscoverable => false,
+                DiscoverabilitySupport::ForcedDiscoverable => true,
+            };
+
+            Some(CredentialPropertiesOutput {
+                discoverable: Some(discoverable),
+                authenticator_display_name: self.authenticator.display_name().cloned(),
+            })
+        } else {
+            None
+        };
 
         let response = webauthn::CreatedPublicKeyCredential {
             id: encoding::base64url(credential_id.credential_id()),
@@ -387,6 +398,9 @@ where
             .client_data_hash()
             .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
+        let rk = false;
+        let uv = request.user_verification != UserVerificationRequirement::Discouraged;
+
         let ctap2_response = self
             .authenticator
             .get_assertion(ctap2::get_assertion::Request {
@@ -394,11 +408,7 @@ where
                 client_data_hash: client_data_json_hash.into(),
                 allow_list: request.allow_credentials,
                 extensions: request.extensions,
-                options: ctap2::get_assertion::Options {
-                    rk: true,
-                    up: true,
-                    uv: true,
-                },
+                options: ctap2::get_assertion::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
             })

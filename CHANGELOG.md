@@ -12,6 +12,10 @@
 	- Removed: `UserValidationMethod::check_user_verification`
 	- Added: `UserValidationMethod::check_user`. This function now performs both user presence and user verification checks.
 		The function now also returns which validations were performed, even if they were not requested.
+- Added: Support for discoverable credentials
+	- ⚠ BREAKING: Added: `CredentialStore::get_info` which returns `StoreInfo` containing `DiscoverabilitySupport`.
+	- ⚠ BREAKING: Changed: `CredentialStore::save_credential` now also takes `Options`.
+	- Changed: `Authenticator::make_credentials` now returns an error if a discoverable credential was requested but not supported by the store.
 
 ### passkey-client
 
@@ -35,6 +39,7 @@ handles client data and its hash.
 
 - `CollectedClientData` is now generic and supports additional strongly typed fields.
 	- Changed: `CollectedClientData` has changed to `CollectedClientData<E = ()>`
+- The `Client` now returns `CredProps::rk` depending on the authenticator's capabilities.
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
