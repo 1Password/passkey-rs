@@ -98,7 +98,7 @@ let request = CredentialCreationOptions {
 };
 
 // Now create the credential.
-let my_webauthn_credential: CreatedPublicKeyCredential = my_client.register(origin, request).await?;
+let my_webauthn_credential: CreatedPublicKeyCredential = my_client.register(origin, request, DefaultClientData).await?;
 
 ```
 

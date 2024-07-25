@@ -14,6 +14,9 @@
 //! [version]: https://img.shields.io/crates/v/passkey-client?logo=rust&style=flat
 //! [documentation]: https://img.shields.io/docsrs/passkey-client/latest?logo=docs.rs&style=flat
 //! [Webauthn]: https://w3c.github.io/webauthn/
+mod client_data;
+pub use client_data::*;
+
 use std::{borrow::Cow, fmt::Display};
 
 use ciborium::{cbor, value::Value};
@@ -27,6 +30,7 @@ use passkey_types::{
     },
     Passkey,
 };
+use serde::Serialize;
 use typeshare::typeshare;
 use url::Url;
 
@@ -214,17 +218,17 @@ where
     /// Register a webauthn `request` from the given `origin`.
     ///
     /// Returns either a [`webauthn::CreatedPublicKeyCredential`] on success or some [`WebauthnError`]
-    pub async fn register(
+    pub async fn register<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: impl Into<Origin<'_>>,
         request: webauthn::CredentialCreationOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
         let origin = origin.into();
 
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
-        let auth_info = self.authenticator.get_info();
+        let auth_info = self.authenticator.get_info().await;
 
         let pub_key_cred_params = if request.pub_key_cred_params.is_empty() {
             webauthn::PublicKeyCredentialParameters::default_algorithms()
@@ -242,18 +246,20 @@ where
             .rp_id_verifier
             .assert_domain(&origin, request.rp.id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Create,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.to_string(),
             cross_origin: None,
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let extension_request = request.extensions.and_then(|e| e.zip_contents());
 
@@ -321,8 +327,10 @@ where
                 .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
         );
 
+        let store_info = self.authenticator.store().get_info().await;
         let client_extension_results = self.registration_extension_outputs(
             extension_request.as_ref(),
+            store_info,
             rk,
             ctap2_response.unsigned_extension_outputs,
         );
@@ -351,17 +359,17 @@ where
     /// Authenticate a Webauthn request.
     ///
     /// Returns either an [`webauthn::AuthenticatedPublicKeyCredential`] on success or some [`WebauthnError`].
-    pub async fn authenticate(
+    pub async fn authenticate<D: ClientData<E>, E: Serialize + Clone>(
         &mut self,
         origin: impl Into<Origin<'_>>,
         request: webauthn::CredentialRequestOptions,
-        client_data_hash: Option<Vec<u8>>,
+        client_data: D,
     ) -> Result<webauthn::AuthenticatedPublicKeyCredential, WebauthnError> {
         let origin = origin.into();
 
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
         let request = request.public_key;
-        let auth_info = self.authenticator().get_info();
+        let auth_info = self.authenticator().get_info().await;
 
         // TODO: Handle given timeout here, If the value is not within what we consider a reasonable range
         // override to our default
@@ -374,23 +382,27 @@ where
             .rp_id_verifier
             .assert_domain(&origin, request.rp_id.as_deref())?;
 
-        let collected_client_data = webauthn::CollectedClientData {
+        let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Get,
             challenge: encoding::base64url(&request.challenge),
             origin: origin.to_string(),
             cross_origin: None, //Some(false),
+            extra_data: client_data.extra_client_data(),
             unknown_keys: Default::default(),
         };
 
         // SAFETY: it is a developer error if serializing this struct fails.
         let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
-        let client_data_json_hash =
-            client_data_hash.unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        let client_data_json_hash = client_data
+            .client_data_hash()
+            .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
 
         let ctap_extensions = self.auth_extension_ctap2_input(
             &request,
             auth_info.extensions.unwrap_or_default().as_slice(),
         )?;
+        let rk = false;
+        let uv = request.user_verification != UserVerificationRequirement::Discouraged;
 
         let ctap2_response = self
             .authenticator
@@ -399,11 +411,7 @@ where
                 client_data_hash: client_data_json_hash.into(),
                 allow_list: request.allow_credentials,
                 extensions: ctap_extensions,
-                options: ctap2::get_assertion::Options {
-                    rk: true,
-                    up: true,
-                    uv: true,
-                },
+                options: ctap2::get_assertion::Options { rk, up: true, uv },
                 pin_auth: None,
                 pin_protocol: None,
             })
