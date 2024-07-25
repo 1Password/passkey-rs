@@ -20,7 +20,7 @@ serde_workaround! {
 
         /// List of supported extensions. (Optional)
         #[serde(rename = 0x02, default, skip_serializing_if = Option::is_none)]
-        pub extensions: Option<Vec<Cow<'static, str>>>,
+        pub extensions: Option<Vec<Extension>>,
 
         /// The claimed AAGUID. 16 bytes in length
         #[serde(rename = 0x03)]
@@ -128,16 +128,37 @@ impl Default for Options {
     }
 }
 
+/// CTAP extensions supported by the authenticator
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Extension {
+    /// The authenticator supports the [`hmac-secret`] extension
+    ///
+    /// [`hmac-secret`]: https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#sctn-hmac-secret-extension
+    #[serde(rename = "hmac-secret")]
+    HmacSecret,
+    /// The authenticator supports the unsigned [`prf`] extension
+    ///
+    /// [`prf`]: https://w3c.github.io/webauthn/#prf-extension
+    #[serde(rename = "prf")]
+    Prf,
+    /// The authenticator supports an extensions which is currently unsupported by this library.
+    #[serde(untagged)]
+    Unknown(String),
+}
+
 #[cfg(test)]
 mod tests {
     use ciborium::cbor;
 
-    use super::{Aaguid, AuthenticatorTransport, Options, Response};
+    use super::{Aaguid, AuthenticatorTransport, Extension, Options, Response};
     #[test]
     fn serialization_round_trip() {
         let expected = Response {
             versions: vec!["FIDO_2_0".into()],
-            extensions: None,
+            extensions: Some(vec![
+                Extension::HmacSecret,
+                Extension::Unknown("credProtect".into()),
+            ]),
             aaguid: Aaguid::new_empty(),
             options: Some(Options {
                 rk: true,
@@ -166,7 +187,10 @@ mod tests {
         let aaguid = Aaguid::new_empty();
         let input = Response {
             versions: vec!["FIDO_2_0".into()],
-            extensions: None,
+            extensions: Some(vec![
+                Extension::HmacSecret,
+                Extension::Unknown("credProtect".into()),
+            ]),
             aaguid,
             options: Some(Options {
                 rk: true,
@@ -189,7 +213,7 @@ mod tests {
 
         let expected = cbor!({
             0x01 => vec!["FIDO_2_0"],
-            // extensions should be skiped
+            0x02 => vec!["hmac-secret", "credProtect"],
             0x03 => ciborium::value::Value::Bytes([0;16].into()),
             0x04 => {
                 "plat" => false,
@@ -211,7 +235,7 @@ mod tests {
     fn unknown_gets_ignored() {
         let input = cbor!({
             0x01 => vec!["FIDO_2_0"],
-            // extensions should be skiped
+            0x02 => vec!["hmac-secret", "credProtect"],
             0x03 => ciborium::value::Value::Bytes([0;16].into()),
             0x04 => {
                 "plat" => false,
@@ -234,7 +258,10 @@ mod tests {
 
         let expected = Response {
             versions: vec!["FIDO_2_0".into()],
-            extensions: None,
+            extensions: Some(vec![
+                Extension::HmacSecret,
+                Extension::Unknown("credProtect".into()),
+            ]),
             aaguid: Aaguid::new_empty(),
             options: Some(Options {
                 rk: true,
