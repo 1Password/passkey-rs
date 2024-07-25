@@ -160,7 +160,7 @@ repr_enum! {
         UserActionTimeout : 0x2F,
         /// Continuation command, such as, authenticatorGetNextAssertion[^1] not allowed.
         ///
-        /// [^1]: Comming soon to an MR near you
+        /// [^1]: Coming soon to an MR near you
         NotAllowed : 0x30,
         /// PIN Invalid.
         PinInvalid : 0x31,
@@ -192,7 +192,7 @@ repr_enum! {
         /// [Built-in user verification][1] is disabled.
         ///
         /// [1]: https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#built-in-user-verification-method
-        UserVerficationBlocked : 0x3C,
+        UserVerificationBlocked : 0x3C,
         /// A checksum did not match.
         IntegrityFailure : 0x3D,
         /// The requested subcommand is either invalid or not implemented.

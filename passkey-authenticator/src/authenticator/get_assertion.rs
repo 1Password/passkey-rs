@@ -2,7 +2,7 @@ use p256::ecdsa::{signature::SignerMut, SigningKey};
 use passkey_types::{
     ctap2::{
         get_assertion::{Request, Response},
-        AuthenticatorData, Ctap2Error, StatusCode,
+        AuthenticatorData, Ctap2Error, Flags, StatusCode,
     },
     webauthn::PublicKeyCredentialUserEntity,
     Passkey,
@@ -124,13 +124,17 @@ where
                 .await?;
         }
 
+        let extensions =
+            self.get_extensions(&credential, input.extensions, flags.contains(Flags::UV))?;
         // 12. Sign the clientDataHash along with authData with the selected credential.
         //     Let signature be the assertion signature of the concatenation `authenticatorData` ||
         //     `clien_data_hash` using the privateKey of selectedCredential. A simple, undelimited
         //      concatenation is safe to use here because the authenticator data describes its own
         //      length. The hash of the serialized client data (which potentially has a variable
         //      length) is always the last element.
-        let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter).set_flags(flags);
+        let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter)
+            .set_flags(flags)
+            .set_assertion_extensions(extensions.signed)?;
         let mut signature_target = auth_data.to_vec();
         signature_target.extend(input.client_data_hash);
 
@@ -155,7 +159,7 @@ where
                 name: "".into(),
             }),
             number_of_credentials: None,
-            unsigned_extension_outputs: None,
+            unsigned_extension_outputs: extensions.unsigned,
         })
     }
 }
@@ -180,6 +184,7 @@ mod tests {
             rp_id: "example.com".into(),
             user_handle: None,
             counter: None,
+            extensions: Default::default(),
         }
     }
 

@@ -24,12 +24,14 @@ bitflags = "2"
 ciborium = "0.2"
 data-encoding = "2"
 indexmap = { version = "2", features = ["serde"] }
+hmac = "0.12"
 rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
 strum = { version = "0.25", features = ["derive"] }
 typeshare = "1"
+zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = "0.3"
 

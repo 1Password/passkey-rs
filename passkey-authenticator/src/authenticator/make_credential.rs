@@ -103,6 +103,8 @@ where
             SecretKey::random(&mut rng)
         };
 
+        let extensions = self.make_extensions(input.extensions)?;
+
         // Encoding of the keypair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested
         // credential.
@@ -114,6 +116,7 @@ where
             credential_id: credential_id.into(),
             user_handle: input.options.rk.then_some(input.user.id.clone()),
             counter: self.make_credentials_with_signature_counter.then_some(0),
+            extensions: extensions.credential,
         };
 
         // 10. If "rk" in options parameter is set to true:
@@ -137,13 +140,14 @@ where
 
         let auth_data = AuthenticatorData::new(&input.rp.id, passkey.counter)
             .set_flags(flags)
-            .set_attested_credential_data(acd);
+            .set_attested_credential_data(acd)
+            .set_make_credential_extensions(extensions.signed)?;
 
         let response = Response {
             auth_data,
             fmt: "None".into(),
             att_stmt: vec![0xa0].into(), // CBOR exquivalent to empty map
-            unsigned_extension_outputs: None,
+            unsigned_extension_outputs: extensions.unsigned,
         };
 
         // 10
@@ -162,8 +166,10 @@ mod tests {
     use coset::iana;
     use passkey_types::{
         ctap2::{
+            extensions::AuthenticatorPrfInputs,
             make_credential::{
-                Options, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity,
+                ExtensionInputs, Options, PublicKeyCredentialRpEntity,
+                PublicKeyCredentialUserEntity,
             },
             Aaguid,
         },
@@ -176,6 +182,7 @@ mod tests {
     use super::*;
     use crate::{
         credential_store::{DiscoverabilitySupport, StoreInfo},
+        extensions,
         user_validation::MockUserValidationMethod,
         MemoryStore,
     };
@@ -246,6 +253,7 @@ mod tests {
             credential_id: cred_id.clone(),
             user_handle: Some(response.user.id.clone()),
             counter: None,
+            extensions: Default::default(),
         };
         let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
         let user_mock = MockUserValidationMethod::verified_user(1);
@@ -302,6 +310,132 @@ mod tests {
         // Assert
         let store = shared_store.lock().await;
         assert_eq!(store.as_ref().and_then(|c| c.counter).unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn unsupported_extension_with_request_gives_no_ext_output() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+        let request = Request {
+            extensions: Some(ExtensionInputs {
+                prf: Some(AuthenticatorPrfInputs {
+                    eval: None,
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+        let request = Request {
+            extensions: Some(ExtensionInputs::default()),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn supported_extension_with_empty_request_gives_no_ext_output() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = Request {
+            extensions: Some(ExtensionInputs::default()),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn supported_extension_without_extension_request_gives_no_ext_output() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = good_request();
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_none());
+    }
+
+    #[tokio::test]
+    async fn supported_extension_with_request_gives_output() {
+        let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+        let user_mock = MockUserValidationMethod::verified_user(1);
+
+        let mut authenticator =
+            Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
+                .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+
+        let request = Request {
+            extensions: Some(ExtensionInputs {
+                prf: Some(AuthenticatorPrfInputs {
+                    eval: None,
+                    eval_by_credential: None,
+                }),
+                ..Default::default()
+            }),
+            ..good_request()
+        };
+
+        let res = authenticator
+            .make_credential(request)
+            .await
+            .expect("error happened while trying to make a new credential");
+
+        assert!(res.auth_data.extensions.is_none());
+        assert!(res.unsigned_extension_outputs.is_some());
+        let exts = res.unsigned_extension_outputs.unwrap();
+        assert!(exts.prf.is_some());
+        let prf = exts.prf.unwrap();
+        assert!(prf.enabled);
+        assert!(prf.results.is_none())
     }
 
     #[tokio::test]

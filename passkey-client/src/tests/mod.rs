@@ -7,6 +7,8 @@ use passkey_types::{
 use serde::Deserialize;
 use url::{ParseError, Url};
 
+mod ext_prf;
+
 fn good_credential_creation_options() -> webauthn::PublicKeyCredentialCreationOptions {
     webauthn::PublicKeyCredentialCreationOptions {
         rp: webauthn::PublicKeyCredentialRpEntity {

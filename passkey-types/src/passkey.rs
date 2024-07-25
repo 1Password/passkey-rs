@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use super::u2f::{AuthenticationRequest, RegisterRequest, RegisterResponse};
 use crate::{ctap2::make_credential as ctap2, webauthn, Bytes};
 use coset::CoseKey;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// The private WebAuthn credential containing all relevant required and optional information for an
 /// authentication ceremony.
@@ -84,6 +85,9 @@ pub struct Passkey {
     ///
     /// [signCount]: https://w3c.github.io/webauthn/#signature-counter
     pub counter: Option<u32>,
+
+    /// Authenticator extensions that need data associated to passkey secrets
+    pub extensions: CredentialExtensions,
 }
 
 impl Passkey {
@@ -100,6 +104,7 @@ impl Passkey {
             rp_id: app_id.into(),
             user_handle: None,
             counter: Some(0),
+            extensions: Default::default(),
         }
     }
 
@@ -116,6 +121,7 @@ impl Passkey {
             rp_id: app_id.into(),
             user_handle: None,
             counter: Some(counter),
+            extensions: Default::default(),
         }
     }
 
@@ -177,4 +183,22 @@ impl Debug for Passkey {
             .field("counter", &self.counter)
             .finish()
     }
+}
+
+/// Supported extensions on a [`Passkey`]
+#[derive(Default, Clone, Zeroize, ZeroizeOnDrop)]
+#[cfg_attr(any(test, feature = "testable"), derive(PartialEq))]
+pub struct CredentialExtensions {
+    /// Whether the passkey has hmac-secret credentials associated to it
+    pub hmac_secret: Option<StoredHmacSecret>,
+}
+
+/// The stored hmac-secret credentials associated to a [`Passkey`]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+#[cfg_attr(any(test, feature = "testable"), derive(PartialEq))]
+pub struct StoredHmacSecret {
+    /// The credential that must be gated behind user verification
+    pub cred_with_uv: Vec<u8>,
+    /// The credential that is not gated behind user verification, but is gated behind user presence
+    pub cred_without_uv: Option<Vec<u8>>,
 }

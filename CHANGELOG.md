@@ -43,6 +43,7 @@ handles client data and its hash.
 - ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 - ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 - ⚠ BREAKING: Add unsigned extension outputs for the CTAP authenticator outputs. ([#34](https://github.com/1Password/passkey-rs/pull/33))
+- ⚠ BREAKING: Add ability for `Passkey` to store associated extension data. ([#36](https://github.com/1Password/passkey-rs/pull/36))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

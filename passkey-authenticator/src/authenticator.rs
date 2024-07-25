@@ -6,9 +6,12 @@ use passkey_types::{
 
 use crate::{CredentialStore, UserValidationMethod};
 
+pub mod extensions;
 mod get_assertion;
 mod get_info;
 mod make_credential;
+
+use extensions::Extensions;
 
 /// A virtual authenticator with all the necessary state and information.
 pub struct Authenticator<S, U> {
@@ -25,15 +28,15 @@ pub struct Authenticator<S, U> {
     /// Provider of user verification factor.
     user_validation: U,
 
-    /// The display name given when a [`webauthn::CredentialPropertiesOutput`] is requested
-    display_name: Option<String>,
-
     /// Value to control whether the authenticator will save new credentials with a signature counter.
     /// The default value is `false`.
     ///
     /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction
     /// with the distributed nature of synced keys. It can also cause issues with backup and restore functionality.
     make_credentials_with_signature_counter: bool,
+
+    /// Supported authenticator extensions
+    extensions: Extensions,
 }
 
 impl<S, U> Authenticator<S, U>
@@ -53,19 +56,19 @@ where
                 webauthn::AuthenticatorTransport::Hybrid,
             ],
             user_validation: user,
-            display_name: None,
             make_credentials_with_signature_counter: false,
+            extensions: Extensions::default(),
         }
     }
 
     /// Set the authenticator's display name which will be returned if [`webauthn::CredentialPropertiesOutput`] is requested.
     pub fn set_display_name(&mut self, name: String) {
-        self.display_name = Some(name);
+        self.extensions.display_name.replace(name);
     }
 
     /// Get a reference to the authenticators display name to return in [`webauthn::CredentialPropertiesOutput`].
     pub fn display_name(&self) -> Option<&String> {
-        self.display_name.as_ref()
+        self.extensions.display_name.as_ref()
     }
 
     /// Set whether the authenticator should save new credentials with a signature counter.
@@ -170,6 +173,12 @@ where
         }
 
         Ok(flags)
+    }
+
+    /// Set the hmac-secret extension as a supported extension
+    pub fn hmac_secret(mut self, ext: extensions::HmacSecretConfig) -> Self {
+        self.extensions.hmac_secret = Some(ext);
+        self
     }
 }
 
