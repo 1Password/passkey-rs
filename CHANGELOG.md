@@ -12,6 +12,10 @@
 	- Removed: `UserValidationMethod::check_user_verification`
 	- Added: `UserValidationMethod::check_user`. This function now performs both user presence and user verification checks.
 		The function now also returns which validations were performed, even if they were not requested.
+- Added: Support for discoverable credentials
+	- ⚠ BREAKING: Added: `CredentialStore::get_info` which returns `StoreInfo` containing `DiscoverabilitySupport`.
+	- ⚠ BREAKING: Changed: `CredentialStore::save_credential` now also takes `Options`.
+	- Changed: `Authenticator::make_credentials` now returns an error if a discoverable credential was requested but not supported by the store.
 
 ### passkey-client
 
@@ -35,6 +39,7 @@ handles client data and its hash.
 
 - `CollectedClientData` is now generic and supports additional strongly typed fields. ([#28](https://github.com/1Password/passkey-rs/pull/28))
 	- Changed: `CollectedClientData` has changed to `CollectedClientData<E = ()>`
+- The `Client` now returns `CredProps::rk` depending on the authenticator's capabilities. ([#29](https://github.com/1Password/passkey-rs/pull/29))
 - ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 - ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 
