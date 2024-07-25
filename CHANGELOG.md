@@ -37,9 +37,11 @@ handles client data and its hash.
 
 ## passkey-types
 
-- `CollectedClientData` is now generic and supports additional strongly typed fields.
+- `CollectedClientData` is now generic and supports additional strongly typed fields. ([#28](https://github.com/1Password/passkey-rs/pull/28))
 	- Changed: `CollectedClientData` has changed to `CollectedClientData<E = ()>`
-- The `Client` now returns `CredProps::rk` depending on the authenticator's capabilities.
+- The `Client` now returns `CredProps::rk` depending on the authenticator's capabilities. ([#29](https://github.com/1Password/passkey-rs/pull/29))
+- ⚠ BREAKING: Rename webauthn extension outputs to be consistent with inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
+- ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0
