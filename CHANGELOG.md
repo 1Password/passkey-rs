@@ -44,6 +44,9 @@ handles client data and its hash.
 - ⚠ BREAKING: Create new extension inputs for the CTAP authenticator inputs. ([#33](https://github.com/1Password/passkey-rs/pull/33))
 - ⚠ BREAKING: Add unsigned extension outputs for the CTAP authenticator outputs. ([#34](https://github.com/1Password/passkey-rs/pull/33))
 - ⚠ BREAKING: Add ability for `Passkey` to store associated extension data. ([#36](https://github.com/1Password/passkey-rs/pull/36))
+- ⚠ BREAKING: Change version and extension information in `ctap2::get_info` from strings to enums. ([#39](https://github.com/1Password/passkey-rs/pull/39))
+- ⚠ BREAKING: Add missing CTAP2.1 fields to `make_credential::Response` and `get_assertion::Response`. ([#39](https://github.com/1Password/passkey-rs/pull/39))
+- Make the `PublicKeyCredential` outputs equatable in swift. ([#39](https://github.com/1Password/passkey-rs/pull/39))
 
 ## Passkey v0.2.0
 ### passkey-types v0.2.0

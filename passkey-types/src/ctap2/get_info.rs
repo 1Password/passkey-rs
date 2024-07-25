@@ -1,5 +1,5 @@
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorGetInfo>
-use std::{borrow::Cow, num::NonZeroU128};
+use std::num::NonZeroU128;
 
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +16,7 @@ serde_workaround! {
         /// * "FIDO_2_0" for CTAP2 / FIDO2 / Web Authentication authenticators
         /// * "U2F_V2" for CTAP1/U2F authenticators.
         #[serde(rename = 0x01)]
-        pub versions: Vec<Cow<'static, str>>,
+        pub versions: Vec<Version>,
 
         /// List of supported extensions. (Optional)
         #[serde(rename = 0x02, default, skip_serializing_if = Option::is_none)]
@@ -40,7 +40,7 @@ serde_workaround! {
 
         /// List of supported PIN Protocol versions.
         ///
-        /// If we ever end up with more than 256 pin protocols, an enhacement request should be filed.
+        /// If we ever end up with more than 256 pin protocols, an enhancement request should be filed.
         #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
         pub pin_protocols: Option<Vec<u8>>,
 
@@ -128,6 +128,19 @@ impl Default for Options {
     }
 }
 
+/// CTAP versions supported
+#[allow(non_camel_case_types)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Version {
+    /// Universal 2nd Factor version 1.2
+    U2F_V2,
+    /// Client To Authenticator Protocol version 2.0
+    FIDO_2_0,
+    /// Unknown version catching the value
+    #[serde(untagged)]
+    Unknown(String),
+}
+
 /// CTAP extensions supported by the authenticator
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Extension {
@@ -155,11 +168,11 @@ pub enum Extension {
 mod tests {
     use ciborium::cbor;
 
-    use super::{Aaguid, AuthenticatorTransport, Extension, Options, Response};
+    use super::{Aaguid, AuthenticatorTransport, Extension, Options, Response, Version};
     #[test]
     fn serialization_round_trip() {
         let expected = Response {
-            versions: vec!["FIDO_2_0".into()],
+            versions: vec![Version::FIDO_2_0],
             extensions: Some(vec![
                 Extension::HmacSecret,
                 Extension::Unknown("credProtect".into()),
@@ -191,7 +204,7 @@ mod tests {
     fn serialization_expected_wire_fmt() {
         let aaguid = Aaguid::new_empty();
         let input = Response {
-            versions: vec!["FIDO_2_0".into()],
+            versions: vec![Version::FIDO_2_0],
             extensions: Some(vec![
                 Extension::HmacSecret,
                 Extension::Unknown("credProtect".into()),
@@ -237,9 +250,9 @@ mod tests {
     }
 
     #[test]
-    fn unknown_gets_ignored() {
+    fn unknown_transports_gets_ignored() {
         let input = cbor!({
-            0x01 => vec!["FIDO_2_0"],
+            0x01 => vec!["FIDO_2_0", "FIDO_2_1"],
             0x02 => vec!["hmac-secret", "credProtect"],
             0x03 => ciborium::value::Value::Bytes([0;16].into()),
             0x04 => {
@@ -262,7 +275,7 @@ mod tests {
             ciborium::de::from_reader(serialized.as_slice()).expect("Could not deserialize");
 
         let expected = Response {
-            versions: vec!["FIDO_2_0".into()],
+            versions: vec![Version::FIDO_2_0, Version::Unknown("FIDO_2_1".into())],
             extensions: Some(vec![
                 Extension::HmacSecret,
                 Extension::Unknown("credProtect".into()),

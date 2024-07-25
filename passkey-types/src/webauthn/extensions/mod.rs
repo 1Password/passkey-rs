@@ -7,6 +7,9 @@ mod pseudo_random_function;
 pub use credential_properties::*;
 pub use pseudo_random_function::*;
 
+#[cfg(doc)]
+use crate::webauthn::PublicKeyCredential;
+
 /// This is a dictionary containing the client extension input values for zero or more
 /// [WebAuthn Extensions]. There are currently none supported.
 ///
@@ -70,7 +73,7 @@ impl AuthenticationExtensionsClientInputs {
 /// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[typeshare(swift = "Equatable")]
 pub struct AuthenticationExtensionsClientOutputs {
     /// Contains properties of the given [`PublicKeyCredential`] when it is included.
     ///

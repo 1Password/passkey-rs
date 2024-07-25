@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// The response to the successful authentication of a [`PublicKeyCredential`]
-#[typeshare]
+#[typeshare(swift = "Equatable")]
 pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAssertionResponse>;
 
 /// This type supplies `get()` requests with the data it needs to generate an assertion.
@@ -95,7 +95,12 @@ pub struct PublicKeyCredentialRequestOptions {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "ignore_unknown_opt_vec"
+        deserialize_with = "ignore_unknown_opt_vec",
+        // On older versions of google play services, hybrid requests were not being transcribed
+        // correctly from the CTAP format to the webauthn format as is required by the credential
+        // manager API. This alias is present to mitigate the issue on devices that may not have
+        // received the update. It will be removed at a later date so do not rely on it.
+        alias = "allowList"
     )]
     pub allow_credentials: Option<Vec<PublicKeyCredentialDescriptor>>,
 
@@ -183,7 +188,7 @@ pub struct CredentialRequestOptions {
 /// <https://w3c.github.io/webauthn/#iface-authenticatorassertionresponse>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[typeshare(swift = "Equatable")]
 pub struct AuthenticatorAssertionResponse {
     /// This attribute contains the JSON serialization of [`CollectedClientData`] passed to the
     /// authenticator by the client in order to generate this credential. The exact JSON serialization

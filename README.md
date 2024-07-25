@@ -16,7 +16,7 @@ In understanding how to use this library, developers should read the [Webauthn L
 
 Examples in this documentation shows certain values being assumed to come from the website (Relying Party). It is not within the scope of these libraries to manage the details of the interaction with the Relying Party. How these values and the authentication results are communicated with the Relying Party is an implementation detail for users of these crates.
 
-# Basic Concepts
+## Basic Concepts
 
 Conceptually, working with Passkeys involves receiving requests for registration of new credentials, storing those credentials, and performing authentication with existing credentials. Two standards are involved here: [Webauthn][webauthn-3] is the protocol by which a website (a "Relying Party") communicates with your application. The [Client-to-Authenticator Protocol (CTAP2)][ctap-2] is the protocol by which your application communicates with an authenticator - which can be software or a hardware device such as a FIDO2 USB key.
 
@@ -46,7 +46,8 @@ The `Authenticator` does not store credentials itself, but relies on a generic t
 The `authenticator` library provides a range of implementations of `authenticator::CredentialStore` but users of the library can provide their own.
 
 A runnable demonstration binary is provided in `passkey/examples/usage.rs`.
-## Example: Using the Client type for Webauthn Operations
+
+### Example: Using the Client type for Webauthn Operations
 
 The highest-level type in these libraries is the `passkey-client::Client`. This is the type you will primarily use to implement Webauthn authentication in your application.
 
@@ -99,7 +100,6 @@ let request = CredentialCreationOptions {
 
 // Now create the credential.
 let my_webauthn_credential: CreatedPublicKeyCredential = my_client.register(origin, request, DefaultClientData).await?;
-
 ```
 
 The above example shows how a Webauthn credential can be created. Now, we can go ahead and try to authenticate the user.
@@ -123,7 +123,7 @@ let authenticated_cred: AuthenticatedPublicKeyCredential = my_client
     .await?;
 ```
 
-## Example: Using the Authenticator for CTAP2 Operations
+### Example: Using the Authenticator for CTAP2 Operations
 
 The following code provides a basic example of how to create and use an `Authenticator` by itself to generate a credential and store it.
 

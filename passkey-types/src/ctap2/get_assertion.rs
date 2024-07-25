@@ -143,6 +143,22 @@ serde_workaround! {
         #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
         pub number_of_credentials: Option<u8>,
 
+        /// Indicates that a credential was selected by the user via interaction directly with the authenticator,
+        /// and thus the platform does not need to confirm the credential.
+        /// Optional; defaults to false.
+        /// MUST NOT be present in response to a request where an [`Request::allow_list`] was given,
+        /// where [`Self::number_of_credentials`] is greater than one,
+        ///  nor in response to an `authenticatorGetNextAssertion` request.
+        #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
+        pub user_selected: Option<bool>,
+
+        /// The contents of the associated `largeBlobKey` if present for the asserted credential,
+        /// and if [largeBlobKey[] was true in the extensions input.
+        ///
+        /// This extension is currently un-supported by this library.
+        #[serde(rename = 0x07, default, skip_serializing_if = Option::is_none)]
+        pub large_blob_key: Option<Bytes>,
+
         /// A map, keyed by extension identifiers, to unsigned outputs of extensions, if any.
         /// Authenticators SHOULD omit this field if no processed extensions define unsigned outputs.
         /// Clients MUST treat an empty map the same as an omitted field.

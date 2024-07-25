@@ -128,13 +128,14 @@ where
             self.get_extensions(&credential, input.extensions, flags.contains(Flags::UV))?;
         // 12. Sign the clientDataHash along with authData with the selected credential.
         //     Let signature be the assertion signature of the concatenation `authenticatorData` ||
-        //     `clien_data_hash` using the privateKey of selectedCredential. A simple, undelimited
+        //     `client_data_hash` using the privateKey of selectedCredential. A simple, undelimited
         //      concatenation is safe to use here because the authenticator data describes its own
         //      length. The hash of the serialized client data (which potentially has a variable
         //      length) is always the last element.
         let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter)
             .set_flags(flags)
             .set_assertion_extensions(extensions.signed)?;
+
         let mut signature_target = auth_data.to_vec();
         signature_target.extend(input.client_data_hash);
 
@@ -154,11 +155,13 @@ where
             user: user_handle.map(|id| PublicKeyCredentialUserEntity {
                 id,
                 // TODO: make a Authenticator version of this struct similar to make_credential::PublicKeyCredentialRpEntity
-                // since these fields are optional at the authenticator boundry, but required at the client boundry.
+                // since these fields are optional at the authenticator boundary, but required at the client boundary.
                 display_name: "".into(),
                 name: "".into(),
             }),
             number_of_credentials: None,
+            user_selected: None,
+            large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,
         })
     }

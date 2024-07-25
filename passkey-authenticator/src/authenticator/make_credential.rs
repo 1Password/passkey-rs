@@ -68,7 +68,7 @@ where
         //    extension processing are returned in the authenticator data.
 
         // NB: We do not currently support any Pin Protocols (1 or 2) as this does not make sense
-        // in the context of 1Password. This is to be revisisted to see if we can hook this into
+        // in the context of 1Password. This is to be revisited to see if we can hook this into
         // using some key that we already have, such as the Biometry unlock key for example.
         // 5. If pinAuth parameter is present and pinProtocol is 1, verify it by matching it against
         //    first 16 bytes of HMAC-SHA-256 of clientDataHash parameter using
@@ -105,7 +105,7 @@ where
 
         let extensions = self.make_extensions(input.extensions, input.options.uv)?;
 
-        // Encoding of the keypair into their CoseKey representation before moving the private CoseKey
+        // Encoding of the key pair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested
         // credential.
         let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key, algorithm);
@@ -146,7 +146,9 @@ where
         let response = Response {
             auth_data,
             fmt: "None".into(),
-            att_stmt: vec![0xa0].into(), // CBOR exquivalent to empty map
+            att_stmt: vec![0xa0].into(), // CBOR equivalent to empty map
+            ep_att: None,
+            large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,
         };
 
@@ -266,7 +268,7 @@ mod tests {
         let err = authenticator
             .make_credential(response)
             .await
-            .expect_err("make credential succeded even though store contains excluded id");
+            .expect_err("make credential succeeded even though store contains excluded id");
 
         assert_eq!(err, Ctap2Error::CredentialExcluded.into());
         assert_eq!(shared_store.lock().await.len(), 1);

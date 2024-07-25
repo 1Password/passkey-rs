@@ -271,6 +271,20 @@ serde_workaround! {
         #[serde(rename = 0x03)]
         pub att_stmt: ciborium::value::Value,
 
+        /// Indicates whether an enterprise attestation was returned for this credential.
+        /// If `ep_att` is absent or present and set to false, then an enterprise attestation was not returned.
+        /// If `ep_att` is present and set to true, then an enterprise attestation was returned.
+        ///
+        /// Enterprise attestation is currently unsupported by this library.
+        #[serde(rename = 0x04, default, skip_serializing_if = Option::is_none)]
+        pub ep_att: Option<bool>,
+
+        /// Contains the `largeBlobKey` for the credential, if requested with the `largeBlobKey` extension.
+        ///
+        /// The `largeBlobKey` extension is currently unsupported by this library.
+        #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
+        pub large_blob_key: Option<Bytes>,
+
         /// A map, keyed by extension identifiers, to unsigned outputs of extensions, if any.
         /// Authenticators SHOULD omit this field if no processed extensions define unsigned outputs.
         /// Clients MUST treat an empty map the same as an omitted field.
