@@ -33,6 +33,17 @@ pub enum DiscoverabilitySupport {
     ForcedDiscoverable,
 }
 
+impl DiscoverabilitySupport {
+    /// Helper method to determine if the store created a discoverable credential or not.
+    pub fn is_passkey_discoverable(&self, rk_input: bool) -> bool {
+        match self {
+            DiscoverabilitySupport::Full => rk_input,
+            DiscoverabilitySupport::OnlyNonDiscoverable => false,
+            DiscoverabilitySupport::ForcedDiscoverable => true,
+        }
+    }
+}
+
 /// Use this on a type that enables storage and fetching of credentials
 #[async_trait::async_trait]
 pub trait CredentialStore {
