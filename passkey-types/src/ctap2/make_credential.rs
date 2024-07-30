@@ -5,8 +5,11 @@ use serde::{Deserialize, Serialize};
 use crate::{ctap2::AuthenticatorData, webauthn, Bytes};
 
 #[cfg(doc)]
-use crate::webauthn::{
-    CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
+use {
+    crate::webauthn::{
+        CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
+    },
+    ciborium::value::Value,
 };
 
 use super::extensions::{AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs, HmacGetSecretInput};
