@@ -10,9 +10,7 @@
 //! [credprops]: https://w3c.github.io/webauthn/#sctn-authenticator-credential-properties-extension
 //! [prf]: https://w3c.github.io/webauthn/#prf-extension
 
-use passkey_authenticator::{
-    CredentialStore, DiscoverabilitySupport, StoreInfo, UserValidationMethod,
-};
+use passkey_authenticator::{CredentialStore, StoreInfo, UserValidationMethod};
 use passkey_types::{
     ctap2::{get_assertion, get_info, make_credential},
     webauthn::{
@@ -53,11 +51,7 @@ where
     ) -> AuthenticationExtensionsClientOutputs {
         let cred_props_requested = request.and_then(|ext| ext.cred_props) == Some(true);
         let cred_props = if cred_props_requested {
-            let discoverable = match store_info.discoverability {
-                DiscoverabilitySupport::Full => rk,
-                DiscoverabilitySupport::OnlyNonDiscoverable => false,
-                DiscoverabilitySupport::ForcedDiscoverable => true,
-            };
+            let discoverable = store_info.discoverability.is_passkey_discoverable(rk);
 
             Some(CredentialPropertiesOutput {
                 discoverable: Some(discoverable),

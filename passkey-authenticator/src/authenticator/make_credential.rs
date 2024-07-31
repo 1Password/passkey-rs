@@ -110,11 +110,17 @@ where
         // credential.
         let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key, algorithm);
 
+        let store_info = self.store.get_info().await;
+
+        let is_passkey_rk = store_info
+            .discoverability
+            .is_passkey_discoverable(input.options.rk);
+
         let passkey = Passkey {
             key: private,
             rp_id: input.rp.id.clone(),
             credential_id: credential_id.into(),
-            user_handle: input.options.rk.then_some(input.user.id.clone()),
+            user_handle: is_passkey_rk.then(|| input.user.id.clone()),
             counter: self.make_credentials_with_signature_counter.then_some(0),
             extensions: extensions.credential,
         };
