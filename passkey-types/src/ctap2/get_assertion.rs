@@ -10,7 +10,10 @@ use crate::{
 pub use crate::ctap2::make_credential::Options;
 
 #[cfg(doc)]
-use crate::webauthn::{CollectedClientData, PublicKeyCredentialRequestOptions};
+use {
+    crate::webauthn::{CollectedClientData, PublicKeyCredentialRequestOptions},
+    ciborium::Value,
+};
 
 use super::extensions::{AuthenticatorPrfGetOutputs, AuthenticatorPrfInputs, HmacGetSecretInput};
 
