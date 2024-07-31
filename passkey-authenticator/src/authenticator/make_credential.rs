@@ -144,9 +144,9 @@ where
             .set_make_credential_extensions(extensions.signed)?;
 
         let response = Response {
-            auth_data,
             fmt: "None".into(),
-            att_stmt: vec![0xa0].into(), // CBOR equivalent to empty map
+            auth_data,
+            att_stmt: coset::cbor::value::Value::Map(vec![]),
             ep_att: None,
             large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,
