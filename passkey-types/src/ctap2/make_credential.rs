@@ -258,13 +258,13 @@ serde_workaround! {
     /// Upon successful creation of a credential, the authenticator returns an attestation object.
     #[derive(Debug)]
     pub struct Response {
-        /// The authenticator data object
-        #[serde(rename = 0x01)]
-        pub auth_data: AuthenticatorData,
-
         /// The attestation statement format identifier
-        #[serde(rename = 0x02)]
+        #[serde(rename = 0x01)]
         pub fmt: String,
+
+        /// The authenticator data object
+        #[serde(rename = 0x02)]
+        pub auth_data: AuthenticatorData,
 
         /// The attestation statement, whose format is identified by the "fmt" object member.
         /// The client treats it as an opaque object.
