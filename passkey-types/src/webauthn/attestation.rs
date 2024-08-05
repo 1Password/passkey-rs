@@ -656,7 +656,9 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     use super::CredentialCreationOptions;
-    use crate::webauthn::{ClientDataType, CollectedClientData};
+    use crate::webauthn::{
+        ClientDataType, CollectedClientData, PublicKeyCredentialCreationOptions,
+    };
 
     // Normal client data from Chrome assertion
     const CLIENT_DATA_JSON_STRING: &str = r#"{
@@ -989,5 +991,34 @@ mod tests {
         ccd.cross_origin = None;
         let client_data_json = serde_json::to_string(&ccd).unwrap();
         assert_eq!(client_data_json, CROSS_ORIGIN_FALSE);
+    }
+
+    #[test]
+    fn float_as_timeout() {
+        let json = r#"{
+          "pubKeyCredParams": [
+            { "type": "public-key", "alg": -7 },
+            { "type": "public-key", "alg": -257 }
+          ],
+          "authenticatorSelection": {
+            "authenticatorAttachment": "platform",
+            "requireResidentKey": true,
+            "residentKey": "required",
+            "userVerification": "required"
+          },
+          "challenge": "MjAyNC0wNy0zMVQxNTozNDowNFpbQkAyMmI3ZDgwOQ\u003d\u003d",
+          "attestation": "none",
+          "rp": { "id": "www.paypal.com", "name": "PayPal" },
+          "timeout": 1800000.0,
+          "user": {
+            "id": "ZDExMTQ2ZWNlY2U3YmE2MGYwMGRhMGE2MWJiZjRiMzk2ZDlkOTBjMDcxOWY0N2Y3Yjc2NGQ0ZGRmMGMxMGRlYQ\u003d\u003d",
+            "name": "test",
+            "displayName": "test"
+          }
+        }"#;
+
+        let deserialized: PublicKeyCredentialCreationOptions = serde_json::from_str(json).unwrap();
+
+        assert_eq!(deserialized.timeout, Some(1800000));
     }
 }
