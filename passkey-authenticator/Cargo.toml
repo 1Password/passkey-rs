@@ -1,6 +1,6 @@
 [package]
 name = "passkey-authenticator"
-version = "0.2.0"
+version = "0.3.0"
 description = "A webauthn authenticator supporting passkeys."
 include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
 readme = "README.md"
@@ -25,13 +25,13 @@ coset = "0.3"
 log = "0.4"
 mockall = { version = "0.11", optional = true }
 p256 = { version = "0.13", features = ["pem", "arithmetic", "jwk"] }
-passkey-types = { path = "../passkey-types", version = "0.2" }
+passkey-types = { path = "../passkey-types", version = "0.3" }
 rand = "0.8"
 tokio = { version = "1", features = ["sync"], optional = true }
 
 [dev-dependencies]
 mockall = { version = "0.11" }
-passkey-types = { path = "../passkey-types", version = "0.2", features = [
+passkey-types = { path = "../passkey-types", version = "0.3", features = [
     "testable",
 ] }
 tokio = { version = "1", features = ["sync", "macros", "rt"] }

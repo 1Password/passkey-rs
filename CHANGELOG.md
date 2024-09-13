@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-### passkey-authenticator
+## Passkey v0.3.0
+### passkey-authenticator v0.3.0
 
 - Added: support for signature counters
 	- ⚠ BREAKING: Add `update_credential` function to `CredentialStore` ([#23](https://github.com/1Password/passkey-rs/pull/23)).
@@ -17,7 +18,7 @@
 	- ⚠ BREAKING: Changed: `CredentialStore::save_credential` now also takes `Options`.
 	- Changed: `Authenticator::make_credentials` now returns an error if a discoverable credential was requested but not supported by the store.
 
-### passkey-client
+### passkey-client v0.3.0
 
 - Changed: The `Client` no longer hardcodes the UV value sent to the `Authenticator` ([#22](https://github.com/1Password/passkey-rs/pull/22)).
 - Changed: The `Client` no longer hardcodes the RK value sent to the `Authenticator` ([#27](https://github.com/1Password/passkey-rs/pull/27)).
@@ -35,7 +36,7 @@ handles client data and its hash.
 	- `RpIdValidator::assert_domain` takes an `&Origin` instead of a `&Url`
 - ⚠ BREAKING: The collected client data will now have the android app signature as the origin when a request comes from an app directly. ([#32](https://github.com/1Password/passkey-rs/pull/27))
 
-## passkey-types
+## passkey-types v0.3.0
 
 - `CollectedClientData` is now generic and supports additional strongly typed fields. ([#28](https://github.com/1Password/passkey-rs/pull/28))
 	- Changed: `CollectedClientData` has changed to `CollectedClientData<E = ()>`
