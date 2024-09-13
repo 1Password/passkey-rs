@@ -17,10 +17,7 @@ where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Default,
 {
-    Ok(match T::deserialize(de) {
-        Ok(val) => val,
-        Err(_) => T::default(),
-    })
+    Ok(T::deserialize(de).unwrap_or_default())
 }
 
 #[derive(Debug, Default)]
