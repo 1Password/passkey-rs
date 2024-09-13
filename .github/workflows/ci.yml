@@ -42,6 +42,14 @@ jobs:
           components: rustfmt
       - run: rustup run ${{ matrix.rust }} cargo fmt --all -- --check
 
+  semver-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+
   docs:
     name: Documentation
     runs-on: ubuntu-latest
