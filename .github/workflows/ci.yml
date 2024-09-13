@@ -96,5 +96,5 @@ jobs:
       - uses: actions-rs/install@v0.1
         with:
           crate: typeshare-cli
-          version: "1.10.0-beta.6"
+          version: "1.11.0"
       - run: typeshare --lang=${{ matrix.lang }} . -o test.${{ matrix.fs }}
