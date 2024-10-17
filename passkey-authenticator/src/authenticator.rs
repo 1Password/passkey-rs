@@ -13,6 +13,59 @@ mod make_credential;
 
 use extensions::Extensions;
 
+/// The length of credentialId that should be randomly generated during a credential creation operation.
+///
+/// The value has a maximum of `64` per the [webauthn specification]. The minimum is a library enforced as `16`.
+///
+/// It is recommended to randomize this if possible to avoid authenticator fingerprinting.
+///
+/// [webauthn specification]: https://www.w3.org/TR/webauthn-3/#user-handle
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct CredentialIdLength(u8);
+
+impl CredentialIdLength {
+    /// The default length of a credentialId to generate.
+    ///
+    /// This value is the same as [`Self::default`], but available in
+    /// `const` contexts.
+    pub const DEFAULT: Self = Self(Self::MIN);
+
+    const MIN: u8 = 16;
+
+    // "A user handle is an opaque byte sequence with a maximum size of 64 bytes..."
+    // Ref: https://www.w3.org/TR/webauthn-3/#user-handle
+    const MAX: u8 = 64;
+
+    /// Generates and returns a uniformly random [CredentialIdLength].
+    pub fn randomized(rng: &mut impl rand::Rng) -> Self {
+        let length = rng.gen_range(Self::MIN..=Self::MAX);
+        Self(length)
+    }
+}
+
+impl Default for CredentialIdLength {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl From<u8> for CredentialIdLength {
+    fn from(value: u8) -> Self {
+        // Clamp to the specification's maximum.
+        let value = core::cmp::min(Self::MAX, value);
+        // Round values less then what we support up to the default.
+        let value = core::cmp::max(Self::MIN, value);
+        Self(value)
+    }
+}
+
+impl From<CredentialIdLength> for usize {
+    fn from(value: CredentialIdLength) -> Self {
+        usize::from(value.0)
+    }
+}
+
 /// A virtual authenticator with all the necessary state and information.
 pub struct Authenticator<S, U> {
     /// The authenticator's AAGUID
@@ -34,6 +87,9 @@ pub struct Authenticator<S, U> {
     /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction
     /// with the distributed nature of synced keys. It can also cause issues with backup and restore functionality.
     make_credentials_with_signature_counter: bool,
+
+    /// The length of the credentialId made during a creation operation.
+    credential_id_length: CredentialIdLength,
 
     /// Supported authenticator extensions
     extensions: Extensions,
@@ -57,6 +113,7 @@ where
             ],
             user_validation: user,
             make_credentials_with_signature_counter: false,
+            credential_id_length: CredentialIdLength::default(),
             extensions: Extensions::default(),
         }
     }
@@ -82,6 +139,16 @@ where
     /// Get whether the authenticator will save new credentials with a signature counter.
     pub fn make_credentials_with_signature_counter(&self) -> bool {
         self.make_credentials_with_signature_counter
+    }
+
+    /// Set the length of credentialId to generate when creating a new credential.
+    pub fn set_make_credential_id_length(&mut self, length: CredentialIdLength) {
+        self.credential_id_length = length;
+    }
+
+    /// Get the current length of credential that will be generated when making a new credential.
+    pub fn make_credential_id_length(&self) -> CredentialIdLength {
+        self.credential_id_length
     }
 
     /// Access the [`CredentialStore`] to look into what is stored.
@@ -186,7 +253,7 @@ where
 mod tests {
     use passkey_types::ctap2::{Aaguid, Flags};
 
-    use crate::{Authenticator, MockUserValidationMethod, UserCheck};
+    use crate::{Authenticator, CredentialIdLength, MockUserValidationMethod, UserCheck};
 
     #[tokio::test]
     async fn check_user_does_not_check_up_or_uv_when_not_requested() {
@@ -439,5 +506,36 @@ mod tests {
 
         // Assert
         assert_eq!(result, Flags::UP | Flags::UV);
+    }
+
+    #[test]
+    fn credential_id_lengths_validate() {
+        for num in 0..u8::MAX {
+            let length = CredentialIdLength::from(num);
+            if !(16..=64).contains(&num) {
+                if num < 16 {
+                    // Lower values should be rounded up.
+                    assert_eq!(length.0, CredentialIdLength::DEFAULT.0);
+                } else {
+                    // Higher values should be clamped
+                    assert_eq!(length.0, 64);
+                }
+            }
+        }
+
+        assert_eq!(
+            CredentialIdLength::DEFAULT.0,
+            CredentialIdLength::default().0
+        );
+    }
+
+    #[test]
+    fn credential_id_generation() {
+        let mut rng = rand::thread_rng();
+        let valid_range = 0..=64;
+        for _ in 0..=100 {
+            let length = CredentialIdLength::randomized(&mut rng).0;
+            assert!(valid_range.contains(&length));
+        }
     }
 }
