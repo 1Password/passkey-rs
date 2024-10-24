@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added: support for controlling generated credential's ID length to passkey-authenticator ([#49](https://github.com/1Password/passkey-rs/pull/49))
 
 ## Passkey v0.3.0
 ### passkey-authenticator v0.3.0

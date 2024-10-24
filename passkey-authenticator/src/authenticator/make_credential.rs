@@ -91,12 +91,7 @@ where
         //    error.
 
         // 9. Generate a new credential key pair for the algorithm specified.
-        let credential_id: Vec<u8> = {
-            use rand::RngCore;
-            let mut data = vec![0u8; 16];
-            rand::thread_rng().fill_bytes(&mut data);
-            data
-        };
+        let credential_id = passkey_types::rand::random_vec(self.credential_id_length.into());
 
         let private_key = {
             let mut rng = rand::thread_rng();
