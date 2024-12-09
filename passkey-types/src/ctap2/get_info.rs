@@ -129,7 +129,7 @@ impl Default for Options {
 }
 
 /// CTAP versions supported
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Version {
     /// Universal 2nd Factor version 1.2

@@ -8,7 +8,7 @@ use nom::{
 use std::{borrow::Cow, fmt::Debug, str::from_utf8};
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// An Unverified asset link.
 pub struct UnverifiedAssetLink<'a> {
     /// Application package name.
@@ -27,19 +27,21 @@ impl<'a> UnverifiedAssetLink<'a> {
         package_name: impl Into<Cow<'a, str>>,
         sha256_cert_fingerprint: &str,
         host: impl Into<Cow<'a, str>>,
-        asset_link_url: Option<Url>,
+        asset_link_url: Url,
     ) -> Result<Self, ValidationError> {
+        // Is this correct?
+        // It looks like you can set your own url path.
+        // https://developers.google.com/digital-asset-links/v1/statements#scaling-to-dozens-of-statements-or-more
+        if !valid_asset_link_url(&asset_link_url) {
+            return Err(ValidationError::InvalidAssetLinkUrl);
+        }
         let host = host.into();
-        let url = match asset_link_url {
-            Some(u) => u,
-            None => Url::parse(&format!("https://{host}/.well-known/assetlinks.json",))
-                .map_err(|e| ValidationError::InvalidAssetLinkUrl(e.to_string()))?,
-        };
+
         valid_fingerprint(sha256_cert_fingerprint).map(|sha256_cert_fingerprint| Self {
             package_name: package_name.into(),
             sha256_cert_fingerprint,
             host,
-            asset_link_url: url,
+            asset_link_url,
         })
     }
 
@@ -71,8 +73,8 @@ pub enum ValidationError {
     ParseFailed(String),
     /// The fingerprint had an invalid length.
     InvalidLength,
-    /// The asset link url could not be parsed.
-    InvalidAssetLinkUrl(String),
+    /// The asset link url is not secure or incorrect path.
+    InvalidAssetLinkUrl,
 }
 
 impl<T> From<nom::Err<nom::error::Error<T>>> for ValidationError {
@@ -120,10 +122,15 @@ pub fn valid_fingerprint(fingerprint: &str) -> Result<Vec<u8>, ValidationError> 
         .ok_or(ValidationError::InvalidLength)
 }
 
+/// Check for secure and expected path.
+fn valid_asset_link_url(url: &Url) -> bool {
+    url.scheme() == "https" && url.path() == "/.well-known/assetlinks.json"
+}
+
 #[cfg(test)]
 mod test {
-    use super::valid_fingerprint;
-    use crate::ValidationError;
+    use super::{valid_asset_link_url, valid_fingerprint, ValidationError};
+    use url::Url;
 
     #[test]
     fn check_valid_fingerprint() {
@@ -153,5 +160,23 @@ mod test {
             valid_fingerprint("B3:5B:68:X5:CE:84:50:55:7C:6A:55:FD:64:B5:1F:EA:C1:10:CB:36:D6:A3:52:1C:59:48:DB:3A:38:0A:34:A9").is_err(),
             "Should be valid fingerprint"
         );
+    }
+
+    #[test]
+    fn asset_link_url_ok() {
+        let url = Url::parse("https://www.facebook.com/.well-known/assetlinks.json").unwrap();
+        assert!(valid_asset_link_url(&url));
+    }
+
+    #[test]
+    fn asset_link_url_not_secure() {
+        let url = Url::parse("http://www.facebook.com/.well-known/assetlinks.json").unwrap();
+        assert!(!valid_asset_link_url(&url));
+    }
+
+    #[test]
+    fn asset_link_url_unexpected_path() {
+        let url = Url::parse("https://www.facebook.com/assetlinks.json").unwrap();
+        assert!(!valid_asset_link_url(&url));
     }
 }

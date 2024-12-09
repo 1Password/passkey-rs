@@ -334,7 +334,6 @@ pub struct AuthenticatorSelectionCriteria {
     ///
     /// See also the [`PublicKeyCredential::authenticator_attachment`] member, which can tell what
     /// authenticator attachment modality was used in a successful `create()` or `get()` operation.
-
     #[serde(
         skip_serializing_if = "Option::is_none",
         deserialize_with = "ignore_unknown",
@@ -352,7 +351,6 @@ pub struct AuthenticatorSelectionCriteria {
     /// See [`ResidentKeyRequirement`] for the description of `resident_key`'s values and semantics.
     ///
     /// [discoverable credential]: https://w3c.github.io/webauthn/#client-side-discoverable-credential
-
     #[serde(
         skip_serializing_if = "Option::is_none",
         deserialize_with = "ignore_unknown",

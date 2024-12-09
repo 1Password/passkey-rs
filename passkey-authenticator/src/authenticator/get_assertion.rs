@@ -5,7 +5,6 @@ use passkey_types::{
         AuthenticatorData, Ctap2Error, Flags, StatusCode,
     },
     webauthn::PublicKeyCredentialUserEntity,
-    Passkey,
 };
 
 use crate::{private_key_from_cose_key, Authenticator, CredentialStore, UserValidationMethod};
@@ -14,7 +13,6 @@ impl<S: CredentialStore + Sync, U> Authenticator<S, U>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
-    Passkey: TryFrom<<S as CredentialStore>::PasskeyItem> + Clone,
 {
     /// This method is used by a host to request cryptographic proof of user authentication as well
     /// as user consent to a given transaction, using a previously generated credential that is

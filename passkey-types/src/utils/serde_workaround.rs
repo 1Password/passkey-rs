@@ -22,7 +22,6 @@ macro_rules! serde_workaround {
         )*}
 
         #[doc(hidden)]
-        #[allow(unused_imports, dead_code)]
         const _: () = {
             use serde::{de::MapAccess, ser::SerializeMap, Deserialize, Serialize};
             use strum::{EnumString, FromRepr, IntoStaticStr};
@@ -32,6 +31,7 @@ macro_rules! serde_workaround {
             }
 
 
+            #[allow(clippy::allow_attributes, reason = "the macro doesn't always play nicely with expect()")]
             #[allow(non_camel_case_types)]
             #[derive(FromRepr, IntoStaticStr, EnumString, Clone, Copy)]
             #[strum(serialize_all = "camelCase")]
@@ -43,7 +43,7 @@ macro_rules! serde_workaround {
             }
 
             impl Serialize for Ident {
-                #[allow(clippy::as_conversions)]
+                #[expect(clippy::as_conversions)]
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
                     S: serde::Serializer,

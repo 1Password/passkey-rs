@@ -118,16 +118,6 @@ where
         }
     }
 
-    /// Set the authenticator's display name which will be returned if [`webauthn::CredentialPropertiesOutput`] is requested.
-    pub fn set_display_name(&mut self, name: String) {
-        self.extensions.display_name.replace(name);
-    }
-
-    /// Get a reference to the authenticators display name to return in [`webauthn::CredentialPropertiesOutput`].
-    pub fn display_name(&self) -> Option<&String> {
-        self.extensions.display_name.as_ref()
-    }
-
     /// Set whether the authenticator should save new credentials with a signature counter.
     ///
     /// NOTE: Using a counter with a credential that will sync is not recommended and can cause friction

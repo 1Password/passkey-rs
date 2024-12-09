@@ -51,7 +51,7 @@ impl<'de> Deserialize<'de> for Aaguid {
         D: serde::Deserializer<'de>,
     {
         struct AaguidVisitior;
-        impl<'de> serde::de::Visitor<'de> for AaguidVisitior {
+        impl serde::de::Visitor<'_> for AaguidVisitior {
             type Value = Aaguid;
 
             fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -28,26 +28,4 @@ pub struct CredentialPropertiesOutput {
     /// [server-side credential]: https://w3c.github.io/webauthn/#server-side-public-key-credential-source
     #[serde(rename = "rk", default, skip_serializing_if = "Option::is_none")]
     pub discoverable: Option<bool>,
-
-    /// This OPTIONAL property is a human-palatable description of the credential’s managing
-    /// authenticator, chosen by the user.
-    ///
-    /// The client MUST allow the user to choose this value, MAY or MAY not present that choice
-    /// during registration ceremonies, and MAY reuse the same value for multiple credentials with
-    /// the same managing authenticator across multiple Relying Parties.
-    ///
-    /// The client MAY query the authenticator, by some unspecified mechanism, for this value.
-    /// The authenticator MAY allow the user to configure the response to such a query.
-    /// The authenticator vendor MAY provide a default response to such a query. The client MAY
-    /// consider a user-configured response chosen by the user, and SHOULD allow the user to
-    /// modify a vendor-provided default response.
-    ///
-    /// If the Relying Party includes an `authenticatorDisplayName` item in credential records, the
-    /// Relying Party MAY offer this value, if present, as a default value for the
-    /// `authenticatorDisplayName` of the new credential record.
-    ///
-    /// NOTE: This is still [in proposal](https://github.com/w3c/webauthn/pull/1880), we are
-    /// implementing it here to show our backing to this feature
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authenticator_display_name: Option<String>,
 }

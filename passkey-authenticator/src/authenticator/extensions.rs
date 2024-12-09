@@ -28,9 +28,6 @@ use crate::Authenticator;
 #[derive(Debug, Default)]
 #[non_exhaustive]
 pub(super) struct Extensions {
-    /// The display name given when a [`webauthn::CredentialPropertiesOutput`] is requested
-    pub display_name: Option<String>,
-
     /// Extension to retrieve a symmetric secret from the authenticator.
     pub hmac_secret: Option<HmacSecretConfig>,
 }

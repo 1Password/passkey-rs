@@ -17,7 +17,7 @@
 mod client_data;
 pub use client_data::*;
 
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, fmt::Display, ops::ControlFlow};
 
 use ciborium::{cbor, value::Value};
 use coset::{iana::EnumI64, Algorithm};
@@ -35,8 +35,6 @@ use typeshare::typeshare;
 use url::Url;
 
 mod extensions;
-mod quirks;
-use quirks::QuirkyRp;
 
 #[cfg(feature = "android-asset-validation")]
 mod android;
@@ -160,7 +158,6 @@ where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
-    Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
 {
     authenticator: Authenticator<S, U>,
     rp_id_verifier: RpIdVerifier<P>,
@@ -187,7 +184,6 @@ where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
-    Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
 {
     /// Create a `Client` with a given `Authenticator` and a custom TLD provider
     /// that implements `[public_suffix::EffectiveTLDProvider]`.
@@ -353,9 +349,7 @@ where
             client_extension_results,
         };
 
-        // Sanitize output before sending it back to the RP
-        let maybe_quirky_rp = QuirkyRp::from_rp_id(rp_id);
-        Ok(maybe_quirky_rp.map_create_credential(response))
+        Ok(response)
     }
 
     /// Authenticate a Webauthn request.
@@ -549,13 +543,9 @@ where
             effective_domain = rp_id;
         }
 
-        // guard against localhost effective domain, return early
-        if effective_domain == "localhost" {
-            return if self.allows_insecure_localhost {
-                Ok(effective_domain)
-            } else {
-                Err(WebauthnError::InsecureLocalhostNotAllowed)
-            };
+        // Guard against local host and assert rp_id is not part of the public suffix list
+        if let ControlFlow::Break(res) = self.assert_valid_rp_id(effective_domain) {
+            return res;
         }
 
         // Make sure origin uses https://
@@ -563,16 +553,49 @@ where
             return Err(WebauthnError::UnprotectedOrigin);
         }
 
+        Ok(effective_domain)
+    }
+
+    fn assert_valid_rp_id<'a>(
+        &self,
+        rp_id: &'a str,
+    ) -> ControlFlow<Result<&'a str, WebauthnError>, ()> {
+        // guard against localhost effective domain, return early
+        if rp_id == "localhost" {
+            return if self.allows_insecure_localhost {
+                ControlFlow::Break(Ok(rp_id))
+            } else {
+                ControlFlow::Break(Err(WebauthnError::InsecureLocalhostNotAllowed))
+            };
+        }
+
         // assert rp_id is not part of the public suffix list and is a registerable domain.
-        if decode_host(effective_domain)
+        if decode_host(rp_id)
             .as_ref()
             .and_then(|s| self.tld_provider.effective_tld_plus_one(s).ok())
             .is_none()
         {
-            return Err(WebauthnError::InvalidRpId);
+            return ControlFlow::Break(Err(WebauthnError::InvalidRpId));
         }
 
-        Ok(effective_domain)
+        ControlFlow::Continue(())
+    }
+
+    /// Parse a given Relying Party ID and assert that it is valid to act as such.
+    ///
+    /// This method is only to assert that an RP ID passes the required checks.
+    /// In order to ensure that a request's origin is in accordance with it's claimed RP ID,
+    /// [`Self::assert_domain`] should be used.
+    ///
+    /// There are several checks that an RP ID must pass:
+    /// 1. An RP ID set to `localhost` is only allowed when explicitly enabled with [`Self::allows_insecure_localhost`].
+    /// 1. An RP ID must not be part of the [public suffix list],
+    ///    since that would allow it to act as a credential for unrelated services by other entities.
+    pub fn is_valid_rp_id(&self, rp_id: &str) -> bool {
+        match self.assert_valid_rp_id(rp_id) {
+            ControlFlow::Continue(_) | ControlFlow::Break(Ok(_)) => true,
+            ControlFlow::Break(Err(_)) => false,
+        }
     }
 
     #[cfg(feature = "android-asset-validation")]
