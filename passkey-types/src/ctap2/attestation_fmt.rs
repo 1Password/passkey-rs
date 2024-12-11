@@ -137,7 +137,7 @@ impl<'de> Deserialize<'de> for AuthenticatorData {
         D: serde::Deserializer<'de>,
     {
         struct Visitor;
-        impl<'v> serde::de::Visitor<'v> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = AuthenticatorData;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

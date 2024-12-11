@@ -35,7 +35,7 @@ pub struct AuthenticationExtensionsPrfValues {
 /// BufferSources of any length to 32-byte BufferSources.
 ///
 /// <https://w3c.github.io/webauthn/#prf-extension>
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[typeshare]
 pub struct AuthenticationExtensionsPrfInputs {

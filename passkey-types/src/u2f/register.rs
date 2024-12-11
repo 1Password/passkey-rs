@@ -67,7 +67,7 @@ pub struct PublicKey {
 
 impl RegisterResponse {
     /// Encode the Response to it's binary format for a successfull response
-    #[allow(clippy::as_conversions)]
+    #[expect(clippy::as_conversions)]
     pub fn encode(self) -> Vec<u8> {
         [0x05] // Reserved magic byte
             .into_iter()

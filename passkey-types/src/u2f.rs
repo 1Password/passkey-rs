@@ -27,7 +27,7 @@ pub enum ResponseStatusWords {
 }
 
 impl From<ResponseStatusWords> for u16 {
-    #[allow(clippy::as_conversions)]
+    #[expect(clippy::as_conversions)]
     fn from(sw: ResponseStatusWords) -> Self {
         sw as u16
     }

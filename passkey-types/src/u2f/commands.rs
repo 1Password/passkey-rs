@@ -71,7 +71,7 @@ const REQUEST_HEADER_LEN: usize = 6;
 impl TryFrom<&[u8]> for Request {
     type Error = ResponseStatusWords;
 
-    #[allow(clippy::as_conversions)]
+    #[expect(clippy::as_conversions)]
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if value.len() < REQUEST_HEADER_LEN {
             return Err(ResponseStatusWords::WrongLength);

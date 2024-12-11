@@ -30,7 +30,7 @@ pub enum AuthenticationParameter {
 }
 
 impl From<AuthenticationParameter> for u8 {
-    #[allow(clippy::as_conversions)]
+    #[expect(clippy::as_conversions)]
     fn from(src: AuthenticationParameter) -> Self {
         src as u8
     }
@@ -72,7 +72,7 @@ pub struct AuthenticationRequest {
 impl AuthenticationRequest {
     /// Try parsing a data payload into an authentication request with the given parameter taken from
     /// the u2f message frame.
-    #[allow(clippy::as_conversions)]
+    #[expect(clippy::as_conversions)]
     pub fn try_from(
         data: &[u8],
         parameter: impl Into<AuthenticationParameter>,

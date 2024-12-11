@@ -123,7 +123,7 @@ pub mod i64_to_iana {
 
 struct StringOrNum<T>(pub std::marker::PhantomData<T>);
 
-impl<'de, T> Visitor<'de> for StringOrNum<T>
+impl<T> Visitor<'_> for StringOrNum<T>
 where
     T: FromStr + TryFrom<i64> + TryFrom<u64>,
 {
@@ -220,7 +220,7 @@ where
     where
         E: Error,
     {
-        #[allow(clippy::as_conversions)]
+        #[expect(clippy::as_conversions)]
         // Ensure the float has an integer representation,
         // or be 0 if it is a non-integer number
         self.visit_i64(if v.is_normal() { v as i64 } else { 0 })

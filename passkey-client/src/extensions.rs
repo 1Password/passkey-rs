@@ -17,7 +17,6 @@ use passkey_types::{
         AuthenticationExtensionsClientInputs, AuthenticationExtensionsClientOutputs,
         CredentialPropertiesOutput, PublicKeyCredentialRequestOptions,
     },
-    Passkey,
 };
 
 use crate::{Client, WebauthnError};
@@ -29,7 +28,6 @@ where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
-    Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
 {
     /// Create the extension inputs to be passed to an authenticator over CTAP2
     /// during a registration request.
@@ -55,7 +53,6 @@ where
 
             Some(CredentialPropertiesOutput {
                 discoverable: Some(discoverable),
-                authenticator_display_name: self.authenticator.display_name().cloned(),
             })
         } else {
             None

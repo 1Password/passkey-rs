@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// These tests are transliterated from list_test.go. Some of the tests from
-// list_test.go were made unit tests inside lib.rs.
+//! These tests are transliterated from list_test.go. Some of the tests from
+//! list_test.go were made unit tests inside lib.rs.
 
 use public_suffix::*;
 

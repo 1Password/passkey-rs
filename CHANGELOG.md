@@ -1,7 +1,23 @@
 # Changelog
 
 ## Unreleased
-- Added: support for controlling generated credential's ID length to passkey-authenticator ([#49](https://github.com/1Password/passkey-rs/pull/49))
+
+## Passkey v0.4.0
+### passkey-authenticator v0.4.0
+
+- Added: support for controlling generated credential's ID length to Authenticator ([#49](https://github.com/1Password/passkey-rs/pull/49))
+- ⚠ BREAKING: Removal of `Authenticator::set_display_name` and `Authenticator::display_name` methods ([#51](https://github.com/1Password/passkey-rs/pull/51))
+
+### passkey-client v0.4.0
+- ⚠ BREAKING: Update android asset link verification ([#51](https://github.com/1Password/passkey-rs/pull/51))
+  - Change `asset_link_url` parameter in `UnverifiedAssetLink::new` to be required rather than optional.
+  - Remove internal string in `ValidationError::InvalidAssetLinkUrl` variant.
+- Remove special casing of responses for specific RPs ([#51](https://github.com/1Password/passkey-rs/pull/51))
+- Added `RpIdValidator::is_valid_rp_id` to verify that an rp_id is valid to be used as such ([#51](https://github.com/1Password/passkey-rs/pull/51))
+
+### passkey-types v0.4.0
+- ⚠ BREAKING: Removal of `CredentialPropertiesOutput::authenticator_display_name` ([#51](https://github.com/1Password/passkey-rs/pull/51))
+
 
 ## Passkey v0.3.0
 ### passkey-authenticator v0.3.0
