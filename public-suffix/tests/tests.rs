@@ -41,9 +41,9 @@ static TEST_CASES: &[(&str, &str)] = &[
     ("www.nic.ar", "ar"),
     ("com.ar", "com.ar"),
     ("www.com.ar", "com.ar"),
-    ("blogspot.com.ar", "blogspot.com.ar"), // PRIVATE DOMAIN.
-    ("www.blogspot.com.ar", "blogspot.com.ar"), // PRIVATE DOMAIN.
-    ("www.xxx.yyy.zzz.blogspot.com.ar", "blogspot.com.ar"), // PRIVATE DOMAIN.
+    ("blogspot.com.ar", "com.ar"),                 // PRIVATE DOMAIN.
+    ("www.blogspot.com.ar", "com.ar"),             // PRIVATE DOMAIN.
+    ("www.xxx.yyy.zzz.blogspot.com.ar", "com.ar"), // PRIVATE DOMAIN.
     ("logspot.com.ar", "com.ar"),
     ("zlogspot.com.ar", "com.ar"),
     ("zblogspot.com.ar", "com.ar"),
@@ -101,9 +101,9 @@ static TEST_CASES: &[(&str, &str)] = &[
     ("edu.tw", "edu.tw"),
     ("www.edu.tw", "edu.tw"),
     ("xn--czrw28b.edu.tw", "edu.tw"),
-    ("xn--czrw28b.tw", "xn--czrw28b.tw"),
-    ("www.xn--czrw28b.tw", "xn--czrw28b.tw"),
-    ("xn--uc0atv.xn--czrw28b.tw", "xn--czrw28b.tw"),
+    ("xn--czrw28b.tw", "tw"),
+    ("www.xn--czrw28b.tw", "tw"),
+    ("xn--uc0atv.xn--czrw28b.tw", "tw"),
     ("xn--kpry57d.tw", "tw"),
     // The .uk rules are:
     // uk
@@ -129,7 +129,7 @@ static TEST_CASES: &[(&str, &str)] = &[
     ("www.sch.uk", "www.sch.uk"),
     ("co.uk", "co.uk"),
     ("www.co.uk", "co.uk"),
-    ("blogspot.co.uk", "blogspot.co.uk"), // PRIVATE DOMAIN.
+    ("blogspot.co.uk", "co.uk"), // PRIVATE DOMAIN.
     ("blogspot.nic.uk", "uk"),
     ("blogspot.sch.uk", "blogspot.sch.uk"),
     // The .рф rules are
