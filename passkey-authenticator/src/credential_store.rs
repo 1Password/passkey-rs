@@ -18,7 +18,7 @@ pub struct StoreInfo {
 }
 
 /// Enum to define how the store handles discoverability.
-/// Note that this is does not say anything about which storage mode will be used.
+/// Note that this does not say anything about which storage mode will be used.
 #[derive(PartialEq)]
 pub enum DiscoverabilitySupport {
     /// The store supports both discoverable and non-credentials.
