@@ -33,14 +33,13 @@ where
             .as_ref()
             .filter(|list| !list.is_empty())
             .is_some()
-        {
-            if !self
+            && !self
                 .store()
                 .find_credentials(input.exclude_list.as_deref(), &input.rp.id)
-                .await?.is_empty()
-            {
-                return Err(Ctap2Error::CredentialExcluded.into());
-            }
+                .await?
+                .is_empty()
+        {
+            return Err(Ctap2Error::CredentialExcluded.into());
         }
 
         // 2. If the pubKeyCredParams parameter does not contain a valid COSEAlgorithmIdentifier
