@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// The response to the successful creation of a PublicKeyCredential
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub type CreatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAttestationResponse>;
 
 /// This is the expected input to [`navigator.credentials.create`] when wanting to create a webauthn
@@ -514,7 +514,7 @@ pub enum AttestationStatementFormatIdentifiers {
 /// [Relying Party]: https://w3c.github.io/webauthn/#relying-party
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub struct AuthenticatorAttestationResponse {
     /// This attribute contains the JSON serialization of [`CollectedClientData`] passed to the
     /// authenticator by the client in order to generate this credential. The exact JSON serialization
