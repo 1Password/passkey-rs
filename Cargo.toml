@@ -12,7 +12,7 @@ resolver = "2"
 [workspace.package]
 authors = ["1Password"]
 categories = ["authentication"]
-edition = "2021"
+edition = "2024"
 keywords = ["ctap", "fido2", "passkey", "passwordless", "webauthn"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/1Password/passkey-rs"
