@@ -2,7 +2,7 @@ use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_types::{
-    ctap2, encoding::try_from_base64url, rand::random_vec, webauthn::CollectedClientData, Bytes,
+    Bytes, ctap2, encoding::try_from_base64url, rand::random_vec, webauthn::CollectedClientData,
 };
 use serde::Deserialize;
 use url::{ParseError, Url};

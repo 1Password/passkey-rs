@@ -1,4 +1,4 @@
-use passkey_types::{ctap2::Ctap2Error, Passkey};
+use passkey_types::{Passkey, ctap2::Ctap2Error};
 
 #[cfg(doc)]
 use crate::Authenticator;

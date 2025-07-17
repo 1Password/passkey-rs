@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use passkey_types::{
+    Bytes,
     crypto::sha256,
     ctap2::{
         extensions::{AuthenticatorPrfInputs, AuthenticatorPrfValues},
@@ -11,7 +12,6 @@ use passkey_types::{
         AuthenticationExtensionsPrfValues, PublicKeyCredentialDescriptor,
         PublicKeyCredentialRequestOptions,
     },
-    Bytes,
 };
 
 use crate::WebauthnError;

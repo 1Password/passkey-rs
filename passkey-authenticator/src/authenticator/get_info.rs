@@ -1,7 +1,7 @@
 use passkey_types::ctap2::get_info::{Options, Response, Version};
 
 use crate::{
-    credential_store::DiscoverabilitySupport, Authenticator, CredentialStore, UserValidationMethod,
+    Authenticator, CredentialStore, UserValidationMethod, credential_store::DiscoverabilitySupport,
 };
 
 impl<S: CredentialStore, U: UserValidationMethod> Authenticator<S, U> {

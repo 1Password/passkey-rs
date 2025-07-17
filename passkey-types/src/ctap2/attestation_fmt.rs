@@ -12,7 +12,7 @@ use crate::{
     ctap2::{Aaguid, Flags},
 };
 
-use super::{get_assertion, make_credential, Ctap2Error};
+use super::{Ctap2Error, get_assertion, make_credential};
 
 /// The authenticator data structure encodes contextual bindings made by the authenticator. These
 /// bindings are controlled by the authenticator itself, and derive their trust from the WebAuthn

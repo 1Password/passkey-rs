@@ -1,13 +1,13 @@
-use p256::ecdsa::{signature::SignerMut, SigningKey};
+use p256::ecdsa::{SigningKey, signature::SignerMut};
 use passkey_types::{
     ctap2::{
-        get_assertion::{Request, Response},
         AuthenticatorData, Ctap2Error, Flags, StatusCode,
+        get_assertion::{Request, Response},
     },
     webauthn::PublicKeyCredentialUserEntity,
 };
 
-use crate::{private_key_from_cose_key, Authenticator, CredentialStore, UserValidationMethod};
+use crate::{Authenticator, CredentialStore, UserValidationMethod, private_key_from_cose_key};
 
 impl<S: CredentialStore + Sync, U> Authenticator<S, U>
 where
@@ -168,17 +168,17 @@ where
 #[cfg(test)]
 mod tests {
     use passkey_types::{
+        Passkey, StoredHmacSecret,
         ctap2::{
-            get_assertion::{ExtensionInputs, Options, Request},
             Aaguid,
+            get_assertion::{ExtensionInputs, Options, Request},
         },
         rand::random_vec,
-        Passkey, StoredHmacSecret,
     };
 
     use crate::{
-        extensions::{self, prf_eval_request},
         Authenticator, MockUserValidationMethod,
+        extensions::{self, prf_eval_request},
     };
 
     fn create_passkey(hmac_secret: Option<Vec<u8>>) -> Passkey {

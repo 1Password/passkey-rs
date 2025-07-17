@@ -3,15 +3,15 @@
 use crate::{Authenticator, CoseKeyPair, CredentialStore, UserValidationMethod};
 use coset::iana;
 use p256::{
-    ecdsa::{signature::Signer, SigningKey},
     SecretKey,
+    ecdsa::{SigningKey, signature::Signer},
 };
 use passkey_types::{
+    Bytes, Passkey,
     ctap2::{Flags, U2FError},
     u2f::{
         AuthenticationRequest, AuthenticationResponse, PublicKey, RegisterRequest, RegisterResponse,
     },
-    Bytes, Passkey,
 };
 mod sealed {
     use crate::{Authenticator, CredentialStore, UserValidationMethod};
@@ -171,8 +171,8 @@ mod tests {
     use crate::{u2f::U2fApi, user_validation::MockUserValidationMethod};
     use generic_array::GenericArray;
     use p256::{
-        ecdsa::{signature::Verifier, Signature, VerifyingKey},
         EncodedPoint,
+        ecdsa::{Signature, VerifyingKey, signature::Verifier},
     };
     use passkey_types::{ctap2::Aaguid, *};
 

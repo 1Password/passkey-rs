@@ -460,8 +460,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_but_performed_anyways(
-    ) {
+    async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_but_performed_anyways()
+     {
         // Arrange & Assert
         let mut user_mock = MockUserValidationMethod::new();
         user_mock

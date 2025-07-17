@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use super::u2f::{AuthenticationRequest, RegisterRequest, RegisterResponse};
-use crate::{ctap2::make_credential as ctap2, webauthn, Bytes};
+use crate::{Bytes, ctap2::make_credential as ctap2, webauthn};
 use coset::CoseKey;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 

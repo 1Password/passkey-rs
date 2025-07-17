@@ -2,9 +2,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    Bytes,
     ctap2::AuthenticatorData,
     webauthn::{PublicKeyCredentialDescriptor, PublicKeyCredentialUserEntity},
-    Bytes,
 };
 
 pub use crate::ctap2::make_credential::Options;

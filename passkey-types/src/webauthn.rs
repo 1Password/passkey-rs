@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
-use crate::{utils::serde::ignore_unknown, Bytes};
+use crate::{Bytes, utils::serde::ignore_unknown};
 
 mod assertion;
 mod attestation;

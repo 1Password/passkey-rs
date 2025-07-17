@@ -30,19 +30,19 @@ mod u2f;
 mod user_validation;
 
 use coset::{
-    iana::{self, Algorithm, EnumI64},
     CoseKey, CoseKeyBuilder,
+    iana::{self, Algorithm, EnumI64},
 };
 use p256::{
+    EncodedPoint, PublicKey, SecretKey,
     ecdsa::SigningKey,
     elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint},
     pkcs8::EncodePublicKey,
-    EncodedPoint, PublicKey, SecretKey,
 };
-use passkey_types::{ctap2::Ctap2Error, Bytes};
+use passkey_types::{Bytes, ctap2::Ctap2Error};
 
 pub use self::{
-    authenticator::{extensions, Authenticator, CredentialIdLength},
+    authenticator::{Authenticator, CredentialIdLength, extensions},
     credential_store::{CredentialStore, DiscoverabilitySupport, MemoryStore, StoreInfo},
     ctap2::Ctap2Api,
     u2f::U2fApi,
@@ -177,15 +177,15 @@ impl CoseKeyPair {
 mod tests {
     use coset::iana;
     use p256::{
-        ecdsa::{
-            signature::{Signer, Verifier},
-            SigningKey,
-        },
         SecretKey,
+        ecdsa::{
+            SigningKey,
+            signature::{Signer, Verifier},
+        },
     };
     use passkey_types::{ctap2::AuthenticatorData, rand::random_vec};
 
-    use super::{private_key_from_cose_key, CoseKeyPair};
+    use super::{CoseKeyPair, private_key_from_cose_key};
 
     #[test]
     fn private_key_cose_round_trip_sanity_check() {

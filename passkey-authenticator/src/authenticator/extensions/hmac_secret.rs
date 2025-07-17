@@ -3,11 +3,11 @@ use std::ops::Not;
 use passkey_types::{
     crypto::hmac_sha256,
     ctap2::{
+        Ctap2Error, StatusCode, U2FError,
         extensions::{
             AuthenticatorPrfGetOutputs, AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs,
             AuthenticatorPrfValues, HmacSecretSaltOrOutput,
         },
-        Ctap2Error, StatusCode, U2FError,
     },
     rand::random_vec,
 };
@@ -214,7 +214,7 @@ fn select_salts(
 
 #[cfg(test)]
 pub mod tests {
-    use passkey_types::{ctap2::Aaguid, Passkey};
+    use passkey_types::{Passkey, ctap2::Aaguid};
 
     use crate::{Authenticator, MockUserValidationMethod};
 

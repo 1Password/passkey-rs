@@ -10,8 +10,8 @@
 //! [AuthenticatorDisplayName]: https://w3c.github.io/webauthn/#dom-credentialpropertiesoutput-authenticatordisplayname
 
 use passkey_types::{
-    ctap2::{get_assertion, get_info, make_credential, StatusCode},
     Passkey,
+    ctap2::{StatusCode, get_assertion, get_info, make_credential},
 };
 
 mod hmac_secret;

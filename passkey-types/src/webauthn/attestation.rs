@@ -6,6 +6,7 @@ use std::fmt;
 use typeshare::typeshare;
 
 use crate::{
+    Bytes,
     utils::serde::{
         i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec, maybe_stringified,
     },
@@ -14,7 +15,6 @@ use crate::{
         PublicKeyCredential, PublicKeyCredentialDescriptor, PublicKeyCredentialHints,
         PublicKeyCredentialType, UserVerificationRequirement,
     },
-    Bytes,
 };
 
 #[cfg(doc)]

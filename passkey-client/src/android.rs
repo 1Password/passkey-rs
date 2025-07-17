@@ -1,9 +1,9 @@
 use nom::{
+    IResult,
     bytes::complete::{tag, take_while_m_n},
     character::is_hex_digit,
     combinator::map_res,
     multi::separated_list1,
-    IResult,
 };
 use std::{borrow::Cow, fmt::Debug, str::from_utf8};
 use url::Url;
@@ -129,7 +129,7 @@ fn valid_asset_link_url(url: &Url) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::{valid_asset_link_url, valid_fingerprint, ValidationError};
+    use super::{ValidationError, valid_asset_link_url, valid_fingerprint};
     use url::Url;
 
     #[test]
@@ -142,7 +142,9 @@ mod test {
 
     #[test]
     fn check_invalid_fingerprint_lowercase() {
-        let result = valid_fingerprint("b3:5b:68:d5:ce:84:50:55:7c:6a:55:fd:64:b5:1f:ea:c1:10:cb:36:d6:a3:52:1c:59:48:db:3a:38:0a:34:a9");
+        let result = valid_fingerprint(
+            "b3:5b:68:d5:ce:84:50:55:7c:6a:55:fd:64:b5:1f:ea:c1:10:cb:36:d6:a3:52:1c:59:48:db:3a:38:0a:34:a9",
+        );
         assert!(result.is_err(), "Should be invalid fingerprint");
         assert!(matches!(result, Err(ValidationError::ParseFailed(..))))
     }

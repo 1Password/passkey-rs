@@ -20,15 +20,15 @@ pub use client_data::*;
 use std::{borrow::Cow, fmt::Display, ops::ControlFlow};
 
 use ciborium::{cbor, value::Value};
-use coset::{iana::EnumI64, Algorithm};
+use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
 use passkey_types::{
+    Passkey,
     crypto::sha256,
     ctap2, encoding,
     webauthn::{
         self, AuthenticatorSelectionCriteria, ResidentKeyRequirement, UserVerificationRequirement,
     },
-    Passkey,
 };
 use serde::Serialize;
 use typeshare::typeshare;
@@ -40,7 +40,7 @@ mod extensions;
 mod android;
 
 #[cfg(feature = "android-asset-validation")]
-pub use self::android::{valid_fingerprint, UnverifiedAssetLink, ValidationError};
+pub use self::android::{UnverifiedAssetLink, ValidationError, valid_fingerprint};
 
 #[cfg(test)]
 mod tests;

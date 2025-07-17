@@ -2,7 +2,7 @@
 use passkey::{
     authenticator::{Authenticator, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
-    types::{crypto::sha256, ctap2::*, rand::random_vec, webauthn::*, Bytes, Passkey},
+    types::{Bytes, Passkey, crypto::sha256, ctap2::*, rand::random_vec, webauthn::*},
 };
 
 use coset::iana;
@@ -154,15 +154,11 @@ async fn authenticator_setup(
 }
 
 fn ctap2_creation_success(credential: make_credential::Response) {
-    println!(
-        "CTAP2 credential creation succeeded:\n\n{credential:?}\n\n"
-    );
+    println!("CTAP2 credential creation succeeded:\n\n{credential:?}\n\n");
 }
 
 fn ctap2_auth_success(credential: get_assertion::Response) {
-    println!(
-        "CTAP2 credential authentication succeeded:\n\n{credential:?}\n\n"
-    );
+    println!("CTAP2 credential authentication succeeded:\n\n{credential:?}\n\n");
 }
 
 fn ctap2_credential_not_found() {

@@ -2,13 +2,13 @@
 use std::sync::Arc;
 
 use passkey_types::{
+    Passkey,
     ctap2::{
+        Ctap2Error, StatusCode,
         get_assertion::Options,
         make_credential::{PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity},
-        Ctap2Error, StatusCode,
     },
     webauthn::PublicKeyCredentialDescriptor,
-    Passkey,
 };
 
 /// A struct that defines the capabilities of a store.

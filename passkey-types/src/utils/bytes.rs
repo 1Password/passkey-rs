@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Visitor};
 use typeshare::typeshare;
 
 use super::encoding;

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{webauthn, Bytes};
+use crate::{Bytes, webauthn};
 
 #[cfg(doc)]
 use crate::ctap2::{get_assertion, make_credential};

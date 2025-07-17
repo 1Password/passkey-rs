@@ -1,10 +1,10 @@
 use p256::SecretKey;
 use passkey_types::{
-    ctap2::{
-        make_credential::{Request, Response},
-        AttestedCredentialData, AuthenticatorData, Ctap2Error, StatusCode,
-    },
     Passkey,
+    ctap2::{
+        AttestedCredentialData, AuthenticatorData, Ctap2Error, StatusCode,
+        make_credential::{Request, Response},
+    },
 };
 
 use crate::{Authenticator, CoseKeyPair, CredentialStore, UserValidationMethod};
@@ -166,26 +166,27 @@ mod tests {
 
     use coset::iana;
     use passkey_types::{
+        Bytes,
         ctap2::{
+            Aaguid,
             extensions::{AuthenticatorPrfInputs, AuthenticatorPrfValues},
             make_credential::{
                 ExtensionInputs, Options, PublicKeyCredentialRpEntity,
                 PublicKeyCredentialUserEntity,
             },
-            Aaguid,
         },
         rand::random_vec,
-        webauthn, Bytes,
+        webauthn,
     };
 
     use tokio::sync::Mutex;
 
     use super::*;
     use crate::{
+        MemoryStore,
         credential_store::{DiscoverabilitySupport, StoreInfo},
         extensions,
         user_validation::MockUserValidationMethod,
-        MemoryStore,
     };
 
     fn good_request() -> Request {

@@ -3,8 +3,8 @@
 use std::str::FromStr;
 
 use serde::{
-    de::{Error, Visitor},
     Deserialize, Deserializer,
+    de::{Error, Visitor},
 };
 
 /// Many fields in the webauthn spec have the following wording.
@@ -137,13 +137,16 @@ where
     where
         E: Error,
     {
-        match FromStr::from_str(v) { Ok(v) => {
-            Ok(v)
-        } _ => if let Ok(v) = f64::from_str(v) {
-            self.visit_f64(v)
-        } else {
-            Err(E::custom("Was not a stringified number"))
-        }}
+        match FromStr::from_str(v) {
+            Ok(v) => Ok(v),
+            _ => {
+                if let Ok(v) = f64::from_str(v) {
+                    self.visit_f64(v)
+                } else {
+                    Err(E::custom("Was not a stringified number"))
+                }
+            }
+        }
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
