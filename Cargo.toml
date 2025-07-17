@@ -1,35 +1,35 @@
 [workspace]
-resolver = "2"
 members = [
-    "passkey",
-    "passkey-authenticator",
-    "passkey-client",
-    "passkey-transports",
-    "passkey-types",
-    "public-suffix",
+  "passkey",
+  "passkey-authenticator",
+  "passkey-client",
+  "passkey-transports",
+  "passkey-types",
+  "public-suffix",
 ]
+resolver = "2"
 
 [workspace.package]
 authors = ["1Password"]
-repository = "https://github.com/1Password/passkey-rs"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-keywords = ["passkey", "webauthn", "fido2", "passwordless", "ctap"]
 categories = ["authentication"]
+edition = "2021"
+keywords = ["ctap", "fido2", "passkey", "passwordless", "webauthn"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/1Password/passkey-rs"
 
 [workspace.lints.rust]
 missing_docs = "warn"
-unused_must_use = "forbid"
 unused-qualifications = "deny"
+unused_must_use = "forbid"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "deny"
 
 [workspace.lints.clippy]
-dbg_macro = "deny"
-unimplemented = "deny"
-todo = "deny"
-unused_async = "deny"
-undocumented_unsafe_blocks = "deny"
 as_conversions = "deny"
+dbg_macro = "deny"
 result_unit_err = "deny"
+todo = "deny"
+undocumented_unsafe_blocks = "deny"
+unimplemented = "deny"
+unused_async = "deny"

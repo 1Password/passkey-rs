@@ -1,0 +1,4 @@
+[formatting]
+reorder_arrays = true
+reorder_inline_tables = false
+reorder_keys = true

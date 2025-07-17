@@ -1,15 +1,15 @@
 [package]
-name = "passkey-types"
-description = "Rust type definitions for the webauthn and CTAP specifications"
-include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
-readme = "README.md"
-version = "0.4.0"
 authors.workspace = true
-repository.workspace = true
-edition.workspace = true
-license.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "Rust type definitions for the webauthn and CTAP specifications"
+edition.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
+keywords.workspace = true
+license.workspace = true
+name = "passkey-types"
+readme = "README.md"
+repository.workspace = true
+version = "0.4.0"
 
 [lints]
 workspace = true
@@ -23,8 +23,8 @@ testable = ["dep:p256"]
 bitflags = "2"
 ciborium = "0.2"
 data-encoding = "2"
-indexmap = { version = "2", features = ["serde"] }
 hmac = "0.12"
+indexmap = { version = "2", features = ["serde"] }
 rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -35,9 +35,9 @@ zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = "0.3"
 p256 = { version = "0.13", features = [
-  "pem",
   "arithmetic",
   "jwk",
+  "pem",
 ], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
