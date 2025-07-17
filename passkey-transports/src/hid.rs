@@ -371,7 +371,8 @@ impl Message {
             command: self.command,
             payload_len: self.payload_len,
         });
-        let packets = if self.payload_len <= InitHeader::MAX_PAYLOAD_SIZE {
+
+        if self.payload_len <= InitHeader::MAX_PAYLOAD_SIZE {
             vec![(init_header, self.payload.as_slice())]
         } else {
             [(init_header, &self.payload[..InitHeader::MAX_PAYLOAD_SIZE])]
@@ -392,9 +393,7 @@ impl Message {
                         }),
                 )
                 .collect()
-        };
-
-        packets
+        }
     }
 
     /// Initialize a Message from an Initialization Packet

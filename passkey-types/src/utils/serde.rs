@@ -137,13 +137,13 @@ where
     where
         E: Error,
     {
-        if let Ok(v) = FromStr::from_str(v) {
+        match FromStr::from_str(v) { Ok(v) => {
             Ok(v)
-        } else if let Ok(v) = f64::from_str(v) {
+        } _ => if let Ok(v) = f64::from_str(v) {
             self.visit_f64(v)
         } else {
             Err(E::custom("Was not a stringified number"))
-        }
+        }}
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>

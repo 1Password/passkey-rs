@@ -171,14 +171,14 @@ macro_rules! serde_workaround {
 }
 
 macro_rules! serde_workaround_struct_len {
-    ($field:expr; $skip_if:path) => {
+    ($field:expr_2021; $skip_if:path) => {
         if $skip_if(&$field) {
             0
         } else {
             1
         }
     };
-    ($field:expr ) => {
+    ($field:expr_2021 ) => {
         1
     };
 }

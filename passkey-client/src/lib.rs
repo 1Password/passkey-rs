@@ -717,7 +717,7 @@ mod test {
 
             let result = client.map_rk(&Some(criteria), &auth_info);
 
-            assert_eq!(result, test_case.expected_rk, "{:?}", test_case);
+            assert_eq!(result, test_case.expected_rk, "{test_case:?}");
         }
     }
 }
