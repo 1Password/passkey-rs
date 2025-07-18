@@ -359,3 +359,6 @@ impl UnsignedExtensionOutputs {
         prf.is_some().then_some(self)
     }
 }
+
+#[cfg(test)]
+mod tests;
