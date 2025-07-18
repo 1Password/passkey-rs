@@ -79,7 +79,11 @@ where
         }
     }
 
-    de.deserialize_seq(IgnoreUnknown(std::marker::PhantomData))
+    // TODO: This is a temporary workaround until windows sends us the correct type in CredentialDescriptor::transport
+    Ok(de
+        .deserialize_seq(IgnoreUnknown(std::marker::PhantomData))
+        .unwrap_or_default())
+    // de.deserialize_seq(IgnoreUnknown(std::marker::PhantomData))
 }
 
 pub(crate) fn ignore_unknown_vec<'de, D, T>(de: D) -> Result<Vec<T>, D::Error>
