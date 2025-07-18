@@ -12,6 +12,9 @@ use crate::Client;
 #[cfg(test)]
 pub(crate) mod tests;
 
+#[cfg(feature = "reqwest")]
+mod reqwest_fetcher;
+
 #[cfg(feature = "android-asset-validation")]
 pub(crate) mod android;
 

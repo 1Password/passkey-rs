@@ -31,6 +31,7 @@ nom = { version = "7", features = ["alloc"], optional = true }
 passkey-authenticator = { path = "../passkey-authenticator", version = "0.4" }
 passkey-types = { path = "../passkey-types", version = "0.4" }
 public-suffix = { path = "../public-suffix", version = "0.1" }
+reqwest = { version = "0.12", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["sync"], optional = true }
