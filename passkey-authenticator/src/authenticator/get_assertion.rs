@@ -35,6 +35,8 @@ where
                     .as_deref()
                     .filter(|inner| !inner.is_empty()),
                 &input.rp_id,
+                // User handle is not available in assertion calls
+                None,
             )
             .await
             .and_then(|c| c.into_iter().next().ok_or(Ctap2Error::NoCredentials.into()));

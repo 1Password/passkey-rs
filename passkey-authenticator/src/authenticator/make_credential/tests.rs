@@ -371,6 +371,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
             &self,
             _id: Option<&[webauthn::PublicKeyCredentialDescriptor]>,
             _rp_id: &str,
+            _user_handle: Option<&[u8]>,
         ) -> Result<Vec<Self::PasskeyItem>, StatusCode> {
             #![allow(clippy::unimplemented)]
             unimplemented!("The test should not call find_credentials")

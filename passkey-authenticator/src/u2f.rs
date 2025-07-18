@@ -128,7 +128,11 @@ impl<S: CredentialStore + Sync + Send, U: UserValidationMethod + Sync + Send> U2
         let id_bytes: Bytes = request.application.to_vec().into();
         let maybe_credential = self
             .store()
-            .find_credentials(Some(&[pk_descriptor]), String::from(id_bytes).as_str())
+            .find_credentials(
+                Some(&[pk_descriptor]),
+                String::from(id_bytes).as_str(),
+                None,
+            )
             .await
             .map_err(|_| U2FError::Other);
 

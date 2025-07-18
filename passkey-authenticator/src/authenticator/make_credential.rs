@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use p256::SecretKey;
 use passkey_types::{
     Passkey,
@@ -33,11 +35,16 @@ where
             .as_ref()
             .filter(|list| !list.is_empty())
             .is_some()
-            && !self
+            && self
                 .store()
-                .find_credentials(input.exclude_list.as_deref(), &input.rp.id)
+                .find_credentials(
+                    input.exclude_list.as_deref(),
+                    &input.rp.id,
+                    Some(&input.user.id),
+                )
                 .await?
                 .is_empty()
+                .not()
         {
             return Err(Ctap2Error::CredentialExcluded.into());
         }
