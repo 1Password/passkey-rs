@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## Passkey v0.5.0
+
+- Migrate project to Rust 2024 edition
+
+### passkey-authenticator v0.5.0
+
+- Ignore the deprecated `rk` option in requests (#67)
+- ⚠ BREAKING: Add `user_handle` as an optional parameter in `CredentialStore::find_credentials`
+  to allow filtering on `user_handle`. (#67)
+- Stop returning an error when we find credentials in the `exclude_credentials` list.
+  This allows for updating/replacing credentials should the user so wish. (#67)
+- Fix hmac-secret logic around the second salt (#67)
+- ⚠ BREAKING: Fix Ctap2Api trait to correctly call the concrete method to prevent recursion (#67)
+
+
+### passkey-client v0.5.0
+
+- ⚠ BREAKING: Add support for RelatedOrigins to the RpIdVerifier through a generic fetcher (#67)
+
+### passkey-types v0.5.0
+
+- Make output types Hashable in Swift code gen (#67)
+- Support stringified booleans in webauthn requests (#67)
+- Be more tolerant to failed deserialization of optional vectors (#67)
+
 ## Passkey v0.4.0
 ### passkey-authenticator v0.4.0
 
