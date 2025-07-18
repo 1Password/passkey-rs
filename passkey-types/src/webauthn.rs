@@ -11,9 +11,10 @@ mod assertion;
 mod attestation;
 mod common;
 mod extensions;
+mod well_known;
 
 // re-export types
-pub use self::{assertion::*, attestation::*, common::*, extensions::*};
+pub use self::{assertion::*, attestation::*, common::*, extensions::*, well_known::*};
 
 mod sealed {
     pub trait Sealed {}

@@ -31,6 +31,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
 strum = { version = "0.25", features = ["derive"] }
 typeshare = "1"
+url = { version = "2", features = ["serde"] }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = "0.3"
