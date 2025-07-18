@@ -46,7 +46,11 @@ where
                 .is_empty()
                 .not()
         {
-            return Err(Ctap2Error::CredentialExcluded.into());
+            // TODO: We should instead remove the excluded credentials from a possible future
+            // "update list".
+            // This would require prompting from within the context of this function using
+            // the [UserValidationMethod]
+            log::warn!("An excluded credential was found, may be overwritten.")
         }
 
         // 2. If the pubKeyCredParams parameter does not contain a valid COSEAlgorithmIdentifier

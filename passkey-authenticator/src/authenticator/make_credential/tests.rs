@@ -100,13 +100,14 @@ async fn assert_excluded_credentials() {
     let mut authenticator =
         Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
 
-    let err = authenticator
+    authenticator
         .make_credential(response)
         .await
-        .expect_err("make credential succeeded even though store contains excluded id");
+        .expect("Excluded id gets ignored");
+    // .expect_err("make credential succeeded even though store contains excluded id");
 
-    assert_eq!(err, Ctap2Error::CredentialExcluded.into());
-    assert_eq!(shared_store.lock().await.len(), 1);
+    // assert_eq!(err, Ctap2Error::CredentialExcluded.into());
+    assert_eq!(shared_store.lock().await.len(), 2);
 }
 
 #[tokio::test]
