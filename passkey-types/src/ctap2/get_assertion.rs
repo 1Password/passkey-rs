@@ -175,7 +175,7 @@ serde_workaround! {
 /// This is to be serialized to [`Value`] in [`AuthenticatorData::extensions`]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignedExtensionOutputs {
-    /// Outputs the symmetric secrets after successfull processing. The output MUST be encrypted.
+    /// Outputs the symmetric secrets after successful processing. The output MUST be encrypted.
     ///
     /// <https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#sctn-hmac-secret-extension>
     #[serde(

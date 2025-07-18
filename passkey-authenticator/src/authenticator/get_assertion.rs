@@ -9,7 +9,7 @@ use passkey_types::{
 
 use crate::{Authenticator, CredentialStore, UserValidationMethod, private_key_from_cose_key};
 
-impl<S: CredentialStore + Sync, U> Authenticator<S, U>
+impl<S, U> Authenticator<S, U>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,

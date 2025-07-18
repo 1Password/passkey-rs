@@ -76,7 +76,8 @@ pub struct Authenticator<S, U> {
     algs: Vec<iana::Algorithm>,
     /// Current supported transports that this authenticator can use to communicate.
     ///
-    /// Default values are [`AuthenticatorTransport::Internal`] and [`AuthenticatorTransport::Hybrid`].
+    /// Default values are [`webauthn::AuthenticatorTransport::Internal`] and
+    /// [`webauthn::AuthenticatorTransport::Hybrid`].
     transports: Vec<webauthn::AuthenticatorTransport>,
     /// Provider of user verification factor.
     user_validation: U,
