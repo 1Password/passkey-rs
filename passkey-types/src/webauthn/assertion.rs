@@ -5,7 +5,7 @@ use typeshare::typeshare;
 
 use crate::{
     Bytes,
-    utils::serde::{ignore_unknown, ignore_unknown_opt_vec, maybe_stringified},
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec, maybe_stringified_num},
     webauthn::{
         AttestationConveyancePreference, AttestationStatementFormatIdentifiers,
         AuthenticationExtensionsClientInputs, PublicKeyCredential, PublicKeyCredentialDescriptor,
@@ -45,7 +45,7 @@ pub struct PublicKeyCredentialRequestOptions {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "maybe_stringified"
+        deserialize_with = "maybe_stringified_num"
     )]
     pub timeout: Option<u32>,
 

@@ -364,3 +364,55 @@ fn float_as_timeout() {
 
     assert_eq!(deserialized.timeout, Some(1800000));
 }
+
+#[test]
+fn wells_fargo() {
+    let json = r#"{
+          "publicKey": {
+            "attestation": "direct",
+            "authenticatorSelection": {
+              "authenticatorAttachment": "platform",
+              "userVerification": "required",
+              "requireResidentKey": "true"
+            },
+            "rp": {
+              "id": "connect.secure.wellsfargo.com",
+              "name": "WellsFargo-Retail"
+            },
+            "user": {
+              "id": [
+                81, 202, 116, 36, 100, 106, 38, 134, 235, 221, 219, 16, 73, 74, 100,
+                11, 211, 81, 121, 113, 35, 83, 116, 164, 95, 201, 103, 229, 147, 192,
+                61, 148, 149, 46, 63, 4, 175, 201, 67, 205, 50, 106, 87, 145, 247, 108,
+                172, 173, 174, 164, 247, 196, 28, 102, 205, 12, 234, 58, 155, 62, 128,
+                2, 153, 38
+              ],
+              "name": "test",
+              "displayName": "test"
+            },
+            "pubKeyCredParams": [
+              { "alg": "-36", "type": "public-key" },
+              { "alg": "-35", "type": "public-key" },
+              { "alg": "-7", "type": "public-key" },
+              { "alg": "-8", "type": "public-key" },
+              { "alg": "-259", "type": "public-key" },
+              { "alg": "-258", "type": "public-key" },
+              { "alg": "-257", "type": "public-key" }
+            ],
+            "timeout": 60000,
+            "challenge": [
+              34, 49, 64, 211, 179, 150, 60, 142, 99, 176, 122, 215, 254, 182, 151, 208,
+              24, 18, 157, 60
+            ],
+            "excludeCredentials": []
+          }
+        }"#;
+    let options: CredentialCreationOptions =
+        serde_json::from_str(json).expect("Failed to deserialize options from wells-fargo");
+
+    assert!(options.public_key.authenticator_selection.is_some());
+    let authenticator_selection = options.public_key.authenticator_selection.unwrap();
+
+    // was correctly deserialized to a true boolean value
+    assert!(authenticator_selection.require_resident_key);
+}

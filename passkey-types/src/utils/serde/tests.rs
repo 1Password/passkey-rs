@@ -4,7 +4,7 @@ use super::*;
 fn from_float_representations() {
     #[derive(Deserialize)]
     struct FromFloat {
-        #[serde(deserialize_with = "maybe_stringified")]
+        #[serde(deserialize_with = "maybe_stringified_num")]
         num: Option<u32>,
     }
 

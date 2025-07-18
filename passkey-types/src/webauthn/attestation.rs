@@ -8,7 +8,8 @@ use typeshare::typeshare;
 use crate::{
     Bytes,
     utils::serde::{
-        i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec, maybe_stringified,
+        i64_to_iana, ignore_unknown, ignore_unknown_opt_vec, ignore_unknown_vec,
+        maybe_stringified_bool, maybe_stringified_num,
     },
     webauthn::{
         AuthenticationExtensionsClientInputs, AuthenticatorAttachment, AuthenticatorTransport,
@@ -98,7 +99,7 @@ pub struct PublicKeyCredentialCreationOptions {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "maybe_stringified"
+        deserialize_with = "maybe_stringified_num"
     )]
     pub timeout: Option<u32>,
 
@@ -363,7 +364,7 @@ pub struct AuthenticatorSelectionCriteria {
     /// Relying Parties SHOULD set it to `true` if, and only if, [`Self::resident_key`] is set to required.
     ///
     /// [discoverable credential]: https://w3c.github.io/webauthn/#client-side-discoverable-credential
-    #[serde(default)]
+    #[serde(default, deserialize_with = "maybe_stringified_bool")]
     pub require_resident_key: bool,
 
     /// This member specifies the Relying Party's requirements regarding [user verification] for the

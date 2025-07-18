@@ -230,7 +230,7 @@ where
     }
 }
 
-pub(crate) fn maybe_stringified<'de, D>(de: D) -> Result<Option<u32>, D::Error>
+pub(crate) fn maybe_stringified_num<'de, D>(de: D) -> Result<Option<u32>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -238,5 +238,42 @@ where
         .map(Some)
 }
 
+struct StringOrBool;
+
+impl Visitor<'_> for StringOrBool {
+    type Value = bool;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Expected a boolean or a string encoded boolean")
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_str(&v)
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        FromStr::from_str(v).map_err(|_| E::custom("Not a valid boolean representation"))
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(v)
+    }
+}
+
+pub(crate) fn maybe_stringified_bool<'de, D>(de: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    de.deserialize_any(StringOrBool)
+}
 #[cfg(test)]
 mod tests;
