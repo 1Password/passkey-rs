@@ -37,7 +37,7 @@ use url::Url;
 mod extensions;
 mod rp_id_verifier;
 
-pub use self::rp_id_verifier::RpIdVerifier;
+pub use self::rp_id_verifier::{Fetcher, RelatedOriginResponse, RpIdVerifier};
 
 #[cfg(feature = "android-asset-validation")]
 pub use self::rp_id_verifier::android::{UnverifiedAssetLink, ValidationError, valid_fingerprint};
@@ -72,6 +72,14 @@ pub enum WebauthnError {
     SyntaxError,
     /// The input failed validation
     ValidationError,
+    /// The given RpId has possibly rolled out related origins
+    RequiresRelatedOriginsSupport,
+    /// An error when fetching remote resources
+    FetcherError,
+    /// A redirect that was not allowed occured
+    RedirectError,
+    /// Related Origins endpoint contains a number of labels exceeding the max limit
+    ExceedsMaxLabelLimit,
 }
 
 impl WebauthnError {
@@ -142,17 +150,17 @@ impl Display for Origin<'_> {
 /// default provider implementation. Use `new_with_custom_tld_provider()` to provide a custom
 /// `EffectiveTLDProvider` if your application needs to interpret eTLDs differently from the Mozilla
 /// Public Suffix List.
-pub struct Client<S, U, P>
+pub struct Client<S, U, P, F>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
 {
     authenticator: Authenticator<S, U>,
-    rp_id_verifier: RpIdVerifier<P>,
+    rp_id_verifier: RpIdVerifier<P, F>,
 }
 
-impl<S, U> Client<S, U, public_suffix::PublicSuffixList>
+impl<S, U> Client<S, U, public_suffix::PublicSuffixList, ()>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
@@ -163,26 +171,28 @@ where
     pub fn new(authenticator: Authenticator<S, U>) -> Self {
         Self {
             authenticator,
-            rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER),
+            rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
         }
     }
 }
 
-impl<S, U, P> Client<S, U, P>
+impl<S, U, P, F> Client<S, U, P, F>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
+    F: Fetcher + Sync,
 {
     /// Create a `Client` with a given `Authenticator` and a custom TLD provider
     /// that implements `[public_suffix::EffectiveTLDProvider]`.
     pub fn new_with_custom_tld_provider(
         authenticator: Authenticator<S, U>,
         custom_provider: P,
+        fetcher: Option<F>,
     ) -> Self {
         Self {
             authenticator,
-            rp_id_verifier: RpIdVerifier::new(custom_provider),
+            rp_id_verifier: RpIdVerifier::new(custom_provider, fetcher),
         }
     }
 
@@ -231,7 +241,8 @@ where
 
         let rp_id = self
             .rp_id_verifier
-            .assert_domain(&origin, request.rp.id.as_deref())?;
+            .assert_domain(&origin, request.rp.id.as_deref())
+            .await?;
 
         let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Create,
@@ -365,7 +376,8 @@ where
 
         let rp_id = self
             .rp_id_verifier
-            .assert_domain(&origin, request.rp_id.as_deref())?;
+            .assert_domain(&origin, request.rp_id.as_deref())
+            .await?;
 
         let collected_client_data = webauthn::CollectedClientData::<E> {
             ty: webauthn::ClientDataType::Get,

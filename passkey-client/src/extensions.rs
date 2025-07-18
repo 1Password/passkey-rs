@@ -23,7 +23,7 @@ use crate::{Client, WebauthnError};
 
 mod prf;
 
-impl<S, U, P> Client<S, U, P>
+impl<S, U, P, F> Client<S, U, P, F>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
