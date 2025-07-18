@@ -317,10 +317,8 @@ async fn hmac_secret_mc_happy_path() {
     let values = prf.results.unwrap();
 
     assert!(!values.first.is_empty());
-    // We expect this to be None because the authenticator requires UV.
-    // When calculating hmac secrets, it will skip the second input if
-    // the authenticator does not support "no UV".
-    assert!(values.second.is_none());
+    assert!(values.second.is_some());
+    assert!(!values.second.unwrap().is_empty());
 }
 
 #[tokio::test]

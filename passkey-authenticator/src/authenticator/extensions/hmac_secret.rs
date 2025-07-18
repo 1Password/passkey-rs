@@ -167,6 +167,18 @@ impl<S, U> Authenticator<S, U> {
     }
 }
 
+/// Calculates the Hmac secret output given the stored credentials and given salts.
+///
+/// ## Process
+/// * The authenticator chooses which CredRandom to use for next step based on whether user verification was done or not in above steps.
+///   * If uv bit is set to `true` in the response, let CredRandom be [`passkey_types::StoredHmacSecret::cred_with_uv`].
+///   * If uv bit is set to `false` in the response, let CredRandom be [`passkey_types::StoredHmacSecret::cred_without_uv`].
+/// * If the authenticator cannot find corresponding CredRandom associated with the credential, authenticator ignores this extension and does not add any response from this extension to "extensions" field of the authenticatorGetAssertion response.
+/// * The authenticator generates one or two HMAC-SHA-256 values, depending upon whether it received one salt (32 bytes) or two salts (64 bytes):
+///   * output1: `HMAC-SHA-256(CredRandom, salt1)`
+///   * output2: `HMAC-SHA-256(CredRandom, salt2)`
+///
+/// <https://fidoalliance.org/specs/fido-v2.2-ps-20250228/fido-client-to-authenticator-protocol-v2.2-ps-20250228.html#sctn-hmac-secret-extension>
 fn calculate_hmac_secret(
     hmac_creds: &passkey_types::StoredHmacSecret,
     salts: HmacSecretSaltOrOutput,
@@ -176,18 +188,15 @@ fn calculate_hmac_secret(
     let cred_random = if uv {
         &hmac_creds.cred_with_uv
     } else {
-        hmac_creds
-            .cred_without_uv
-            .as_ref()
+        config
+            .supports_no_uv()
+            .then_some(hmac_creds.cred_without_uv.as_ref())
+            .flatten()
             .ok_or(Ctap2Error::UserVerificationBlocked)?
     };
 
     let output1 = hmac_sha256(cred_random, salts.first());
-    let output2 = salts.second().and_then(|salt2| {
-        config
-            .supports_no_uv()
-            .then(|| hmac_sha256(cred_random, salt2))
-    });
+    let output2 = salts.second().map(|salt2| hmac_sha256(cred_random, salt2));
 
     let result = HmacSecretSaltOrOutput::new(output1, output2);
 

@@ -4,7 +4,7 @@ use p256::SecretKey;
 use passkey_types::{
     Passkey,
     ctap2::{
-        AttestedCredentialData, AuthenticatorData, Ctap2Error, StatusCode,
+        AttestedCredentialData, AuthenticatorData, Ctap2Error, Flags, StatusCode,
         make_credential::{Request, Response},
     },
 };
@@ -107,7 +107,7 @@ where
             SecretKey::random(&mut rng)
         };
 
-        let extensions = self.make_extensions(input.extensions, input.options.uv)?;
+        let extensions = self.make_extensions(input.extensions, flags.contains(Flags::UV))?;
 
         // Encoding of the key pair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested

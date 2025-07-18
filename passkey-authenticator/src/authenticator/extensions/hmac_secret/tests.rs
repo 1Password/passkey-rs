@@ -122,7 +122,7 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .expect("did not succeed in creating hashes")
         .expect("hmac-secret was not supported when creation was requested")
         .results;
-    assert!(res.second.is_none());
+    assert!(res.second.is_some());
 
     let res2 = auth
         .get_prf(
@@ -136,7 +136,7 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .results;
 
     assert_eq!(res.first, res2.first);
-    assert!(res2.second.is_none());
+    assert_eq!(res.second, res2.second);
 
     let res3 = auth
         .get_prf(
@@ -150,5 +150,38 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .results;
 
     assert_ne!(res.first, res3.first);
-    assert!(res3.second.is_none());
+    assert_ne!(res.second, res3.second);
+}
+
+#[test]
+fn hmac_secret_cycle_works_with_one_salt() {
+    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
+        .hmac_secret(HmacSecretConfig::new_with_uv_only());
+
+    let ext = auth
+        .make_hmac_secret(Some(true))
+        .expect("There should be passkey extensions");
+    assert!(ext.cred_without_uv.is_none());
+
+    let passkey = Passkey::mock("sneakernetsend.com".into())
+        .hmac_secret(ext)
+        .build();
+
+    let mut request = prf_eval_request(Some(random_vec(64)));
+    request.eval = request.eval.map(|e| AuthenticatorPrfValues {
+        first: e.first,
+        second: None,
+    });
+
+    let res = auth
+        .get_prf(
+            &passkey.credential_id,
+            passkey.extensions.hmac_secret.as_ref(),
+            request.clone(),
+            true,
+        )
+        .expect("did not succeed in creating hashes")
+        .expect("hmac-secret was not supported when creation was requested")
+        .results;
+    assert!(res.second.is_none());
 }
