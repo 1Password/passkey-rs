@@ -30,19 +30,19 @@ mod u2f;
 mod user_validation;
 
 use coset::{
-    iana::{self, Algorithm, EnumI64},
     CoseKey, CoseKeyBuilder,
+    iana::{self, Algorithm, EnumI64},
 };
 use p256::{
+    EncodedPoint, PublicKey, SecretKey,
     ecdsa::SigningKey,
     elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint},
     pkcs8::EncodePublicKey,
-    EncodedPoint, PublicKey, SecretKey,
 };
-use passkey_types::{ctap2::Ctap2Error, Bytes};
+use passkey_types::{Bytes, ctap2::Ctap2Error};
 
 pub use self::{
-    authenticator::{extensions, Authenticator, CredentialIdLength},
+    authenticator::{Authenticator, CredentialIdLength, extensions},
     credential_store::{CredentialStore, DiscoverabilitySupport, MemoryStore, StoreInfo},
     ctap2::Ctap2Api,
     u2f::U2fApi,
@@ -174,43 +174,4 @@ impl CoseKeyPair {
 }
 
 #[cfg(test)]
-mod tests {
-    use coset::iana;
-    use p256::{
-        ecdsa::{
-            signature::{Signer, Verifier},
-            SigningKey,
-        },
-        SecretKey,
-    };
-    use passkey_types::{ctap2::AuthenticatorData, rand::random_vec};
-
-    use super::{private_key_from_cose_key, CoseKeyPair};
-
-    #[test]
-    fn private_key_cose_round_trip_sanity_check() {
-        let private_key = {
-            let mut rng = rand::thread_rng();
-            SecretKey::random(&mut rng)
-        };
-        let CoseKeyPair {
-            private: private_cose,
-            ..
-        } = CoseKeyPair::from_secret_key(&private_key, iana::Algorithm::ES256);
-        let public_signing_key = SigningKey::from(&private_key);
-        let public_key = public_signing_key.verifying_key();
-
-        let auth_data = AuthenticatorData::new("future.1password.com", None);
-        let mut signature_target = auth_data.to_vec();
-        signature_target.extend(random_vec(32));
-
-        let secret_key = private_key_from_cose_key(&private_cose).expect("to get a private key");
-
-        let private_key = SigningKey::from(secret_key);
-        let signature: p256::ecdsa::Signature = private_key.sign(&signature_target);
-
-        public_key
-            .verify(&signature_target, &signature)
-            .expect("failed to verify signature")
-    }
-}
+mod tests;

@@ -189,7 +189,7 @@ impl PrfValuesConfig {
 
 #[cfg(test)]
 macro_rules! valid_authentication_with_prf {
-    ( $($test_name:ident: $eval:expr, $eval_by_cred:expr),+ ) => {
+    ( $($test_name:ident: $eval:expr_2021, $eval_by_cred:expr_2021),+ ) => {
         $(
             #[tokio::test]
             async fn $test_name() {
@@ -356,7 +356,7 @@ async fn auth_empty_allow_credentials() {
 
 #[cfg(test)]
 macro_rules! invalid_eval_by_credential_in_authentication {
-    ( $($test_name:ident: $key:expr ),+ ) => {
+    ( $($test_name:ident: $key:expr_2021 ),+ ) => {
         $(
             #[tokio::test]
             async fn $test_name() {
@@ -429,7 +429,7 @@ enum SameInputs {
 
 #[cfg(test)]
 macro_rules! compare_auth_calls {
-    ( $($test_name:ident: $same_inputs:expr),+ ) => {
+    ( $($test_name:ident: $same_inputs:expr_2021),+ ) => {
         $(
             #[tokio::test]
             async fn $test_name() {

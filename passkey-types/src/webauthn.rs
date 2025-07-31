@@ -5,15 +5,16 @@
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
-use crate::{utils::serde::ignore_unknown, Bytes};
+use crate::{Bytes, utils::serde::ignore_unknown};
 
 mod assertion;
 mod attestation;
 mod common;
 mod extensions;
+mod well_known;
 
 // re-export types
-pub use self::{assertion::*, attestation::*, common::*, extensions::*};
+pub use self::{assertion::*, attestation::*, common::*, extensions::*, well_known::*};
 
 mod sealed {
     pub trait Sealed {}
@@ -37,7 +38,10 @@ impl AuthenticatorResponse for AuthenticatorAttestationResponse {}
 /// <https://w3c.github.io/webauthn/#iface-pkcredential>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable", swiftGenericConstraints = "R: Equatable")]
+#[typeshare(
+    swift = "Equatable, Hashable",
+    swiftGenericConstraints = "R: Equatable & Hashable"
+)]
 pub struct PublicKeyCredential<R: AuthenticatorResponse> {
     /// The id contains the credential ID, chosen by the authenticator. This is usually the base64url
     /// encoded data of [Self::raw_id]

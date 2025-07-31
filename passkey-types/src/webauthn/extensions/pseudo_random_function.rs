@@ -17,7 +17,7 @@ use crate::Bytes;
 /// the PRF.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub struct AuthenticationExtensionsPrfValues {
     /// The first PRF value.
     pub first: Bytes,
@@ -61,7 +61,7 @@ pub struct AuthenticationExtensionsPrfInputs {
 /// See [`AuthenticationExtensionsPrfInputs`] for details.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub struct AuthenticationExtensionsPrfOutputs {
     /// True if, and only if, the one or two PRFs are available for use with
     /// the created credential. This is only reported during registration and

@@ -1,7 +1,7 @@
-use coset::{iana, CoseKeyBuilder};
-use p256::{ecdsa::SigningKey, SecretKey};
+use coset::{CoseKeyBuilder, iana};
+use p256::{SecretKey, ecdsa::SigningKey};
 
-use crate::{rand::random_vec, Passkey, StoredHmacSecret};
+use crate::{Passkey, StoredHmacSecret, rand::random_vec};
 
 /// A builder for the [`Passkey`] type which should be used as a mock for testing.
 pub struct PasskeyBuilder {

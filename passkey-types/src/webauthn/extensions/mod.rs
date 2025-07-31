@@ -73,7 +73,7 @@ impl AuthenticationExtensionsClientInputs {
 /// [WebAuthn Extensions]: https://w3c.github.io/webauthn/#webauthn-extensions
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub struct AuthenticationExtensionsClientOutputs {
     /// Contains properties of the given [`PublicKeyCredential`] when it is included.
     ///

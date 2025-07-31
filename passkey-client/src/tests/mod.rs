@@ -1,8 +1,10 @@
+use crate::rp_id_verifier::tests::TestFetcher;
+
 use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_types::{
-    ctap2, encoding::try_from_base64url, rand::random_vec, webauthn::CollectedClientData, Bytes,
+    Bytes, ctap2, encoding::try_from_base64url, rand::random_vec, webauthn::CollectedClientData,
 };
 use serde::Deserialize;
 use url::{ParseError, Url};
@@ -292,48 +294,63 @@ async fn create_and_authenticate_without_cred_params() {
         .expect("failed to authenticate with freshly created credential");
 }
 
-#[test]
-fn validate_rp_id() -> Result<(), ParseError> {
-    let client = RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER);
+#[tokio::test]
+async fn validate_rp_id() -> Result<(), ParseError> {
+    let client = RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None::<()>);
 
     let example = Url::parse("https://example.com")?.into();
-    let com_tld = client.assert_domain(&example, Some("com"));
+    let com_tld = client.assert_domain(&example, Some("com")).await;
     assert_eq!(com_tld, Err(WebauthnError::InvalidRpId));
 
     let example_dots = Url::parse("https://example...com")?.into();
-    let bunch_of_dots = client.assert_domain(&example_dots, Some("...com"));
+    let bunch_of_dots = client.assert_domain(&example_dots, Some("...com")).await;
     assert_eq!(bunch_of_dots, Err(WebauthnError::InvalidRpId));
 
     let future = Url::parse("https://www.future.1password.com")?.into();
-    let sub_domain_ignored = client.assert_domain(&future, Some("future.1password.com"));
+    let sub_domain_ignored = client
+        .assert_domain(&future, Some("future.1password.com"))
+        .await;
     assert_eq!(sub_domain_ignored, Ok("future.1password.com"));
 
-    let use_effective_domain = client.assert_domain(&future, None);
+    let use_effective_domain = client.assert_domain(&future, None).await;
     assert_eq!(use_effective_domain, Ok("www.future.1password.com"));
 
     let not_protected = Url::parse("http://example.com")?.into();
-    let not_https = client.assert_domain(&not_protected, Some("example.com"));
+    let not_https = client
+        .assert_domain(&not_protected, Some("example.com"))
+        .await;
     assert_eq!(not_https, Err(WebauthnError::UnprotectedOrigin));
 
     let localhost = Url::parse("http://localhost:8080")?.into();
-    let should_still_match = client.assert_domain(&localhost, Some("example.com"));
+    let should_still_match = client.assert_domain(&localhost, Some("example.com")).await;
     assert_eq!(should_still_match, Err(WebauthnError::OriginRpMissmatch));
 
-    let localhost_not_allowed = client.assert_domain(&localhost, Some("localhost"));
+    let localhost_not_allowed = client.assert_domain(&localhost, Some("localhost")).await;
     assert_eq!(
         localhost_not_allowed,
         Err(WebauthnError::InsecureLocalhostNotAllowed)
     );
-    let localhost_not_allowed = client.assert_domain(&localhost, None);
+    let localhost_not_allowed = client.assert_domain(&localhost, None).await;
     assert_eq!(
         localhost_not_allowed,
         Err(WebauthnError::InsecureLocalhostNotAllowed)
+    );
+    let attempted_related_origins = client.assert_domain(&example, Some("example.ca")).await;
+    assert_eq!(
+        attempted_related_origins,
+        Err(WebauthnError::OriginRpMissmatch)
+    );
+    let attempted_related_origins_with_subdomain =
+        client.assert_domain(&future, Some("1password.ca")).await;
+    assert_eq!(
+        attempted_related_origins_with_subdomain,
+        Err(WebauthnError::OriginRpMissmatch)
     );
 
     let client = client.allows_insecure_localhost(true);
-    let skips_http_and_tld_check = client.assert_domain(&localhost, Some("localhost"));
+    let skips_http_and_tld_check = client.assert_domain(&localhost, Some("localhost")).await;
     assert_eq!(skips_http_and_tld_check, Ok("localhost"));
-    let skips_http_and_tld_check = client.assert_domain(&localhost, None);
+    let skips_http_and_tld_check = client.assert_domain(&localhost, None).await;
     assert_eq!(skips_http_and_tld_check, Ok("localhost"));
 
     Ok(())
@@ -351,17 +368,17 @@ impl public_suffix::EffectiveTLDProvider for BrokenTLDProvider {
         Err(public_suffix::Error::CannotDeriveETldPlus1)
     }
 }
-#[test]
-fn validate_domain_with_private_list_provider() -> Result<(), ParseError> {
+#[tokio::test]
+async fn validate_domain_with_private_list_provider() -> Result<(), ParseError> {
     let my_custom_provider = BrokenTLDProvider {};
-    let client = RpIdVerifier::new(my_custom_provider);
+    let client = RpIdVerifier::new(my_custom_provider, None::<()>);
 
     // Notice that, in this test, this is a legitimate origin/rp_id combination
     // We assert that this produces an error to prove that we are indeed using our
     // BrokenTLDProvider which always returns Err() regardless of the TLD.
     let origin = Url::parse("https://www.future.1password.com")?.into();
     let rp_id = "future.1password.com";
-    let result = client.assert_domain(&origin, Some(rp_id));
+    let result = client.assert_domain(&origin, Some(rp_id)).await;
     assert_eq!(result, Err(WebauthnError::InvalidRpId));
 
     Ok(())
@@ -454,4 +471,155 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
         .register(&origin, options, DefaultClientData)
         .await
         .expect("failed to register with options");
+}
+
+#[test]
+fn map_rk_maps_criteria_to_rk_bool() {
+    #[derive(Debug)]
+    struct TestCase {
+        resident_key: Option<ResidentKeyRequirement>,
+        require_resident_key: bool,
+        expected_rk: bool,
+    }
+
+    let test_cases = vec![
+        // require_resident_key fallbacks
+        TestCase {
+            resident_key: None,
+            require_resident_key: false,
+            expected_rk: false,
+        },
+        TestCase {
+            resident_key: None,
+            require_resident_key: true,
+            expected_rk: true,
+        },
+        // resident_key values
+        TestCase {
+            resident_key: Some(ResidentKeyRequirement::Discouraged),
+            require_resident_key: false,
+            expected_rk: false,
+        },
+        TestCase {
+            resident_key: Some(ResidentKeyRequirement::Preferred),
+            require_resident_key: false,
+            expected_rk: true,
+        },
+        TestCase {
+            resident_key: Some(ResidentKeyRequirement::Required),
+            require_resident_key: false,
+            expected_rk: true,
+        },
+        // resident_key overrides require_resident_key
+        TestCase {
+            resident_key: Some(ResidentKeyRequirement::Discouraged),
+            require_resident_key: true,
+            expected_rk: false,
+        },
+    ];
+
+    for test_case in test_cases {
+        let criteria = AuthenticatorSelectionCriteria {
+            resident_key: test_case.resident_key,
+            require_resident_key: test_case.require_resident_key,
+            user_verification: UserVerificationRequirement::Discouraged,
+            authenticator_attachment: None,
+        };
+        let auth_info = ctap2::get_info::Response {
+            versions: vec![],
+            extensions: None,
+            aaguid: ctap2::Aaguid::new_empty(),
+            options: Some(ctap2::get_info::Options {
+                rk: true,
+                uv: Some(true),
+                up: true,
+                plat: true,
+                client_pin: None,
+            }),
+            max_msg_size: None,
+            pin_protocols: None,
+            transports: None,
+        };
+        let client = Client::new(Authenticator::new(
+            ctap2::Aaguid::new_empty(),
+            MemoryStore::new(),
+            MockUserValidationMethod::verified_user(0),
+        ));
+
+        let result = client.map_rk(&Some(criteria), &auth_info);
+
+        assert_eq!(result, test_case.expected_rk, "{test_case:?}");
+    }
+}
+
+#[tokio::test]
+async fn create_and_authenticate_with_related_origins() {
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(2),
+    );
+
+    let mut client = Client::new_with_custom_tld_provider(
+        auth,
+        public_suffix::DEFAULT_PROVIDER,
+        Some(TestFetcher::default()),
+    );
+
+    let origin = Url::parse("https://1password.ca").unwrap();
+    let options = webauthn::CredentialCreationOptions {
+        public_key: good_credential_creation_options(),
+    };
+    let cred = client
+        .register(&origin, options, DefaultClientData)
+        .await
+        .expect("failed to register with options");
+
+    let credential_id = cred.raw_id;
+
+    let auth_options = webauthn::CredentialRequestOptions {
+        public_key: good_credential_request_options(credential_id),
+    };
+    client
+        .authenticate(&origin, auth_options, DefaultClientData)
+        .await
+        .expect("failed to authenticate with freshly created credential");
+}
+
+#[tokio::test]
+async fn fail_to_create_with_unrelated_origin() {
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(0),
+    );
+
+    let mut client = Client::new_with_custom_tld_provider(
+        auth,
+        public_suffix::DEFAULT_PROVIDER,
+        Some(TestFetcher::default()),
+    );
+
+    let origin = Url::parse("https://1password.de").unwrap();
+    let options = webauthn::CredentialCreationOptions {
+        public_key: good_credential_creation_options(),
+    };
+    let res = client
+        .register(&origin, options, DefaultClientData)
+        .await
+        .expect_err("Succeeded in creating for a TLD that isn't in the list");
+
+    assert_eq!(res, WebauthnError::OriginRpMissmatch);
+
+    // We can call authenticate without a passkey in the store here
+    // since RP validation is before we fetch anything from the store
+    let auth_options = webauthn::CredentialRequestOptions {
+        public_key: good_credential_request_options(random_vec(32)),
+    };
+    let res = client
+        .authenticate(&origin, auth_options, DefaultClientData)
+        .await
+        .expect_err("Succeeded in authenticating without a passkey and a tld that isn't in the related list");
+
+    assert_eq!(res, WebauthnError::OriginRpMissmatch);
 }

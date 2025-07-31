@@ -1,15 +1,15 @@
 [package]
-name = "passkey"
-version = "0.4.0"
-description = "A one stop library to implement a passkey client and authenticator"
-include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
-readme = "../README.md"
 authors.workspace = true
-repository.workspace = true
-edition.workspace = true
-license.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "A one stop library to implement a passkey client and authenticator"
+edition.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
+keywords.workspace = true
+license.workspace = true
+name = "passkey"
+readme = "../README.md"
+repository.workspace = true
+version = "0.5.0"
 
 [lints]
 workspace = true
@@ -22,22 +22,22 @@ development = [
 ] # Only used for async doctests. Cargo udeps can't check.:
 
 [dependencies]
-passkey-authenticator = { path = "../passkey-authenticator", version = "0.4" }
-passkey-types = { path = "../passkey-types", version = "0.4" }
-passkey-client = { path = "../passkey-client", version = "0.4" }
+passkey-authenticator = { path = "../passkey-authenticator", version = "0.5" }
+passkey-client = { path = "../passkey-client", version = "0.5" }
 passkey-transports = { path = "../passkey-transports", version = "0.1" }
+passkey-types = { path = "../passkey-types", version = "0.5" }
 
 [dev-dependencies]
+async-trait = "0.1"
 coset = "0.3"
-url = "2"
+passkey-authenticator = { path = "../passkey-authenticator", version = "0.5", features = [
+  "testable",
+  "tokio",
+] }
+passkey-client = { path = "../passkey-client", version = "0.5", features = [
+  "testable",
+  "tokio",
+] }
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-test = "0.4"
-async-trait = "0.1"
-passkey-client = { path = "../passkey-client", version = "0.4", features = [
-  "tokio",
-  "testable",
-] }
-passkey-authenticator = { path = "../passkey-authenticator", version = "0.4", features = [
-  "tokio",
-  "testable",
-] }
+url = "2"

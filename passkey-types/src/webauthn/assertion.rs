@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
 use crate::{
-    utils::serde::{ignore_unknown, ignore_unknown_opt_vec, maybe_stringified},
+    Bytes,
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec, maybe_stringified_num},
     webauthn::{
         AttestationConveyancePreference, AttestationStatementFormatIdentifiers,
         AuthenticationExtensionsClientInputs, PublicKeyCredential, PublicKeyCredentialDescriptor,
         PublicKeyCredentialHints, UserVerificationRequirement,
     },
-    Bytes,
 };
 
 #[cfg(doc)]
@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// The response to the successful authentication of a [`PublicKeyCredential`]
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub type AuthenticatedPublicKeyCredential = PublicKeyCredential<AuthenticatorAssertionResponse>;
 
 /// This type supplies `get()` requests with the data it needs to generate an assertion.
@@ -45,7 +45,7 @@ pub struct PublicKeyCredentialRequestOptions {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "maybe_stringified"
+        deserialize_with = "maybe_stringified_num"
     )]
     pub timeout: Option<u32>,
 
@@ -188,7 +188,7 @@ pub struct CredentialRequestOptions {
 /// <https://w3c.github.io/webauthn/#iface-authenticatorassertionresponse>
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable")]
+#[typeshare(swift = "Equatable, Hashable")]
 pub struct AuthenticatorAssertionResponse {
     /// This attribute contains the JSON serialization of [`CollectedClientData`] passed to the
     /// authenticator by the client in order to generate this credential. The exact JSON serialization

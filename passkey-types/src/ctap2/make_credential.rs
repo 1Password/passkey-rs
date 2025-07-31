@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ctap2::AuthenticatorData, webauthn, Bytes};
+use crate::{Bytes, ctap2::AuthenticatorData, webauthn};
 
 #[cfg(doc)]
 use {
@@ -135,14 +135,14 @@ impl TryFrom<PublicKeyCredentialUserEntity> for webauthn::PublicKeyCredentialUse
     type Error = &'static str;
     fn try_from(value: PublicKeyCredentialUserEntity) -> Result<Self, Self::Error> {
         match (value.name, value.display_name) {
-            (Some(name), Some(display_name)) => {
-                Ok(Self {
-                    id: value.id,
-                    name,
-                    display_name,
-                })
-            },
-            _ => Err("PublicKeyCredentialUserEntity is missing one or more required fields: name, display_name"),
+            (Some(name), Some(display_name)) => Ok(Self {
+                id: value.id,
+                name,
+                display_name,
+            }),
+            _ => Err(
+                "PublicKeyCredentialUserEntity is missing one or more required fields: name, display_name",
+            ),
         }
     }
 }
@@ -359,3 +359,6 @@ impl UnsignedExtensionOutputs {
         prf.is_some().then_some(self)
     }
 }
+
+#[cfg(test)]
+mod tests;

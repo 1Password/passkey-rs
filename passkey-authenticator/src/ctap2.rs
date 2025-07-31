@@ -5,7 +5,7 @@
 //!
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticator-api>
 
-use passkey_types::ctap2::{get_assertion, get_info, make_credential, StatusCode};
+use passkey_types::ctap2::{StatusCode, get_assertion, get_info, make_credential};
 
 use crate::{Authenticator, CredentialStore, UserValidationMethod};
 
@@ -40,7 +40,7 @@ pub trait Ctap2Api: sealed::Sealed {
 
     /// Request to assert a user's existing credential that might exist in the authenticator.
     async fn get_assertion(
-        &self,
+        &mut self,
         request: get_assertion::Request,
     ) -> Result<get_assertion::Response, StatusCode>;
 }
@@ -49,23 +49,23 @@ pub trait Ctap2Api: sealed::Sealed {
 impl<S, U> Ctap2Api for Authenticator<S, U>
 where
     S: CredentialStore + Sync + Send,
-    U: UserValidationMethod + Sync + Send,
+    U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync + Send,
 {
     async fn get_info(&self) -> get_info::Response {
-        self.get_info().await
+        Authenticator::get_info(self).await
     }
 
     async fn make_credential(
         &mut self,
         request: make_credential::Request,
     ) -> Result<make_credential::Response, StatusCode> {
-        self.make_credential(request).await
+        Authenticator::make_credential(self, request).await
     }
 
     async fn get_assertion(
-        &self,
+        &mut self,
         request: get_assertion::Request,
     ) -> Result<get_assertion::Response, StatusCode> {
-        self.get_assertion(request).await
+        Authenticator::get_assertion(self, request).await
     }
 }

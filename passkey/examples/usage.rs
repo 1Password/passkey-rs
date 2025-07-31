@@ -2,7 +2,7 @@
 use passkey::{
     authenticator::{Authenticator, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
-    types::{crypto::sha256, ctap2::*, rand::random_vec, webauthn::*, Bytes, Passkey},
+    types::{Bytes, Passkey, crypto::sha256, ctap2::*, rand::random_vec, webauthn::*},
 };
 
 use coset::iana;
@@ -154,17 +154,11 @@ async fn authenticator_setup(
 }
 
 fn ctap2_creation_success(credential: make_credential::Response) {
-    println!(
-        "CTAP2 credential creation succeeded:\n\n{:?}\n\n",
-        credential
-    );
+    println!("CTAP2 credential creation succeeded:\n\n{credential:?}\n\n");
 }
 
 fn ctap2_auth_success(credential: get_assertion::Response) {
-    println!(
-        "CTAP2 credential authentication succeeded:\n\n{:?}\n\n",
-        credential
-    );
+    println!("CTAP2 credential authentication succeeded:\n\n{credential:?}\n\n");
 }
 
 fn ctap2_credential_not_found() {
@@ -172,7 +166,7 @@ fn ctap2_credential_not_found() {
 }
 
 fn ctap2_other_error(code: StatusCode) {
-    println!("CTAP2 error: Other Status Code: {:?}", code);
+    println!("CTAP2 error: Other Status Code: {code:?}");
 }
 
 #[tokio::main]
@@ -196,8 +190,8 @@ async fn main() -> Result<(), WebauthnError> {
     )
     .await?;
 
-    println!("Webauthn credential created:\n\n{:?}\n\n", created_cred);
-    println!("Webauthn credential auth'ed:\n\n{:?}\n\n", authed_cred);
+    println!("Webauthn credential created:\n\n{created_cred:?}\n\n");
+    println!("Webauthn credential auth'ed:\n\n{authed_cred:?}\n\n");
 
     // Generate the client_data_hash from the created_cred response
     let client_data_hash = sha256(&created_cred.response.client_data_json).to_vec();

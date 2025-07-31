@@ -1,4 +1,4 @@
-use super::{authenticate::AuthenticationRequest, register::RegisterRequest, ResponseStatusWords};
+use super::{ResponseStatusWords, authenticate::AuthenticationRequest, register::RegisterRequest};
 
 /// U2F command, determined at the INS position,
 ///

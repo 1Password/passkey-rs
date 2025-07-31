@@ -1,39 +1,39 @@
 [package]
-name = "passkey-authenticator"
-version = "0.4.0"
-description = "A webauthn authenticator supporting passkeys."
-include = ["src/", "../LICENSE-APACHE", "../LICENSE-MIT"]
-readme = "README.md"
 authors.workspace = true
-repository.workspace = true
-edition.workspace = true
-license.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "A webauthn authenticator supporting passkeys."
+edition.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
+keywords.workspace = true
+license.workspace = true
+name = "passkey-authenticator"
+readme = "README.md"
+repository.workspace = true
+version = "0.5.0"
 
 [lints]
 workspace = true
 
 [features]
 default = []
-tokio = ["dep:tokio"]
 testable = ["dep:mockall", "passkey-types/testable"]
+tokio = ["dep:tokio"]
 
 [dependencies]
 async-trait = "0.1"
 coset = "0.3"
 log = "0.4"
 mockall = { version = "0.11", optional = true }
-p256 = { version = "0.13", features = ["pem", "arithmetic", "jwk"] }
-passkey-types = { path = "../passkey-types", version = "0.4" }
+p256 = { version = "0.13", features = ["arithmetic", "jwk", "pem"] }
+passkey-types = { path = "../passkey-types", version = "0.5" }
 rand = "0.8"
 tokio = { version = "1", features = ["sync"], optional = true }
 
 [dev-dependencies]
+generic-array = { version = "0.14", default-features = false }
 mockall = { version = "0.11" }
-passkey-types = { path = "../passkey-types", version = "0.4", features = [
+passkey-types = { path = "../passkey-types", version = "0.5", features = [
   "testable",
 ] }
-tokio = { version = "1", features = ["sync", "macros", "rt"] }
-generic-array = { version = "0.14", default-features = false }
 signature = { version = "2", features = ["rand_core"] }
+tokio = { version = "1", features = ["macros", "rt", "sync"] }
