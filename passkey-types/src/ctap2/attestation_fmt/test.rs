@@ -213,3 +213,14 @@ fn add_empty_extensions_does_not_add_flag() {
         .expect("falsely tried to serialize");
     assert!(!make_auth_data.flags.contains(Flags::ED));
 }
+
+#[test]
+fn test_attested_credential_data() {
+    let aaguid = Aaguid::new_empty();
+    let cred_id = vec![0, 1, 2, 3, 4, 5, 6, 7];
+    let data = AttestedCredentialData::new(aaguid, cred_id.clone(), CoseKey::default()).unwrap();
+    let bytes: Vec<u8> = data.into_iter().collect();
+    assert_eq!(&aaguid.0, &bytes[..16]);
+    assert_eq!(&[0, 8], &bytes[16..18]);
+    assert_eq!(cred_id, bytes[18..26]);
+}
