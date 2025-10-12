@@ -208,13 +208,7 @@ impl AuthenticatorData {
             .into_iter()
             .chain(std::iter::once(flags.into()))
             .chain(self.counter.unwrap_or_default().to_be_bytes())
-            .chain(
-                self.attested_credential_data
-                    .clone()
-                    .map(AttestedCredentialData::into_iter)
-                    .into_iter()
-                    .flatten(),
-            )
+            .chain(self.attested_credential_data.clone().into_iter().flatten())
             .chain(
                 self.extensions
                     .as_ref()
@@ -283,25 +277,6 @@ impl AttestedCredentialData {
 }
 
 impl AttestedCredentialData {
-    /// Custom implementation rather than IntoIterator because the iterator type is complicated.
-    #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self) -> impl Iterator<Item = u8> {
-        // SAFETY: if this unwrap fails, it is programmer error
-        // unfortunately any serialization in Coset does not use serde::Serialize and takes by value ...
-        let cose_key = self.key.to_vec().unwrap();
-        self.aaguid
-            .0
-            .into_iter()
-            // SAFETY: the length has been asserted to be less than u16::MAX in the constructor.
-            .chain(
-                u16::try_from(self.credential_id.len())
-                    .unwrap()
-                    .to_be_bytes(),
-            )
-            .chain(self.credential_id)
-            .chain(cose_key)
-    }
-
     fn from_reader<R: Read>(reader: &mut R) -> coset::Result<Self> {
         let mut aaguid = [0; 16];
         reader.read_exact(&mut aaguid).map_err(io_error)?;
@@ -322,6 +297,106 @@ impl AttestedCredentialData {
             credential_id,
             key,
         })
+    }
+}
+
+/// Iterator for attested credential data.
+pub struct AttestedCredentialDataIterator {
+    // data: &'a AttestedCredentialData,
+    aaguid: [u8; 16],
+    credential_id_len: [u8; 2],
+    credential_id: Vec<u8>,
+    // unfortunately any serialization in Coset does not use serde::Serialize
+    // and takes by value, so this must be owned.
+    cose_key: Vec<u8>,
+    state: AttestedCredentialDataIteratorState,
+}
+
+enum AttestedCredentialDataIteratorState {
+    Aaguid(u8),
+    CredIdLen(u8),
+    CredId(u16),
+    CoseKey(usize),
+    Done,
+}
+
+impl AttestedCredentialDataIterator {
+    fn new(data: AttestedCredentialData) -> Self {
+        // SAFETY: AAGUID length is guaranteed to be 16 bytes by AttestedCredentialData constructors
+        let aaguid = data.aaguid.0;
+        let cred_id_len: [u8; 2] = u16::try_from(data.credential_id.len())
+            .expect("Credential ID length is guaranteed to fit within 16 bytes by AttestedCredentialData constructors")
+            .to_be_bytes();
+        // SAFETY: if this unwrap fails, it is programmer error
+        let cose_key = data
+            .key
+            .clone()
+            .to_vec()
+            .expect("Properly formatted COSE key");
+        AttestedCredentialDataIterator {
+            aaguid,
+            credential_id_len: cred_id_len,
+            credential_id: data.credential_id,
+            cose_key,
+            state: AttestedCredentialDataIteratorState::Aaguid(0),
+        }
+    }
+}
+
+impl Iterator for AttestedCredentialDataIterator {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            AttestedCredentialDataIteratorState::Aaguid(x) => {
+                debug_assert!(x < 16);
+                if x == 15 {
+                    self.state = AttestedCredentialDataIteratorState::CredIdLen(0);
+                } else {
+                    self.state = AttestedCredentialDataIteratorState::Aaguid(x + 1)
+                }
+                Some(self.aaguid[usize::from(x)])
+            }
+            AttestedCredentialDataIteratorState::CredIdLen(x) => {
+                debug_assert!(x < 2);
+                if x == 1 {
+                    self.state = AttestedCredentialDataIteratorState::CredId(0);
+                } else {
+                    self.state = AttestedCredentialDataIteratorState::CredIdLen(x + 1);
+                }
+                Some(self.credential_id_len[usize::from(x)])
+            }
+            AttestedCredentialDataIteratorState::CredId(x) => {
+                // SAFETY: credential ID is constrained to 2^16 -1 bytes by constructors.
+                let cred_id_len: u16 = u16::try_from(self.credential_id.len())
+                    .expect("credential ID length to be less than 2^16");
+                debug_assert!(x < cred_id_len);
+                if x == cred_id_len - 1 {
+                    self.state = AttestedCredentialDataIteratorState::CoseKey(0);
+                } else {
+                    self.state = AttestedCredentialDataIteratorState::CredId(x + 1);
+                }
+                Some(self.credential_id[usize::from(x)])
+            }
+            AttestedCredentialDataIteratorState::CoseKey(x) => {
+                if x == self.cose_key.len() - 1 {
+                    self.state = AttestedCredentialDataIteratorState::Done;
+                } else {
+                    self.state = AttestedCredentialDataIteratorState::CoseKey(x + 1);
+                }
+                Some(self.cose_key[x])
+            }
+            AttestedCredentialDataIteratorState::Done => None,
+        }
+    }
+}
+
+impl IntoIterator for AttestedCredentialData {
+    type Item = u8;
+    type IntoIter = AttestedCredentialDataIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        AttestedCredentialDataIterator::new(self)
     }
 }
 
