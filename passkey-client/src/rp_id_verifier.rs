@@ -253,7 +253,7 @@ where
 
 /// Returns a decoded [String] if the domain name is punycode otherwise
 /// the original string reference [str] is returned.
-fn decode_host(host: &str) -> Option<Cow<str>> {
+fn decode_host(host: &str) -> Option<Cow<'_, str>> {
     if host.split('.').any(|s| s.starts_with("xn--")) {
         let (decoded, result) = idna::domain_to_unicode(host);
         result.ok().map(|_| Cow::from(decoded))

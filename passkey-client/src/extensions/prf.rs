@@ -199,15 +199,15 @@ fn get_ctap_extension(
     // base64url encoding, or does not equal the id of some element of
     // allowCredentials after performing base64url decoding, then return a
     // DOMException whose name is “SyntaxError”.
-    if let Some(record) = precomputed_eval_cred.as_ref() {
-        if record.iter().any(|(k_bytes, _)| {
+    if let Some(record) = precomputed_eval_cred.as_ref()
+        && record.iter().any(|(k_bytes, _)| {
             k_bytes.is_empty()
                 || allow_credentials
                     .as_ref()
                     .is_some_and(|allow| !allow.iter().any(|cred| cred.id == *k_bytes))
-        }) {
-            return Err(WebauthnError::SyntaxError);
-        }
+        })
+    {
+        return Err(WebauthnError::SyntaxError);
     }
 
     let new_eval_by_cred = precomputed_eval_cred
