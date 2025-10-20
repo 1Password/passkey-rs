@@ -93,7 +93,7 @@ serde_workaround! {
 ///
 /// [WebAuthn]: https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity
 /// [CTAP2]: https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorMakeCredential
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PublicKeyCredentialRpEntity {
     /// The domain of the relying party
     pub id: String,
@@ -103,7 +103,7 @@ pub struct PublicKeyCredentialRpEntity {
 }
 
 /// This is a copy of [`webauthn::PublicKeyCredentialUserEntity`] with differing optional fields.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PublicKeyCredentialUserEntity {
     /// The ID of the user
     pub id: Bytes,
@@ -173,7 +173,7 @@ impl TryFrom<webauthn::PublicKeyCredentialRpEntity> for PublicKeyCredentialRpEnt
 }
 
 /// The options that control how an authenticator will behave.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Options {
     /// Specifies whether this credential is to be discoverable or not.
     #[serde(default)]

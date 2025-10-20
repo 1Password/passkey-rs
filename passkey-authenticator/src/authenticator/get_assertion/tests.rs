@@ -1,7 +1,7 @@
 use passkey_types::{
     Passkey, StoredHmacSecret,
     ctap2::{
-        Aaguid,
+        Aaguid, Ctap2Error,
         get_assertion::{ExtensionInputs, Options, Request},
     },
     rand::random_vec,
@@ -10,6 +10,7 @@ use passkey_types::{
 use crate::{
     Authenticator, MockUserValidationMethod,
     extensions::{self, prf_eval_request},
+    user_validation::MockUiHint,
 };
 
 fn create_passkey(hmac_secret: Option<Vec<u8>>) -> Passkey {
@@ -43,17 +44,39 @@ fn good_request() -> Request {
 }
 
 #[tokio::test]
-async fn get_assertion_increments_signature_counter_when_counter_is_some() {
+async fn get_assertion_returns_no_credentials_found() {
     // Arrange
     let request = good_request();
-    let store = Some(Passkey {
-        counter: Some(9000),
-        ..create_passkey(None)
-    });
+    let store = None;
     let mut authenticator = Authenticator::new(
         Aaguid::new_empty(),
         store,
-        MockUserValidationMethod::verified_user(1),
+        MockUserValidationMethod::verified_user_with_hint(1, MockUiHint::InformNoCredentialsFound),
+    );
+
+    // Act
+    let response = authenticator.get_assertion(request).await;
+
+    // Assert
+    assert_eq!(response.unwrap_err(), Ctap2Error::NoCredentials.into(),);
+}
+
+#[tokio::test]
+async fn get_assertion_increments_signature_counter_when_counter_is_some() {
+    // Arrange
+    let request = good_request();
+    let passkey = Passkey {
+        counter: Some(9000),
+        ..create_passkey(None)
+    };
+    let store = Some(passkey.clone());
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        store,
+        MockUserValidationMethod::verified_user_with_hint(
+            1,
+            MockUiHint::RequestExistingCredential(passkey),
+        ),
     );
 
     // Act
