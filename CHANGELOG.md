@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- ⚠ BREAKING: The `UserValidationMethod` trait has been updated to use `UiHint`
+  to give the implementation more information about the request, which can be used
+  to decide whether additional validations are needed. To reflect this, the
+  `UserValidationMethod` trait now also returns which validations were performed.
+
 ## Passkey v0.5.0
 
 - Migrate project to Rust 2024 edition

@@ -21,7 +21,7 @@ use crate::{
     MemoryStore,
     credential_store::{DiscoverabilitySupport, StoreInfo},
     extensions,
-    user_validation::MockUserValidationMethod,
+    user_validation::{MockUiHint, MockUserValidationMethod},
 };
 
 fn good_request() -> Request {
@@ -54,13 +54,16 @@ fn good_request() -> Request {
 
 #[tokio::test]
 async fn assert_storage_on_success() {
+    let request = good_request();
+
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
-    let user_mock = MockUserValidationMethod::verified_user(1);
+    let user_mock = MockUserValidationMethod::verified_user_with_hint(
+        1,
+        MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
+    );
 
     let mut authenticator =
         Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
-
-    let request = good_request();
 
     authenticator
         .make_credential(request)
@@ -93,7 +96,27 @@ async fn assert_excluded_credentials() {
         extensions: Default::default(),
     };
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
-    let user_mock = MockUserValidationMethod::verified_user(1);
+    let mut user_mock = MockUserValidationMethod::verified_user_with_hint(
+        1,
+        MockUiHint::InformExcludedCredentialFound(passkey.clone()),
+    );
+    let expected_user = response.user.clone().into();
+    let expected_rp = response.rp.clone();
+    user_mock
+        .expect_check_user()
+        .withf(move |hint, _up, _uv| {
+            if let UiHint::RequestNewCredential(user, rp) = *hint {
+                *user == expected_user && *rp == expected_rp
+            } else {
+                false
+            }
+        })
+        .returning(|_hint, up, uv| {
+            Ok(crate::UserCheck {
+                presence: up,
+                verification: uv,
+            })
+        });
 
     shared_store.lock().await.insert(cred_id.into(), passkey);
 
@@ -112,7 +135,7 @@ async fn assert_excluded_credentials() {
 
 #[tokio::test]
 async fn assert_unsupported_algorithm() {
-    let user_mock = MockUserValidationMethod::verified_user(1);
+    let user_mock = MockUserValidationMethod::verified_user(0);
     let mut authenticator = Authenticator::new(Aaguid::new_empty(), MemoryStore::new(), user_mock);
 
     let request = Request {
@@ -401,7 +424,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
 
     // Arrange
     let store = StoreWithoutDiscoverableSupport;
-    let user_mock = MockUserValidationMethod::verified_user(1);
+    let user_mock = MockUserValidationMethod::verified_user(0);
     let request = good_request();
     let mut authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
     authenticator.set_make_credentials_with_signature_counter(true);
