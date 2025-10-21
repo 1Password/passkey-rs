@@ -9,6 +9,7 @@ license.workspace = true
 name = "passkey-types"
 readme = "README.md"
 repository.workspace = true
+rust-version.workspace = true
 version = "0.5.0"
 
 [lints]

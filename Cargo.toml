@@ -16,6 +16,7 @@ edition = "2024"
 keywords = ["ctap", "fido2", "passkey", "passwordless", "webauthn"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/1Password/passkey-rs"
+rust-version = "1.85.1"
 
 [workspace.lints.rust]
 missing_docs = "warn"
