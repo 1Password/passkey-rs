@@ -21,7 +21,9 @@ impl PasskeyBuilder {
             .to_encoded_point(false);
         // SAFETY: These unwraps are safe because the public_key above is not compressed (false
         // parameter) therefore x and y are guaranteed to contain values.
+        #[allow(deprecated)]
         let x = public_key.x().unwrap().as_slice().to_vec();
+        #[allow(deprecated)]
         let y = public_key.y().unwrap().as_slice().to_vec();
         let private = CoseKeyBuilder::new_ec2_priv_key(
             iana::EllipticCurve::P_256,
