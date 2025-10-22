@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 use std::collections::HashMap;
@@ -17,7 +18,7 @@ use crate::Bytes;
 /// the PRF.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable, Hashable")]
+#[cfg_attr(feature = "typeshare", typeshare(swift = "Equatable, Hashable"))]
 pub struct AuthenticationExtensionsPrfValues {
     /// The first PRF value.
     pub first: Bytes,
@@ -37,7 +38,7 @@ pub struct AuthenticationExtensionsPrfValues {
 /// <https://w3c.github.io/webauthn/#prf-extension>
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[typeshare]
+#[cfg_attr(feature = "typeshare", typeshare)]
 pub struct AuthenticationExtensionsPrfInputs {
     /// One or two inputs on which to evaluate PRF. Not all authenticators
     /// support evaluating the PRFs during credential creation so outputs may,
@@ -61,7 +62,7 @@ pub struct AuthenticationExtensionsPrfInputs {
 /// See [`AuthenticationExtensionsPrfInputs`] for details.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable, Hashable")]
+#[cfg_attr(feature = "typeshare", typeshare(swift = "Equatable, Hashable"))]
 pub struct AuthenticationExtensionsPrfOutputs {
     /// True if, and only if, the one or two PRFs are available for use with
     /// the created credential. This is only reported during registration and
