@@ -1,5 +1,3 @@
-use std::ops::Not;
-
 use p256::SecretKey;
 use passkey_types::{
     Passkey,
@@ -9,18 +7,16 @@ use passkey_types::{
     },
 };
 
-use crate::{Authenticator, CoseKeyPair, CredentialStore, UserValidationMethod};
+use crate::{Authenticator, CoseKeyPair, CredentialStore, UiHint, UserValidationMethod};
 
 impl<S, U> Authenticator<S, U>
 where
     S: CredentialStore + Sync,
-    U: UserValidationMethod + Sync,
+    U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
 {
     /// This method is invoked by the host to request generation of a new credential in the authenticator.
     pub async fn make_credential(&mut self, input: Request) -> Result<Response, StatusCode> {
-        let flags = if input.options.up {
-            self.check_user(&input.options, None).await?
-        } else {
+        if !input.options.up {
             return Err(Ctap2Error::InvalidOption.into());
         };
 
@@ -35,7 +31,8 @@ where
             .as_ref()
             .filter(|list| !list.is_empty())
             .is_some()
-            && self
+        {
+            if let Some(excluded_credential) = self
                 .store()
                 .find_credentials(
                     input.exclude_list.as_deref(),
@@ -43,14 +40,14 @@ where
                     Some(&input.user.id),
                 )
                 .await?
-                .is_empty()
-                .not()
-        {
-            // TODO: We should instead remove the excluded credentials from a possible future
-            // "update list".
-            // This would require prompting from within the context of this function using
-            // the [UserValidationMethod]
-            log::warn!("An excluded credential was found, may be overwritten.")
+                .first()
+            {
+                self.check_user(
+                    UiHint::InformExcludedCredentialFound(excluded_credential),
+                    &input.options,
+                )
+                .await?;
+            }
         }
 
         // 2. If the pubKeyCredParams parameter does not contain a valid COSEAlgorithmIdentifier
@@ -98,6 +95,12 @@ where
         //    authenticator-specific way (e.g., flash the LED light). Request permission to create
         //    a credential. If the user declines permission, return the CTAP2_ERR_OPERATION_DENIED
         //    error.
+        let flags = self
+            .check_user(
+                UiHint::RequestNewCredential(&input.user.clone().into(), &input.rp),
+                &input.options,
+            )
+            .await?;
 
         // 9. Generate a new credential key pair for the algorithm specified.
         let credential_id = passkey_types::rand::random_vec(self.credential_id_length.into());
@@ -124,7 +127,7 @@ where
             key: private,
             rp_id: input.rp.id.clone(),
             credential_id: credential_id.into(),
-            user_handle: is_passkey_rk.then(|| input.user.id.clone()),
+            user_handle: is_passkey_rk.then_some(input.user.id.clone()),
             counter: self.make_credentials_with_signature_counter.then_some(0),
             extensions: extensions.credential,
         };
