@@ -299,8 +299,10 @@ impl Response {
     // for backwards compatibility with previous versions of this library.
     // [WebAuthn]: Return the attestation object as a CBOR map with the following syntax, filled in with variables initialized by this algorithm
 
-    /// Convert response into a CBOR encoded byte array.
-    pub fn as_bytes(&self) -> Bytes {
+    /// Convert response into a CBOR-encoded WebAuthn attestation object.
+    ///
+    /// Note: This uses the WebAuthn string labels for fields rather than the CTAP2 integer labels.
+    pub fn as_webauthn_bytes(&self) -> Bytes {
         let mut attestation_object = Vec::with_capacity(128);
         // SAFETY: The Results here are from serializing all the internals of `cbor!` into `ciborium::Value`
         // then serializing said value to bytes. The unwraps here are safe because it would otherwise be

@@ -309,7 +309,7 @@ where
                 .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
         );
 
-        let attestation_object = ctap2_response.as_bytes();
+        let attestation_object = ctap2_response.as_webauthn_bytes();
         let store_info = self.authenticator.store().get_info().await;
         let client_extension_results = self.registration_extension_outputs(
             extension_request.as_ref(),
