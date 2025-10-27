@@ -54,7 +54,7 @@ pub use self::user_validation::MockUserValidationMethod;
 
 /// Extract a cryptographic secret key from a [`CoseKey`].
 // possible candidate for a `passkey-crypto` crate?
-fn private_key_from_cose_key(key: &CoseKey) -> Result<SecretKey, Ctap2Error> {
+pub fn private_key_from_cose_key(key: &CoseKey) -> Result<SecretKey, Ctap2Error> {
     if !matches!(
         key.alg,
         Some(coset::RegisteredLabelWithPrivate::Assigned(
@@ -143,13 +143,17 @@ pub fn public_key_der_from_cose_key(key: &CoseKey) -> Result<Bytes, Ctap2Error> 
         .map(|pk| pk.as_ref().to_vec().into())
 }
 
-pub(crate) struct CoseKeyPair {
-    public: CoseKey,
-    private: CoseKey,
+/// A COSE key pair, containing both the public and private keys.
+pub struct CoseKeyPair {
+    /// The public key.
+    pub public: CoseKey,
+    /// The private key.
+    pub private: CoseKey,
 }
 
 impl CoseKeyPair {
-    fn from_secret_key(private_key: &SecretKey, algorithm: Algorithm) -> Self {
+    /// Create a new COSE key pair from a secret key and algorithm.
+    pub fn from_secret_key(private_key: &SecretKey, algorithm: Algorithm) -> Self {
         let public_key = SigningKey::from(private_key)
             .verifying_key()
             .to_encoded_point(false);
