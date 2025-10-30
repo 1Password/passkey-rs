@@ -46,7 +46,7 @@ pub use self::{
     credential_store::{CredentialStore, DiscoverabilitySupport, MemoryStore, StoreInfo},
     ctap2::Ctap2Api,
     u2f::U2fApi,
-    user_validation::{UserCheck, UserValidationMethod},
+    user_validation::{UiHint, UserCheck, UserValidationMethod},
 };
 
 #[cfg(any(test, feature = "testable"))]

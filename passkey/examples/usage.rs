@@ -1,6 +1,6 @@
 //! Sample App for Passkeys
 use passkey::{
-    authenticator::{Authenticator, UserCheck, UserValidationMethod},
+    authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
     types::{Bytes, Passkey, crypto::sha256, ctap2::*, rand::random_vec, webauthn::*},
 };
@@ -17,7 +17,7 @@ impl UserValidationMethod for MyUserValidationMethod {
 
     async fn check_user<'a>(
         &self,
-        _credential: Option<&'a Passkey>,
+        _hint: UiHint<'a, Self::PasskeyItem>,
         presence: bool,
         verification: bool,
     ) -> Result<UserCheck, Ctap2Error> {

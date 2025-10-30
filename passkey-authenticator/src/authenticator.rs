@@ -4,7 +4,7 @@ use passkey_types::{
     webauthn,
 };
 
-use crate::{CredentialStore, UserValidationMethod};
+use crate::{CredentialStore, UserValidationMethod, user_validation::UiHint};
 
 pub mod extensions;
 mod get_assertion;
@@ -201,8 +201,8 @@ where
     ///            CTAP2_ERR_OPERATION_DENIED error.
     async fn check_user(
         &self,
+        hint: UiHint<'_, <U as UserValidationMethod>::PasskeyItem>,
         options: &passkey_types::ctap2::make_credential::Options,
-        credential: Option<&<U as UserValidationMethod>::PasskeyItem>,
     ) -> Result<Flags, Ctap2Error> {
         if options.uv && self.user_validation.is_verification_enabled() != Some(true) {
             return Err(Ctap2Error::UnsupportedOption);
@@ -210,7 +210,7 @@ where
 
         let check_result = self
             .user_validation
-            .check_user(credential, options.up, options.uv)
+            .check_user(hint, options.up, options.uv)
             .await?;
 
         if options.up && !check_result.presence {

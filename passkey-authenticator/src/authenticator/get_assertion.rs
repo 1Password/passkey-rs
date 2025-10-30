@@ -7,7 +7,10 @@ use passkey_types::{
     webauthn::PublicKeyCredentialUserEntity,
 };
 
-use crate::{Authenticator, CredentialStore, UserValidationMethod, private_key_from_cose_key};
+use crate::{
+    Authenticator, CredentialStore, UserValidationMethod, private_key_from_cose_key,
+    user_validation::UiHint,
+};
 
 impl<S, U> Authenticator<S, U>
 where
@@ -70,9 +73,11 @@ where
         // 7. Collect user consent if required. This step MUST happen before the following steps due
         //    to privacy reasons (i.e., authenticator cannot disclose existence of a credential
         //    until the user interacted with the device):
-        let flags = self
-            .check_user(&input.options, maybe_credential.as_ref().ok())
-            .await?;
+        let hint = match &maybe_credential {
+            Ok(credential) => UiHint::RequestExistingCredential(credential),
+            Err(_) => UiHint::InformNoCredentialsFound,
+        };
+        let flags = self.check_user(hint, &input.options).await?;
 
         // 8. If no credentials were located in step 1, return CTAP2_ERR_NO_CREDENTIALS.
         let mut credential = maybe_credential?

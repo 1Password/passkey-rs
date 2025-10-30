@@ -1,6 +1,8 @@
 use passkey_types::ctap2::{Aaguid, Flags};
 
-use crate::{Authenticator, CredentialIdLength, MockUserValidationMethod, UserCheck};
+use crate::{
+    Authenticator, CredentialIdLength, MockUserValidationMethod, UserCheck, user_validation::UiHint,
+};
 
 #[tokio::test]
 async fn check_user_does_not_check_up_or_uv_when_not_requested() {
@@ -31,7 +33,10 @@ async fn check_user_does_not_check_up_or_uv_when_not_requested() {
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await.unwrap();
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await
+        .unwrap();
 
     // Assert
     assert_eq!(result, Flags::empty());
@@ -66,7 +71,10 @@ async fn check_user_checks_up_when_requested() {
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await.unwrap();
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await
+        .unwrap();
 
     // Assert
     assert_eq!(result, Flags::UP);
@@ -104,7 +112,10 @@ async fn check_user_checks_uv_when_requested() {
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await.unwrap();
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await
+        .unwrap();
 
     // Assert
     assert_eq!(result, Flags::UP | Flags::UV);
@@ -139,7 +150,9 @@ async fn check_user_returns_operation_denied_when_up_was_requested_but_not_retur
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await;
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await;
 
     // Assert
     assert_eq!(
@@ -180,7 +193,9 @@ async fn check_user_returns_operation_denied_when_uv_was_requested_but_not_retur
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await;
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await;
 
     // Assert
     assert_eq!(
@@ -207,7 +222,9 @@ async fn check_user_returns_unsupported_option_when_uv_was_requested_but_is_not_
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await;
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await;
 
     // Assert
     assert_eq!(
@@ -249,7 +266,10 @@ async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_
     };
 
     // Act
-    let result = authenticator.check_user(&options, None).await.unwrap();
+    let result = authenticator
+        .check_user(UiHint::InformNoCredentialsFound, &options)
+        .await
+        .unwrap();
 
     // Assert
     assert_eq!(result, Flags::UP | Flags::UV);
