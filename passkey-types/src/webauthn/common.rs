@@ -1,6 +1,7 @@
 //! Common types used in both Attestation (registration) and Assertion (authentication).
 //!
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 use crate::{
@@ -22,7 +23,7 @@ use crate::webauthn::{
 /// <https://w3c.github.io/webauthn/#enumdef-publickeycredentialtype>
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-#[typeshare(serialized_as = "String")]
+#[cfg_attr(feature = "typeshare", typeshare(serialized_as = "String"))]
 pub enum PublicKeyCredentialType {
     /// Currently the only type defined is a `PublicKey` meaning the public conterpart of an
     /// asymmetric key pair.
@@ -41,7 +42,7 @@ pub enum PublicKeyCredentialType {
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptor>
 #[derive(Debug, Serialize, Deserialize)]
-#[typeshare]
+#[cfg_attr(feature = "typeshare", typeshare)]
 pub struct PublicKeyCredentialDescriptor {
     /// This member contains the type of the public key credential the caller is referring to. The
     /// value SHOULD be a member of [`PublicKeyCredentialType`] but client platforms MUST ignore any
@@ -93,7 +94,7 @@ impl PublicKeyCredentialDescriptor {
 /// [user verification]: https://w3c.github.io/webauthn/#user-verification
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-#[typeshare(serialized_as = "String")]
+#[cfg_attr(feature = "typeshare", typeshare(serialized_as = "String"))]
 pub enum UserVerificationRequirement {
     /// The Relying Party requires user verification for the operation and will fail the overall
     /// ceremony if the response does not have the UV flag set. The client MUST return an error if
@@ -119,7 +120,7 @@ pub enum UserVerificationRequirement {
 /// <https://w3c.github.io/webauthn/#enum-transport>
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-#[typeshare(serialized_as = "String")]
+#[cfg_attr(feature = "typeshare", typeshare(serialized_as = "String"))]
 pub enum AuthenticatorTransport {
     /// Indicates the respective authenticator can be contacted over removable USB.
     Usb,
@@ -150,7 +151,7 @@ pub enum AuthenticatorTransport {
 /// <https://w3c.github.io/webauthn/#enumdef-authenticatorattachment>
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-#[typeshare(serialized_as = "String")]
+#[cfg_attr(feature = "typeshare", typeshare(serialized_as = "String"))]
 pub enum AuthenticatorAttachment {
     /// This value indicates platform attachment which is attached using a client device-specific
     /// transport, called **platform attachment**, and is usually not removable from the client
@@ -182,7 +183,7 @@ pub enum AuthenticatorAttachment {
 /// <https://w3c.github.io/webauthn/#enum-hints>
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-#[typeshare(serialized_as = "String")]
+#[cfg_attr(feature = "typeshare", typeshare(serialized_as = "String"))]
 #[non_exhaustive]
 pub enum PublicKeyCredentialHints {
     /// Indicates that the Relying Party believes that users will satisfy this request with a physical
