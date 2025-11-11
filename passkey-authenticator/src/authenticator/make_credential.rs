@@ -32,16 +32,24 @@ where
             .filter(|list| !list.is_empty())
             .is_some()
         {
-            if let Some(excluded_credential) = self
+            // Handle the case where find_credentials returns NoCredentials error.
+            // An empty credential store should not prevent credential creation when checking
+            // the exclude list. NoCredentials simply means there are no credentials to exclude.
+            let excluded_credentials = match self
                 .store()
                 .find_credentials(
                     input.exclude_list.as_deref(),
                     &input.rp.id,
                     Some(&input.user.id),
                 )
-                .await?
-                .first()
+                .await
             {
+                Ok(creds) => creds,
+                Err(status) if status == StatusCode::from(Ctap2Error::NoCredentials) => vec![],
+                Err(e) => return Err(e),
+            };
+
+            if let Some(excluded_credential) = excluded_credentials.first() {
                 self.check_user(
                     UiHint::InformExcludedCredentialFound(excluded_credential),
                     &input.options,
