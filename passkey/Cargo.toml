@@ -30,7 +30,7 @@ passkey-types = { path = "../passkey-types", version = "0.5" }
 
 [dev-dependencies]
 async-trait = "0.1"
-coset = "0.3"
+coset = { workspace = true }
 passkey-authenticator = { path = "../passkey-authenticator", version = "0.5", features = [
   "testable",
   "tokio",

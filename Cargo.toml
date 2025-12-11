@@ -18,6 +18,9 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/1Password/passkey-rs"
 rust-version = "1.85.1"
 
+[workspace.dependencies]
+coset = ">=0.3.8, <=0.4"
+
 [workspace.lints.rust]
 missing_docs = "warn"
 unused-qualifications = "deny"
