@@ -24,7 +24,7 @@ tokio = ["dep:tokio"]
 
 [dependencies]
 ciborium = "0.2"
-coset = "0.3"
+coset = { workspace = true }
 idna = "1"
 itertools = "0.14"
 mockall = { version = "0.11", optional = true }
@@ -40,7 +40,7 @@ typeshare = "1"
 url = "2"
 
 [dev-dependencies]
-coset = "0.3"
+coset = { workspace = true }
 mockall = { version = "0.11" }
 passkey-authenticator = { path = "../passkey-authenticator", version = "0.5", features = [
   "testable",

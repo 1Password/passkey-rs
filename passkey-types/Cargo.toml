@@ -35,7 +35,7 @@ typeshare = "1"
 url = { version = "2", features = ["serde"] }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
-coset = "0.3"
+coset = { workspace = true }
 p256 = { version = "0.13", features = [
   "arithmetic",
   "jwk",
