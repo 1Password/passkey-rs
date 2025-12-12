@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 #[cfg(doc)]
@@ -13,7 +14,7 @@ use crate::webauthn::PublicKeyCredential;
 /// [Relying Party]: https://w3c.github.io/webauthn/#relying-party
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[typeshare(swift = "Equatable, Hashable")]
+#[cfg_attr(feature = "typeshare", typeshare(swift = "Equatable, Hashable"))]
 pub struct CredentialPropertiesOutput {
     /// This OPTIONAL property, known abstractly as the resident key credential property
     /// (i.e., client-side [discoverable credential] property), is a Boolean value indicating whether

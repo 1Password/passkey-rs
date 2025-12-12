@@ -1,6 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Deserializer, Serialize, de::Visitor};
+#[cfg(feature = "typeshare")]
 use typeshare::typeshare;
 
 use super::encoding;
@@ -16,7 +17,7 @@ use super::encoding;
 /// This will use an array of numbers for JSON, and a byte string in CBOR for example.
 ///
 /// It also supports deserializing from `base64` and `base64url` formatted strings.
-#[typeshare(transparent)]
+#[cfg_attr(feature = "typeshare", typeshare(transparent))]
 #[derive(Debug, Default, PartialEq, Eq, Clone, Hash)]
 #[repr(transparent)]
 pub struct Bytes(Vec<u8>);
