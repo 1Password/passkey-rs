@@ -438,3 +438,117 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
     // Assert
     assert_eq!(err, Ctap2Error::UnsupportedOption.into());
 }
+#[tokio::test]
+async fn empty_store_with_exclude_credentials_succeeds() {
+    // This test verifies the fix for the issue where an empty credential store
+    // would return NoCredentials error when checking excludeCredentials,
+    // causing credential creation to fail incorrectly.
+
+    let cred_id: Bytes = random_vec(16).into();
+    let request = Request {
+        exclude_list: Some(vec![webauthn::PublicKeyCredentialDescriptor {
+            ty: webauthn::PublicKeyCredentialType::PublicKey,
+            id: cred_id.clone(),
+            transports: Some(vec![webauthn::AuthenticatorTransport::Usb]),
+        }]),
+        ..good_request()
+    };
+
+    // Use an empty store - previously this would cause NoCredentials error
+    let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+    let user_mock = MockUserValidationMethod::verified_user_with_hint(
+        1,
+        MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
+    );
+
+    let mut authenticator =
+        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+    // This should succeed - an empty store means no credentials to exclude
+    authenticator
+        .make_credential(request)
+        .await
+        .expect("make_credential should succeed with empty store and exclude_credentials");
+
+    // Verify the credential was created
+    assert_eq!(shared_store.lock().await.len(), 1);
+}
+
+#[tokio::test]
+async fn empty_exclude_credentials_with_empty_store_succeeds() {
+    // Edge case: empty exclude list with empty store should also succeed
+    let request = Request {
+        exclude_list: Some(vec![]),
+        ..good_request()
+    };
+
+    let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+    let user_mock = MockUserValidationMethod::verified_user_with_hint(
+        1,
+        MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
+    );
+
+    let mut authenticator =
+        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+    authenticator
+        .make_credential(request)
+        .await
+        .expect("make_credential should succeed with empty exclude list");
+
+    assert_eq!(shared_store.lock().await.len(), 1);
+}
+
+#[tokio::test]
+async fn store_with_credentials_not_in_exclude_list_succeeds() {
+    // This test verifies that when the store contains credentials,
+    // but none of them are in the excludeCredentials list,
+    // credential creation should succeed.
+
+    let stored_cred_id: Bytes = random_vec(16).into();
+    let excluded_cred_id: Bytes = random_vec(16).into();
+
+    // Create a passkey that will be stored (with different ID than excluded)
+    let passkey = Passkey {
+        key: Default::default(),
+        rp_id: "future.1password.com".into(),
+        credential_id: stored_cred_id.clone(),
+        user_handle: Some(random_vec(16).into()),
+        counter: None,
+        extensions: Default::default(),
+    };
+
+    let request = Request {
+        exclude_list: Some(vec![webauthn::PublicKeyCredentialDescriptor {
+            ty: webauthn::PublicKeyCredentialType::PublicKey,
+            id: excluded_cred_id.clone(),
+            transports: Some(vec![webauthn::AuthenticatorTransport::Usb]),
+        }]),
+        ..good_request()
+    };
+
+    let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
+
+    // Insert the credential into the store
+    shared_store
+        .lock()
+        .await
+        .insert(stored_cred_id.into(), passkey);
+
+    let user_mock = MockUserValidationMethod::verified_user_with_hint(
+        1,
+        MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
+    );
+
+    let mut authenticator =
+        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+
+    // This should succeed - the store contains credentials, but not the excluded one
+    authenticator
+        .make_credential(request)
+        .await
+        .expect("make_credential should succeed when store has credentials not in exclude list");
+
+    // Verify a new credential was created (now 2 credentials in store)
+    assert_eq!(shared_store.lock().await.len(), 2);
+}
