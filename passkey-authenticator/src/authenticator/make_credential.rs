@@ -135,7 +135,9 @@ where
             key: private,
             rp_id: input.rp.id.clone(),
             credential_id: credential_id.into(),
-            user_handle: is_passkey_rk.then_some(input.user.id.clone()),
+            user_handle: is_passkey_rk.then(|| input.user.id.clone()),
+            username: is_passkey_rk.then(|| input.user.name.clone()),
+            user_display_name: is_passkey_rk.then(|| input.user.display_name.clone()),
             counter: self.make_credentials_with_signature_counter.then_some(0),
             extensions: extensions.credential,
         };

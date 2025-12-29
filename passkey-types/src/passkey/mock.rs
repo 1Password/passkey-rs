@@ -40,6 +40,8 @@ impl PasskeyBuilder {
                 credential_id: random_vec(16).into(),
                 rp_id,
                 user_handle: None,
+                username: None,
+                user_display_name: None,
                 counter: None,
                 extensions: Default::default(),
             },
@@ -55,6 +57,18 @@ impl PasskeyBuilder {
     /// Generate the user handle with an optional custom size. The default is 16 bytes.
     pub fn user_handle(mut self, len: Option<usize>) -> Self {
         self.inner.user_handle = Some(random_vec(len.unwrap_or(16)).into());
+        self
+    }
+
+    /// Set the username for the passkey. The default is None
+    pub fn username(mut self, username: String) -> Self {
+        self.inner.username = Some(username);
+        self
+    }
+    ///
+    /// Set the user display name for the passkey. The default is None
+    pub fn user_display_name(mut self, user_display_name: String) -> Self {
+        self.inner.user_display_name = Some(user_display_name);
         self
     }
 

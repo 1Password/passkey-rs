@@ -92,6 +92,8 @@ async fn assert_excluded_credentials() {
         rp_id: "".into(),
         credential_id: cred_id.clone(),
         user_handle: Some(response.user.id.clone()),
+        username: Some("Appleseed".into()),
+        user_display_name: Some("wendy".into()),
         counter: None,
         extensions: Default::default(),
     };
@@ -514,6 +516,8 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
         rp_id: "future.1password.com".into(),
         credential_id: stored_cred_id.clone(),
         user_handle: Some(random_vec(16).into()),
+        username: Some("Appleseed".into()),
+        user_display_name: Some("wendy".into()),
         counter: None,
         extensions: Default::default(),
     };
