@@ -55,34 +55,38 @@ serde_workaround! {
         /// are values that SHOULD be registered in the IANA COSE Algorithms registry
         /// [`coset::iana::Algorithm`]. This sequence is ordered from most preferred (by the RP) to least
         /// preferred.
-        #[serde(rename = 0x04)]
+        #[serde(rename = 0x04, deserialize_with = ignore_unknown_vec)]
         pub pub_key_cred_params: Vec<webauthn::PublicKeyCredentialParameters>,
 
         /// A sequence of [`PublicKeyCredentialDescriptor`] structures, as specified in [`webauthn`].
         /// The authenticator returns an error if the authenticator already contains one of
         /// the credentials enumerated in this sequence. This allows RPs to limit the creation of
         /// multiple credentials for the same account on a single authenticator.
-        #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
+        #[serde(
+            rename = 0x05;
+            default,
+            skip_serializing_if = Option::is_none
+        )]
         pub exclude_list: Option<Vec<webauthn::PublicKeyCredentialDescriptor>>,
 
         /// Parameters to influence authenticator operation, as specified in [`webauthn`].
         /// These parameters might be authenticator specific.
-        #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub extensions: Option<ExtensionInputs>,
 
         /// Parameters to influence authenticator operation, see [`Options`] for more details.
-        #[serde(rename = 0x07, default)]
+        #[serde(rename = 0x07; default)]
         pub options: Options,
 
         /// First 16 bytes of HMAC-SHA-256 of clientDataHash using pinToken which platform got from
         /// the authenticator: HMAC-SHA-256(pinToken, clientDataHash). (NOT YET SUPPORTED)
-        #[serde(rename = 0x08, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x08; default, skip_serializing_if = Option::is_none)]
         pub pin_auth: Option<Bytes>,
 
         /// PIN protocol version chosen by the client
         ///
         /// if ever we hit more than 256 protocol versions, an enhacement request should be filed.
-        #[serde(rename = 0x09, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x09; default, skip_serializing_if = Option::is_none)]
         pub pin_protocol: Option<u8>,
     }
 }
@@ -277,19 +281,19 @@ serde_workaround! {
         /// If `ep_att` is present and set to true, then an enterprise attestation was returned.
         ///
         /// Enterprise attestation is currently unsupported by this library.
-        #[serde(rename = 0x04, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub ep_att: Option<bool>,
 
         /// Contains the `largeBlobKey` for the credential, if requested with the `largeBlobKey` extension.
         ///
         /// The `largeBlobKey` extension is currently unsupported by this library.
-        #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x05; default, skip_serializing_if = Option::is_none)]
         pub large_blob_key: Option<Bytes>,
 
         /// A map, keyed by extension identifiers, to unsigned outputs of extensions, if any.
         /// Authenticators SHOULD omit this field if no processed extensions define unsigned outputs.
         /// Clients MUST treat an empty map the same as an omitted field.
-        #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub unsigned_extension_outputs: Option<UnsignedExtensionOutputs>,
     }
 }

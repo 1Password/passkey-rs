@@ -19,7 +19,7 @@ serde_workaround! {
         pub versions: Vec<Version>,
 
         /// List of supported extensions. (Optional)
-        #[serde(rename = 0x02, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x02; default, skip_serializing_if = Option::is_none)]
         pub extensions: Option<Vec<Extension>>,
 
         /// The claimed AAGUID. 16 bytes in length
@@ -27,7 +27,7 @@ serde_workaround! {
         pub aaguid: Aaguid,
 
         /// List of supported options.
-        #[serde(rename = 0x04, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub options: Option<Options>,
 
         /// Maximum message size supported by the authenticator. By default, authenticators MUST support
@@ -35,20 +35,20 @@ serde_workaround! {
         ///
         /// This can be passed as a CBOR unsigned number so a u128 is used as the backing value since it
         /// is the maximum a CBOR number can represent.
-        #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x05; default, skip_serializing_if = Option::is_none)]
         pub max_msg_size: Option<NonZeroU128>,
 
         /// List of supported PIN Protocol versions.
         ///
         /// If we ever end up with more than 256 pin protocols, an enhancement request should be filed.
-        #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub pin_protocols: Option<Vec<u8>>,
 
         /// List of supported transports. Values are taken from the [`AuthenticatorTransport`] enum.
         /// The list MUST NOT include duplicate values nor be empty if present.
         /// Platforms MUST tolerate unknown values by ignoring them.
         #[serde(
-            rename = 0x09,
+            rename = 0x09;
             default,
             skip_serializing_if = Option::is_none,
             deserialize_with = ignore_unknown_opt_vec

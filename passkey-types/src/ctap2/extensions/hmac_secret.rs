@@ -20,7 +20,7 @@ serde_workaround! {
         pub salt_auth: Bytes,
 
         /// The Pin Authentication protocol used in the derivation of the shared secret.
-        #[serde(rename=0x04, default, skip_serializing_if= Option::is_none)]
+        #[serde(rename=0x04; default, skip_serializing_if= Option::is_none)]
         pub pin_uv_auth_protocol: Option<u8>,
     }
 }
