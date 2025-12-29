@@ -237,3 +237,19 @@ pub struct StoredHmacSecret {
     /// The credential that is not gated behind user verification, but is gated behind user presence
     pub cred_without_uv: Option<Vec<u8>>,
 }
+
+impl Debug for StoredHmacSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StoredHmacSecret")
+            .field("cred_with_uv", &"<Redacted>")
+            .field(
+                "cred_without_uv",
+                if self.cred_without_uv.is_some() {
+                    &"<Redacted>"
+                } else {
+                    &"None"
+                },
+            )
+            .finish()
+    }
+}
