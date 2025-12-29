@@ -80,6 +80,8 @@ pub enum WebauthnError {
     RedirectError,
     /// Related Origins endpoint contains a number of labels exceeding the max limit
     ExceedsMaxLabelLimit,
+    /// JSON serialization error
+    SerializationError,
 }
 
 impl WebauthnError {
@@ -253,8 +255,8 @@ where
             unknown_keys: Default::default(),
         };
 
-        // SAFETY: it is a developer error if serializing this struct fails.
-        let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
+        let client_data_json = serde_json::to_string(&collected_client_data)
+            .map_err(|_| WebauthnError::SerializationError)?;
         let client_data_json_hash = client_data
             .client_data_hash()
             .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
@@ -374,8 +376,8 @@ where
             unknown_keys: Default::default(),
         };
 
-        // SAFETY: it is a developer error if serializing this struct fails.
-        let client_data_json = serde_json::to_string(&collected_client_data).unwrap();
+        let client_data_json = serde_json::to_string(&collected_client_data)
+            .map_err(|_| WebauthnError::SerializationError)?;
         let client_data_json_hash = client_data
             .client_data_hash()
             .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
