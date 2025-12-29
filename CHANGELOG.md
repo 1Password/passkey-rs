@@ -19,6 +19,10 @@
   to give the implementation more information about the request, which can be used
   to decide whether additional validations are needed. To reflect this, the
   `UserValidationMethod` trait now also returns which validations were performed. (#76)
+- ⚠ BREAKING: Change the `CredentialStore` and `UserValidationMethod` associated type constraint
+  to a new `PasskeyAccessor` trait instead of the `TryInto<Passkey>`, making it possible to use a
+  custom passkey representation type that goes throughout the entire flow without losing any
+  additional information through a conversion. (#87)
 
 
 ### passkey-client v0.5.0

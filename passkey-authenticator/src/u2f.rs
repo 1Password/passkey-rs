@@ -1,6 +1,8 @@
 //! Follows U2F 1.2 <https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/fido-u2f-raw-message-formats-v1.2-ps-20170411.html>
 
-use crate::{Authenticator, CoseKeyPair, CredentialStore, UserValidationMethod};
+use crate::{
+    Authenticator, CoseKeyPair, CredentialStore, UserValidationMethod, passkey::PasskeyAccessor,
+};
 use coset::iana;
 use p256::{
     SecretKey,
@@ -136,15 +138,13 @@ impl<S: CredentialStore + Sync + Send, U: UserValidationMethod + Sync + Send> U2
             .await
             .map_err(|_| U2FError::Other);
 
-        let credential: Passkey = maybe_credential?
+        let credential = maybe_credential?
             .into_iter()
             .next()
-            .ok_or(U2FError::Other)?
-            .try_into()
-            .map_err(|_| U2FError::Other)?;
+            .ok_or(U2FError::Other)?;
 
         let secret_key =
-            super::private_key_from_cose_key(&credential.key).map_err(|_| U2FError::Other)?;
+            super::private_key_from_cose_key(&credential.key()).map_err(|_| U2FError::Other)?;
         let signing_key = SigningKey::from(secret_key);
 
         // The following signature_target is specified in the U2F Raw Message Formats spec:

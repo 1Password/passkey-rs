@@ -412,7 +412,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
             unimplemented!("The test should not call save_credential")
         }
 
-        async fn update_credential(&mut self, _cred: Passkey) -> Result<(), StatusCode> {
+        async fn update_credential(&mut self, _cred: &Passkey) -> Result<(), StatusCode> {
             #![allow(clippy::unimplemented)]
             unimplemented!("The test should not call update_credential")
         }

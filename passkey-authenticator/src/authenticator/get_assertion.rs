@@ -1,5 +1,6 @@
 use p256::ecdsa::{SigningKey, signature::SignerMut};
 use passkey_types::{
+    Bytes,
     ctap2::{
         AuthenticatorData, Ctap2Error, Flags, StatusCode,
         get_assertion::{Request, Response},
@@ -8,7 +9,9 @@ use passkey_types::{
 };
 
 use crate::{
-    Authenticator, CredentialStore, UserValidationMethod, private_key_from_cose_key,
+    Authenticator, CredentialStore, UserValidationMethod,
+    passkey::{AsCredentialDescriptor, PasskeyAccessor},
+    private_key_from_cose_key,
     user_validation::UiHint,
 };
 
@@ -80,10 +83,7 @@ where
         let flags = self.check_user(hint, &input.options).await?;
 
         // 8. If no credentials were located in step 1, return CTAP2_ERR_NO_CREDENTIALS.
-        let mut credential = maybe_credential?
-            .try_into()
-            .ok()
-            .ok_or(Ctap2Error::NoCredentials)?;
+        let mut credential = maybe_credential?;
 
         // 9. If more than one credential was located in step 1 and allowList is present and not
         //    empty, select any applicable credential and proceed to step 12. Otherwise, order the
@@ -116,11 +116,9 @@ where
         //               counter value, depending on which approach is implemented by the authenticator,
         //               by some positive value. If the authenticator does not implement a signature
         //               counter, let the signature counter value remain constant at zero.
-        if let Some(counter) = credential.counter {
-            credential.counter = Some(counter + 1);
-            self.store_mut()
-                .update_credential(credential.clone())
-                .await?;
+        if let Some(counter) = credential.counter() {
+            credential.set_counter(counter + 1);
+            self.store_mut().update_credential(&credential).await?;
         }
 
         let extensions =
@@ -131,24 +129,24 @@ where
         //      concatenation is safe to use here because the authenticator data describes its own
         //      length. The hash of the serialized client data (which potentially has a variable
         //      length) is always the last element.
-        let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter)
+        let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter())
             .set_flags(flags)
             .set_assertion_extensions(extensions.signed)?;
 
         let mut signature_target = auth_data.to_vec();
         signature_target.extend(input.client_data_hash);
 
-        let secret_key = private_key_from_cose_key(&credential.key)?;
+        let secret_key = private_key_from_cose_key(&credential.key())?;
 
         let mut private_key = SigningKey::from(secret_key);
 
         let signature: p256::ecdsa::Signature = private_key.sign(&signature_target);
         let signature_bytes = signature.to_der().to_bytes().to_vec().into();
 
-        let user_handle = credential.user_handle.clone();
+        let user_handle = credential.user_handle().map(Bytes::from);
 
         Ok(Response {
-            credential: Some(credential.into()),
+            credential: Some(credential.as_credential_descriptor(None)),
             auth_data,
             signature: signature_bytes,
             user: user_handle.map(|id| PublicKeyCredentialUserEntity {

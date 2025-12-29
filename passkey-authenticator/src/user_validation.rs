@@ -1,10 +1,12 @@
-use passkey_types::{
-    Passkey,
-    ctap2::{
-        Ctap2Error,
-        make_credential::{PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity},
-    },
+use passkey_types::ctap2::{
+    Ctap2Error,
+    make_credential::{PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity},
 };
+
+use crate::passkey::PasskeyAccessor;
+
+#[cfg(any(test, feature = "testable", doc))]
+use passkey_types::Passkey;
 
 #[cfg(doc)]
 use crate::Authenticator;
@@ -43,7 +45,7 @@ pub struct UserCheck {
 #[async_trait::async_trait]
 pub trait UserValidationMethod {
     /// The type of the passkey item that can be used to display additional information about the operation to the user.
-    type PasskeyItem: TryInto<Passkey> + Send + Sync;
+    type PasskeyItem: PasskeyAccessor + Send + Sync;
 
     /// Check for the user's presence and obtain consent for the operation. The operation may
     /// also require the user to be verified.
