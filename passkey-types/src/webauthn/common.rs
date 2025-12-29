@@ -41,7 +41,7 @@ pub enum PublicKeyCredentialType {
 /// It is recommended to ignore any credential whose type is [`PublicKeyCredentialType::Unknown`]
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptor>
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "typeshare", typeshare)]
 pub struct PublicKeyCredentialDescriptor {
     /// This member contains the type of the public key credential the caller is referring to. The

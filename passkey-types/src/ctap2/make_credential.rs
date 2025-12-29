@@ -3,7 +3,12 @@
 use ciborium::{Value, cbor};
 use serde::{Deserialize, Serialize};
 
-use crate::{Bytes, ctap2::AuthenticatorData, webauthn};
+use crate::{
+    Bytes,
+    ctap2::AuthenticatorData,
+    utils::serde::{ignore_unknown_opt_vec, ignore_unknown_vec},
+    webauthn,
+};
 
 #[cfg(doc)]
 use crate::webauthn::{
@@ -15,7 +20,7 @@ use super::extensions::{AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs, Hma
 serde_workaround! {
     /// While similar in structure to [`PublicKeyCredentialCreationOptions`],
     /// it is not completely identical, namely the presence of the `options` key.
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct Request {
         /// Hash of the ClientData contextual binding specified by host.
         #[serde(rename = 0x01)]
@@ -65,7 +70,8 @@ serde_workaround! {
         #[serde(
             rename = 0x05;
             default,
-            skip_serializing_if = Option::is_none
+            skip_serializing_if = Option::is_none,
+            deserialize_with = ignore_unknown_opt_vec
         )]
         pub exclude_list: Option<Vec<webauthn::PublicKeyCredentialDescriptor>>,
 
@@ -97,7 +103,7 @@ serde_workaround! {
 ///
 /// [WebAuthn]: https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity
 /// [CTAP2]: https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorMakeCredential
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyCredentialRpEntity {
     /// The domain of the relying party
     pub id: String,
@@ -107,7 +113,7 @@ pub struct PublicKeyCredentialRpEntity {
 }
 
 /// This is a copy of [`webauthn::PublicKeyCredentialUserEntity`] with differing optional fields.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKeyCredentialUserEntity {
     /// The ID of the user
     pub id: Bytes,
@@ -177,7 +183,7 @@ impl TryFrom<webauthn::PublicKeyCredentialRpEntity> for PublicKeyCredentialRpEnt
 }
 
 /// The options that control how an authenticator will behave.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Options {
     /// Specifies whether this credential is to be discoverable or not.
     #[serde(default)]
@@ -207,7 +213,7 @@ const fn default_true() -> bool {
 }
 
 /// All supported Authenticator extensions inputs during credential creation
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct ExtensionInputs {
     /// A boolean value to indicate that this extension is requested by the Relying Party
     ///

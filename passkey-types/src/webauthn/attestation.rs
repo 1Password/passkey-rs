@@ -223,7 +223,7 @@ pub struct PublicKeyCredentialRpEntity {
 /// [RFC8266]: https://www.rfc-editor.org/rfc/rfc8266
 /// [RFC8264]: https://www.rfc-editor.org/rfc/rfc8264
 /// [Lang]: https://w3c.github.io/webauthn/#sctn-strings-langdir
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "typeshare", typeshare)]
 pub struct PublicKeyCredentialUserEntity {
@@ -275,7 +275,7 @@ pub struct PublicKeyCredentialUserEntity {
 /// This type is used to supply additional parameters when creating a new credential.
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-publickeycredentialparameters>
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "typeshare", typeshare)]
 pub struct PublicKeyCredentialParameters {
     /// This member specifies the type of credential to be created. The value SHOULD be a member of

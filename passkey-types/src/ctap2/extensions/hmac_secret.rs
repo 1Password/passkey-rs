@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 serde_workaround! {
     /// Object holding the initial salts for creating the secret.
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct HmacGetSecretInput {
         /// Should be of form [`coset::CoseKey`] but that doesn't implement [`Serialize`] or [`Deserialize`].
         #[serde(rename=0x01)]

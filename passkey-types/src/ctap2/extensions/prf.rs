@@ -12,7 +12,7 @@ use crate::{Bytes, webauthn};
 use crate::ctap2::{get_assertion, make_credential};
 
 /// This struct is a more opiniated mirror of [`webauthn::AuthenticationExtensionsPrfInputs`].
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct AuthenticatorPrfInputs {
     /// See  [`webauthn::AuthenticationExtensionsPrfInputs::eval`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -24,7 +24,7 @@ pub struct AuthenticatorPrfInputs {
 }
 
 /// This struct is a more opiniated mirror of [`webauthn::AuthenticationExtensionsPrfValues`].
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct AuthenticatorPrfValues {
     /// This is the already hashed values of [`webauthn::AuthenticationExtensionsPrfValues::first`].
     pub first: [u8; 32],

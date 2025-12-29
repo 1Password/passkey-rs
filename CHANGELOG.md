@@ -35,6 +35,8 @@
 - Support stringified booleans in webauthn requests (#67)
 - Be more tolerant to failed deserialization of optional vectors (#67)
 - ⚠ BREAKING: Add `username` and `user_display_name` to the `Passkey` type and its mock builder. (#87)
+- Update CTAP2 types to ignore unknown values during deserialization,
+  just like their WebAuthn equivalents. (#88)
 
 ## Passkey v0.4.0
 ### passkey-authenticator v0.4.0

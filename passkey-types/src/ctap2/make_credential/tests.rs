@@ -1,3 +1,7 @@
+use ciborium::{Value, cbor};
+
+use crate::{ctap2::get_assertion::Options, webauthn};
+
 #[test]
 fn windows_sanity_test() {
     // Note that this CBOR is incorrect, it encodes PublicKeyCredentialDescriptor::transport as
@@ -88,4 +92,79 @@ fn windows_sanity_test() {
         .first()
         .expect("There should be at least one entry");
     assert!(first.transports.is_none())
+}
+
+#[test]
+fn deserialize_ignores_unknown_values() {
+    let raw_request = cbor!({
+        0x01 => Value::Bytes(vec![15,182,44,101,156,230,202,214,145,124,211,35,25,79,66,233,132,163,144,124,208,29,114,112,109,213,99,107,75,218,37,59]),
+        0x02 => {
+            "id" => "webauthn.io",
+            "name" => "webauthn.io"
+        },
+        0x03 => {
+            "id" => Value::Bytes(b"webauthnio-test".to_vec()),
+            "name" => "test",
+            "displayName" => "test"
+        },
+        0x04 => [
+            {
+                "alg" => -8, // EdDSA
+                "type" => "public-key"
+            },
+            {
+                "alg" => -7, // ES256
+                "type" => "public-key"
+            },
+            {
+                "alg" => -50, // ML-DSA-87
+                "type" => "public-key"
+            },
+            {
+                "alg" => -65537, // Reserved for private use, should be ignored
+                "type" => "public-key"
+            }
+        ]
+    }).expect("Failed to hand-write cbor");
+
+    let request: super::Request = raw_request.deserialized().expect("Failed to ignore values");
+
+    assert_eq!(
+        request,
+        super::Request {
+            client_data_hash: vec![
+                15, 182, 44, 101, 156, 230, 202, 214, 145, 124, 211, 35, 25, 79, 66, 233, 132, 163,
+                144, 124, 208, 29, 114, 112, 109, 213, 99, 107, 75, 218, 37, 59
+            ]
+            .into(),
+            rp: super::PublicKeyCredentialRpEntity {
+                id: "webauthn.io".into(),
+                name: Some("webauthn.io".into())
+            },
+            user: webauthn::PublicKeyCredentialUserEntity {
+                id: b"webauthnio-test".to_vec().into(),
+                name: "test".into(),
+                display_name: "test".into(),
+            },
+            pub_key_cred_params: vec![
+                webauthn::PublicKeyCredentialParameters {
+                    ty: webauthn::PublicKeyCredentialType::PublicKey,
+                    alg: coset::iana::Algorithm::EdDSA
+                },
+                webauthn::PublicKeyCredentialParameters {
+                    ty: webauthn::PublicKeyCredentialType::PublicKey,
+                    alg: coset::iana::Algorithm::ES256
+                },
+                webauthn::PublicKeyCredentialParameters {
+                    ty: webauthn::PublicKeyCredentialType::PublicKey,
+                    alg: coset::iana::Algorithm::ML_DSA_87
+                }
+            ],
+            exclude_list: None,
+            extensions: None,
+            options: Options::default(),
+            pin_auth: None,
+            pin_protocol: None
+        }
+    )
 }

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     Bytes,
     ctap2::AuthenticatorData,
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec},
     webauthn::{PublicKeyCredentialDescriptor, PublicKeyCredentialUserEntity},
 };
 
@@ -37,7 +38,8 @@ serde_workaround! {
         #[serde(
             rename = 0x03;
             default,
-            skip_serializing_if = Option::is_none
+            skip_serializing_if = Option::is_none,
+            deserialize_with = ignore_unknown_opt_vec
         )]
         pub allow_list: Option<Vec<PublicKeyCredentialDescriptor>>,
 
@@ -46,7 +48,8 @@ serde_workaround! {
         #[serde(
             rename = 0x04;
             default,
-            skip_serializing_if = Option::is_none
+            skip_serializing_if = Option::is_none,
+            deserialize_with = ignore_unknown
         )]
         pub extensions: Option<ExtensionInputs>,
 
@@ -74,7 +77,8 @@ pub struct ExtensionInputs {
     #[serde(
         rename = "hmac-secret",
         default,
-        skip_serializing_if = "Option::is_none"
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown"
     )]
     pub hmac_secret: Option<HmacGetSecretInput>,
 
@@ -83,7 +87,11 @@ pub struct ExtensionInputs {
     /// The output from a request using the `prf` extension will not be signed
     /// and will be un-encrypted.
     /// This input should already be hashed by the client.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown"
+    )]
     pub prf: Option<AuthenticatorPrfInputs>,
 }
 
