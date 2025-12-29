@@ -3,7 +3,7 @@ use std::ops::Not;
 use passkey_types::{
     crypto::hmac_sha256,
     ctap2::{
-        Ctap2Error, StatusCode, U2FError,
+        Ctap2Error, StatusCode,
         extensions::{
             AuthenticatorPrfGetOutputs, AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs,
             AuthenticatorPrfValues, HmacSecretSaltOrOutput,
@@ -150,7 +150,9 @@ impl<S, U> Authenticator<S, U> {
             return Ok(None);
         };
 
-        let hmac_creds = passkey_ext.ok_or(U2FError::InvalidParameter)?;
+        let Some(hmac_creds) = passkey_ext else {
+            return Ok(None);
+        };
 
         let Some(request) = select_salts(credential_id, salts) else {
             return Ok(None);
