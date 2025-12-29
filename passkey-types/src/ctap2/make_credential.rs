@@ -1,6 +1,6 @@
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticatorMakeCredential>
 
-use ciborium::{Value, cbor};
+use ciborium::cbor;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,8 +11,11 @@ use crate::{
 };
 
 #[cfg(doc)]
-use crate::webauthn::{
-    CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
+use {
+    crate::webauthn::{
+        CollectedClientData, PublicKeyCredentialCreationOptions, PublicKeyCredentialDescriptor,
+    },
+    ciborium::value::Value,
 };
 
 use super::extensions::{AuthenticatorPrfInputs, AuthenticatorPrfMakeOutputs, HmacGetSecretInput};
@@ -280,7 +283,7 @@ serde_workaround! {
         // TODO: Change to a flattened enum when `content, type` serde enums can use numbers as
         // the keys
         #[serde(rename = 0x03)]
-        pub att_stmt: Value,
+        pub att_stmt: ciborium::value::Value,
 
         /// Indicates whether an enterprise attestation was returned for this credential.
         /// If `ep_att` is absent or present and set to false, then an enterprise attestation was not returned.
@@ -323,7 +326,7 @@ impl Response {
                "fmt" => "none",
                 "attStmt" => {},
                 // Explicitly define these fields as bytes since specialization is still fairly far
-               "authData" => Value::Bytes(self.auth_data.to_vec()),
+               "authData" => ciborium::value::Value::Bytes(self.auth_data.to_vec()),
         })
         .unwrap();
         ciborium::ser::into_writer(&attestation_object_value, &mut attestation_object).unwrap();
