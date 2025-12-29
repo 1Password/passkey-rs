@@ -440,6 +440,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
     // Assert
     assert_eq!(err, Ctap2Error::UnsupportedOption.into());
 }
+
 #[tokio::test]
 async fn empty_store_with_exclude_credentials_succeeds() {
     // This test verifies the fix for the issue where an empty credential store
