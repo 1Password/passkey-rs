@@ -167,7 +167,7 @@ where
             .set_make_credential_extensions(extensions.signed)?;
 
         let response = Response {
-            fmt: "None".into(),
+            fmt: "none".into(),
             auth_data,
             att_stmt: coset::cbor::value::Value::Map(vec![]),
             ep_att: None,
