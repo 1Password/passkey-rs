@@ -23,6 +23,8 @@
   to a new `PasskeyAccessor` trait instead of the `TryInto<Passkey>`, making it possible to use a
   custom passkey representation type that goes throughout the entire flow without losing any
   additional information through a conversion. (#87)
+- ⚠ BREAKING: The `Ctap2Api::get_info` method now returns a boxed response due to the size of
+  the response. (#88)
 
 
 ### passkey-client v0.5.0
@@ -37,6 +39,7 @@
 - ⚠ BREAKING: Add `username` and `user_display_name` to the `Passkey` type and its mock builder. (#87)
 - Update CTAP2 types to ignore unknown values during deserialization,
   just like their WebAuthn equivalents. (#88)
+- ⚠ BREAKING: Update `ctap2::get_info::Response` to have all the fields from ctap 2.2 (#88)
 
 ## Passkey v0.4.0
 ### passkey-authenticator v0.4.0

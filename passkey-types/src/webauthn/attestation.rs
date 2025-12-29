@@ -320,6 +320,15 @@ impl PublicKeyCredentialParameters {
     }
 }
 
+impl From<iana::Algorithm> for PublicKeyCredentialParameters {
+    fn from(value: iana::Algorithm) -> Self {
+        Self {
+            ty: PublicKeyCredentialType::PublicKey,
+            alg: value,
+        }
+    }
+}
+
 /// [Relying Parties] may use this type to specify their requirements regarding authenticator attributes.
 ///
 /// <https://w3c.github.io/webauthn/#dictdef-authenticatorselectioncriteria>
