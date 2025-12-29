@@ -46,5 +46,7 @@ pub use self::{
     },
 };
 
+pub use coset::CoseKey;
+
 #[cfg(feature = "testable")]
 pub use self::passkey::PasskeyBuilder;
