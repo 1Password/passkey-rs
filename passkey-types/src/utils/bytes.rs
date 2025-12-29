@@ -143,6 +143,8 @@ impl<'de> Deserialize<'de> for Bytes {
             where
                 E: serde::de::Error,
             {
+                // There have been some whitespace seen in incoming base64 encodings.
+                let v = v.trim();
                 v.try_into().map_err(|_| {
                     E::invalid_value(
                         serde::de::Unexpected::Str(v),

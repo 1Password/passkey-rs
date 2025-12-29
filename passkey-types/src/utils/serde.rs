@@ -83,7 +83,6 @@ where
     Ok(de
         .deserialize_seq(IgnoreUnknown(std::marker::PhantomData))
         .unwrap_or_default())
-    // de.deserialize_seq(IgnoreUnknown(std::marker::PhantomData))
 }
 
 pub(crate) fn ignore_unknown_vec<'de, D, T>(de: D) -> Result<Vec<T>, D::Error>
@@ -141,15 +140,12 @@ where
     where
         E: Error,
     {
-        match FromStr::from_str(v) {
-            Ok(v) => Ok(v),
-            _ => {
-                if let Ok(v) = f64::from_str(v) {
-                    self.visit_f64(v)
-                } else {
-                    Err(E::custom("Was not a stringified number"))
-                }
-            }
+        if let Ok(v) = FromStr::from_str(v) {
+            Ok(v)
+        } else if let Ok(v) = f64::from_str(v) {
+            self.visit_f64(v)
+        } else {
+            Err(E::custom("Was not a stringified number"))
         }
     }
 
@@ -279,5 +275,6 @@ where
 {
     de.deserialize_any(StringOrBool)
 }
+
 #[cfg(test)]
 mod tests;
