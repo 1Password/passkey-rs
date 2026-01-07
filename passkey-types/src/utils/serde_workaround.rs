@@ -11,7 +11,7 @@ macro_rules! serde_workaround {
         $(#[$attr:meta])*
         pub struct $name:ident {$(
             $(#[doc=$doc:literal])*
-            #[serde(rename = $discriminant:literal$(,$default:ident)?$(,skip_serializing_if = $method:path)?$(,deserialize_with = $de:path)?)]
+            #[serde(rename = $discriminant:literal$(;$default:ident)?$(,skip_serializing_if = $method:path)?$(,deserialize_with = $de:path)?)]
             $vis:vis $field:ident: $ty:ty,
         )*}
     ) => {
@@ -171,10 +171,10 @@ macro_rules! serde_workaround {
 }
 
 macro_rules! serde_workaround_struct_len {
-    ($field:expr_2021; $skip_if:path) => {
+    ($field:expr; $skip_if:path) => {
         if $skip_if(&$field) { 0 } else { 1 }
     };
-    ($field:expr_2021 ) => {
+    ($field:expr ) => {
         1
     };
 }

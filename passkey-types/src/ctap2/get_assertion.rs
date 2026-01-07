@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     Bytes,
     ctap2::AuthenticatorData,
+    utils::serde::{ignore_unknown, ignore_unknown_opt_vec},
     webauthn::{PublicKeyCredentialDescriptor, PublicKeyCredentialUserEntity},
 };
 
@@ -34,25 +35,35 @@ serde_workaround! {
         /// A sequence of PublicKeyCredentialDescriptor structures, each denoting a credential. If
         /// this parameter is present and has 1 or more entries, the authenticator MUST only
         /// generate an assertion using one of the denoted credentials.
-        #[serde(rename = 0x03, default, skip_serializing_if = Option::is_none)]
+        #[serde(
+            rename = 0x03;
+            default,
+            skip_serializing_if = Option::is_none,
+            deserialize_with = ignore_unknown_opt_vec
+        )]
         pub allow_list: Option<Vec<PublicKeyCredentialDescriptor>>,
 
         /// Parameters to influence authenticator operation. These parameters might be authenticator
         /// specific.
-        #[serde(rename = 0x04, default, skip_serializing_if = Option::is_none)]
+        #[serde(
+            rename = 0x04;
+            default,
+            skip_serializing_if = Option::is_none,
+            deserialize_with = ignore_unknown
+        )]
         pub extensions: Option<ExtensionInputs>,
 
         /// Parameters to influence authenticator operation, see [`Options`] for more details.
-        #[serde(rename = 0x05, default)]
+        #[serde(rename = 0x05; default)]
         pub options: Options,
 
         /// First 16 bytes of HMAC-SHA-256 of clientDataHash using pinToken which platform got from
         /// the authenticator: HMAC-SHA-256(pinToken, clientDataHash). (NOT YET SUPPORTED)
-        #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub pin_auth: Option<Bytes>,
 
         /// PIN protocol version chosen by the client
-        #[serde(rename = 0x07, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x07; default, skip_serializing_if = Option::is_none)]
         pub pin_protocol: Option<u8>,
     }
 }
@@ -66,7 +77,8 @@ pub struct ExtensionInputs {
     #[serde(
         rename = "hmac-secret",
         default,
-        skip_serializing_if = "Option::is_none"
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown"
     )]
     pub hmac_secret: Option<HmacGetSecretInput>,
 
@@ -75,7 +87,11 @@ pub struct ExtensionInputs {
     /// The output from a request using the `prf` extension will not be signed
     /// and will be un-encrypted.
     /// This input should already be hashed by the client.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "ignore_unknown"
+    )]
     pub prf: Option<AuthenticatorPrfInputs>,
 }
 
@@ -99,7 +115,7 @@ serde_workaround! {
         /// PublicKeyCredentialDescriptor structure containing the credential identifier whose
         /// private key was used to generate the assertion. May be omitted if the allowList has
         /// exactly one Credential.
-        #[serde(rename = 0x01, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x01; default, skip_serializing_if = Option::is_none)]
         pub credential: Option<PublicKeyCredentialDescriptor>,
 
         /// The signed-over contextual bindings made by the authenticator
@@ -134,7 +150,7 @@ serde_workaround! {
         /// authenticator returns "id" as well as other fields to the platform. Platform will use
         /// this information to show the account selection UX to the user and for the user selected
         /// account, it will ONLY return "id" back to the WebAuthn layer and discard other user details.
-        #[serde(rename = 0x04, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub user: Option<PublicKeyCredentialUserEntity>,
 
         /// Total number of account credentials for the RP. This member is required when more than
@@ -143,7 +159,7 @@ serde_workaround! {
         ///
         /// It seems unlikely that more than 256 credentials would be needed for any given RP. Please
         /// file an enhancement request if this limit impacts your application.
-        #[serde(rename = 0x05, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x05; default, skip_serializing_if = Option::is_none)]
         pub number_of_credentials: Option<u8>,
 
         /// Indicates that a credential was selected by the user via interaction directly with the authenticator,
@@ -152,20 +168,20 @@ serde_workaround! {
         /// MUST NOT be present in response to a request where an [`Request::allow_list`] was given,
         /// where [`Self::number_of_credentials`] is greater than one,
         ///  nor in response to an `authenticatorGetNextAssertion` request.
-        #[serde(rename = 0x06, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub user_selected: Option<bool>,
 
         /// The contents of the associated `largeBlobKey` if present for the asserted credential,
         /// and if [largeBlobKey[] was true in the extensions input.
         ///
         /// This extension is currently un-supported by this library.
-        #[serde(rename = 0x07, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x07; default, skip_serializing_if = Option::is_none)]
         pub large_blob_key: Option<Bytes>,
 
         /// A map, keyed by extension identifiers, to unsigned outputs of extensions, if any.
         /// Authenticators SHOULD omit this field if no processed extensions define unsigned outputs.
         /// Clients MUST treat an empty map the same as an omitted field.
-        #[serde(rename = 0x08, default, skip_serializing_if = Option::is_none)]
+        #[serde(rename = 0x08; default, skip_serializing_if = Option::is_none)]
         pub unsigned_extension_outputs: Option<UnsignedExtensionOutputs>,
     }
 }

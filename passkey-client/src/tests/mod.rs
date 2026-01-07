@@ -535,10 +535,12 @@ fn map_rk_maps_criteria_to_rk_bool() {
                 up: true,
                 plat: true,
                 client_pin: None,
+                ..Default::default()
             }),
             max_msg_size: None,
             pin_protocols: None,
             transports: None,
+            ..Default::default()
         };
         let client = Client::new(Authenticator::new(
             ctap2::Aaguid::new_empty(),

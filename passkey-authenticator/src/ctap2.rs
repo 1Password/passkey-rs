@@ -30,7 +30,7 @@ mod sealed {
 #[async_trait::async_trait]
 pub trait Ctap2Api: sealed::Sealed {
     /// Request to get the information of the authenticator and see what it supports.
-    async fn get_info(&self) -> get_info::Response;
+    async fn get_info(&self) -> Box<get_info::Response>;
 
     /// Request to create and save a new credential in the authenticator.
     async fn make_credential(
@@ -51,7 +51,7 @@ where
     S: CredentialStore + Sync + Send,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync + Send,
 {
-    async fn get_info(&self) -> get_info::Response {
+    async fn get_info(&self) -> Box<get_info::Response> {
         Authenticator::get_info(self).await
     }
 

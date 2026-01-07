@@ -21,6 +21,7 @@ fn serialization_round_trip() {
             AuthenticatorTransport::Internal,
             AuthenticatorTransport::Hybrid,
         ]),
+        ..Default::default()
     };
     let mut serialized = Vec::new();
     ciborium::ser::into_writer(&expected, &mut serialized).expect("Could not serialize to cbor");
@@ -53,6 +54,7 @@ fn serialization_expected_wire_fmt() {
             AuthenticatorTransport::Internal,
             AuthenticatorTransport::Hybrid,
         ]),
+        ..Default::default()
     };
     let mut serialized = Vec::new();
     ciborium::ser::into_writer(&input, &mut serialized).expect("Could not serialize to cbor");
@@ -83,7 +85,7 @@ fn serialization_expected_wire_fmt() {
 #[test]
 fn unknown_transports_gets_ignored() {
     let input = cbor!({
-        0x01 => vec!["FIDO_2_0", "FIDO_2_1"],
+        0x01 => vec!["FIDO_2_0", "FIDO_2_1", "FIDO_X_Y"],
         0x02 => vec!["hmac-secret", "credProtect"],
         0x03 => ciborium::value::Value::Bytes([0;16].into()),
         0x04 => {
@@ -106,7 +108,11 @@ fn unknown_transports_gets_ignored() {
         ciborium::de::from_reader(serialized.as_slice()).expect("Could not deserialize");
 
     let expected = Response {
-        versions: vec![Version::FIDO_2_0, Version::Unknown("FIDO_2_1".into())],
+        versions: vec![
+            Version::FIDO_2_0,
+            Version::FIDO_2_1,
+            Version::Unknown("FIDO_X_Y".into()),
+        ],
         extensions: Some(vec![
             Extension::HmacSecret,
             Extension::Unknown("credProtect".into()),
@@ -121,6 +127,7 @@ fn unknown_transports_gets_ignored() {
         max_msg_size: None,
         pin_protocols: Some(vec![1]),
         transports: Some(vec![AuthenticatorTransport::Hybrid]),
+        ..Default::default()
     };
 
     assert_eq!(expected, deserialized);
