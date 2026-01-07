@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-- ⚠ BREAKING: The `UserValidationMethod` trait has been updated to use `UiHint`
-  to give the implementation more information about the request, which can be used
-  to decide whether additional validations are needed. To reflect this, the
-  `UserValidationMethod` trait now also returns which validations were performed.
-
 ## Passkey v0.5.0
 
 - Migrate project to Rust 2024 edition
@@ -20,6 +15,14 @@
   This allows for updating/replacing credentials should the user so wish. (#67)
 - Fix hmac-secret logic around the second salt (#67)
 - ⚠ BREAKING: Fix Ctap2Api trait to correctly call the concrete method to prevent recursion (#67)
+- ⚠ BREAKING: The `UserValidationMethod` trait has been updated to use `UiHint`
+  to give the implementation more information about the request, which can be used
+  to decide whether additional validations are needed. To reflect this, the
+  `UserValidationMethod` trait now also returns which validations were performed. (#76)
+- ⚠ BREAKING: Change the `CredentialStore` and `UserValidationMethod` associated type constraint
+  to a new `PasskeyAccessor` trait instead of the `TryInto<Passkey>`, making it possible to use a
+  custom passkey representation type that goes throughout the entire flow without losing any
+  additional information through a conversion. (#87)
 
 
 ### passkey-client v0.5.0
@@ -31,6 +34,7 @@
 - Make output types Hashable in Swift code gen (#67)
 - Support stringified booleans in webauthn requests (#67)
 - Be more tolerant to failed deserialization of optional vectors (#67)
+- ⚠ BREAKING: Add `username` and `user_display_name` to the `Passkey` type and its mock builder. (#87)
 
 ## Passkey v0.4.0
 ### passkey-authenticator v0.4.0

@@ -79,6 +79,22 @@ pub struct Passkey {
     /// [Discoverable Credential]: https://w3c.github.io/webauthn/#client-side-discoverable-credential
     pub user_handle: Option<Bytes>,
 
+    /// This is the [`webauthn::PublicKeyCredentialUserEntity::name`] passed in during the creation
+    /// of this credential. An authenticator can choose to store this or not.
+    ///
+    /// # PII Considerations
+    /// This is the username which is a human readable personal identifier. While it does not get
+    /// over the wire to the Relying Party it may be used in displays.
+    pub username: Option<String>,
+
+    /// This is the [`webauthn::PublicKeyCredentialUserEntity::display_name`] passed in during the creation
+    /// of this credential. An authenticator can choose to store this or not.
+    ///
+    /// # PII Considerations
+    /// This is the human-readable name for a user account. While it does not get sent
+    /// over the wire to the Relying Party it may be used in displays.
+    pub user_display_name: Option<String>,
+
     /// Value tracks the number of times an authentication ceremony has been successfully completed.
     /// If the value is `None` then it will be sent as the constant `0`.
     /// See [Signature counter considerations][signCount] for more information.
@@ -109,6 +125,8 @@ impl Passkey {
             credential_id: response.key_handle.clone().to_vec().into(),
             rp_id: app_id.into(),
             user_handle: None,
+            username: None,
+            user_display_name: None,
             counter: Some(0),
             extensions: Default::default(),
         }
@@ -126,6 +144,8 @@ impl Passkey {
             credential_id: request.key_handle.clone().to_vec().into(),
             rp_id: app_id.into(),
             user_handle: None,
+            username: None,
+            user_display_name: None,
             counter: Some(counter),
             extensions: Default::default(),
         }
@@ -216,4 +236,20 @@ pub struct StoredHmacSecret {
     pub cred_with_uv: Vec<u8>,
     /// The credential that is not gated behind user verification, but is gated behind user presence
     pub cred_without_uv: Option<Vec<u8>>,
+}
+
+impl Debug for StoredHmacSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StoredHmacSecret")
+            .field("cred_with_uv", &"<Redacted>")
+            .field(
+                "cred_without_uv",
+                if self.cred_without_uv.is_some() {
+                    &"<Redacted>"
+                } else {
+                    &"None"
+                },
+            )
+            .finish()
+    }
 }

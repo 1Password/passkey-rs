@@ -92,6 +92,8 @@ async fn assert_excluded_credentials() {
         rp_id: "".into(),
         credential_id: cred_id.clone(),
         user_handle: Some(response.user.id.clone()),
+        username: Some("Appleseed".into()),
+        user_display_name: Some("wendy".into()),
         counter: None,
         extensions: Default::default(),
     };
@@ -410,7 +412,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
             unimplemented!("The test should not call save_credential")
         }
 
-        async fn update_credential(&mut self, _cred: Passkey) -> Result<(), StatusCode> {
+        async fn update_credential(&mut self, _cred: &Passkey) -> Result<(), StatusCode> {
             #![allow(clippy::unimplemented)]
             unimplemented!("The test should not call update_credential")
         }
@@ -514,6 +516,8 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
         rp_id: "future.1password.com".into(),
         credential_id: stored_cred_id.clone(),
         user_handle: Some(random_vec(16).into()),
+        username: Some("Appleseed".into()),
+        user_display_name: Some("wendy".into()),
         counter: None,
         extensions: Default::default(),
     };

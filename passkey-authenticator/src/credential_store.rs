@@ -11,6 +11,8 @@ use passkey_types::{
     webauthn::PublicKeyCredentialDescriptor,
 };
 
+use crate::passkey::PasskeyAccessor;
+
 /// A struct that defines the capabilities of a store.
 pub struct StoreInfo {
     /// How the store handles discoverability.
@@ -48,7 +50,7 @@ impl DiscoverabilitySupport {
 #[async_trait::async_trait]
 pub trait CredentialStore {
     /// Defines the return type of find_credentials(...)
-    type PasskeyItem: TryInto<Passkey> + Send + Sync;
+    type PasskeyItem: PasskeyAccessor + Send + Sync;
 
     /// Find all credentials matching the given `ids` and `rp_id`.
     ///
@@ -71,7 +73,7 @@ pub trait CredentialStore {
     ) -> Result<(), StatusCode>;
 
     /// Update the credential in your store
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode>;
+    async fn update_credential(&mut self, cred: &Self::PasskeyItem) -> Result<(), StatusCode>;
 
     /// Get information about the store
     async fn get_info(&self) -> StoreInfo;
@@ -116,8 +118,8 @@ impl CredentialStore for MemoryStore {
         Ok(())
     }
 
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
-        self.insert(cred.credential_id.clone().into(), cred);
+    async fn update_credential(&mut self, cred: &Passkey) -> Result<(), StatusCode> {
+        self.insert(cred.credential_id.clone().into(), cred.clone());
         Ok(())
     }
 
@@ -161,8 +163,8 @@ impl CredentialStore for Option<Passkey> {
         Ok(())
     }
 
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
-        self.replace(cred);
+    async fn update_credential(&mut self, cred: &Passkey) -> Result<(), StatusCode> {
+        self.replace(cred.clone());
         Ok(())
     }
 
@@ -205,7 +207,7 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
             .await
     }
 
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+    async fn update_credential(&mut self, cred: &Passkey) -> Result<(), StatusCode> {
         self.lock().await.update_credential(cred).await
     }
 
@@ -246,7 +248,7 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
             .await
     }
 
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+    async fn update_credential(&mut self, cred: &Passkey) -> Result<(), StatusCode> {
         self.write().await.update_credential(cred).await
     }
 
@@ -287,7 +289,7 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
             .await
     }
 
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+    async fn update_credential(&mut self, cred: &Passkey) -> Result<(), StatusCode> {
         self.lock().await.update_credential(cred).await
     }
 
@@ -328,7 +330,7 @@ impl<S: CredentialStore<PasskeyItem = Passkey> + Send + Sync> CredentialStore
             .await
     }
 
-    async fn update_credential(&mut self, cred: Passkey) -> Result<(), StatusCode> {
+    async fn update_credential(&mut self, cred: &Passkey) -> Result<(), StatusCode> {
         self.write().await.update_credential(cred).await
     }
 
