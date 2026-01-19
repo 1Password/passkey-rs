@@ -1,4 +1,3 @@
-use p256::SecretKey;
 use passkey_crypto::{
     CryptoBackend,
     rng::{Rng, RngBackend},
@@ -118,10 +117,10 @@ where
         // 9. Generate a new credential key pair for the algorithm specified.
         let credential_id = Rng::random_vec(self.credential_id_length.into());
 
-        let private_key = {
-            let mut rng = Rng::new();
-            SecretKey::random(&mut rng)
-        };
+        let private_key = self
+            .crypto
+            .generate_key(algorithm)
+            .map_err(|_| Ctap2Error::UnsupportedAlgorithm)?;
 
         let extensions = self.make_extensions(input.extensions, flags.contains(Flags::UV))?;
 
