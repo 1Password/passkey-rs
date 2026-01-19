@@ -1,0 +1,18 @@
+[package]
+authors.workspace = true
+categories.workspace = true
+description = "Generic cryptographic backend for the passkey-rs crates"
+edition.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
+keywords.workspace = true
+license.workspace = true
+name = "passkey-crypto"
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
+
+[dependencies]
+
+[lints]
+workspace = true
