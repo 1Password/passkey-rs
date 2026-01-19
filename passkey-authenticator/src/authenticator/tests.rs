@@ -1,3 +1,4 @@
+use passkey_crypto::rng::Rng;
 use passkey_types::ctap2::{Aaguid, Flags};
 
 use crate::{
@@ -298,10 +299,9 @@ fn credential_id_lengths_validate() {
 
 #[test]
 fn credential_id_generation() {
-    let mut rng = rand::thread_rng();
     let valid_range = 0..=64;
     for _ in 0..=100 {
-        let length = CredentialIdLength::randomized(&mut rng).0;
+        let length = CredentialIdLength::randomized::<Rng>().0;
         assert!(valid_range.contains(&length));
     }
 }

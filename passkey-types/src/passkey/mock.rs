@@ -1,7 +1,8 @@
 use coset::{CoseKeyBuilder, iana};
 use p256::{SecretKey, ecdsa::SigningKey};
+use passkey_crypto::rng::{Rng, RngBackend};
 
-use crate::{Passkey, StoredHmacSecret, rand::random_vec};
+use crate::{Passkey, StoredHmacSecret};
 
 /// A builder for the [`Passkey`] type which should be used as a mock for testing.
 pub struct PasskeyBuilder {
@@ -12,7 +13,7 @@ impl PasskeyBuilder {
     /// Create a new
     pub(super) fn new(rp_id: String) -> Self {
         let private_key = {
-            let mut rng = rand::thread_rng();
+            let mut rng = Rng::new();
             SecretKey::random(&mut rng)
         };
 
@@ -37,7 +38,7 @@ impl PasskeyBuilder {
         Self {
             inner: Passkey {
                 key: private,
-                credential_id: random_vec(16).into(),
+                credential_id: Rng::random_vec(16).into(),
                 rp_id,
                 user_handle: None,
                 username: None,
@@ -50,13 +51,13 @@ impl PasskeyBuilder {
 
     /// Regenerate the credential ID with a different size than the default 16 bytes
     pub fn credential_id(mut self, len: usize) -> Self {
-        self.inner.credential_id = random_vec(len).into();
+        self.inner.credential_id = Rng::random_vec(len).into();
         self
     }
 
     /// Generate the user handle with an optional custom size. The default is 16 bytes.
     pub fn user_handle(mut self, len: Option<usize>) -> Self {
-        self.inner.user_handle = Some(random_vec(len.unwrap_or(16)).into());
+        self.inner.user_handle = Some(Rng::random_vec(len.unwrap_or(16)).into());
         self
     }
 

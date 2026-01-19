@@ -28,7 +28,7 @@ ciborium = "0.2"
 data-encoding = "2"
 hmac = "0.12"
 indexmap = { version = "2", features = ["serde"] }
-rand = "0.8"
+passkey-crypto = { path = "../passkey-crypto", version = "0.1"}
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
@@ -43,6 +43,3 @@ p256 = { version = "0.13", features = [
   "jwk",
   "pem",
 ], optional = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
