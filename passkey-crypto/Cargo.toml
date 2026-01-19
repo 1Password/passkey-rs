@@ -13,11 +13,18 @@ rust-version.workspace = true
 version = "0.1.0"
 
 [features]
-default = ["rand"]
+default = ["rust-crypto"]
 rand = ["dep:rand", "dep:getrandom"]
 js = ["getrandom/js"]
+rust-crypto = ["dep:p256", "rand"]
 
 [dependencies]
+coset.workspace = true
+p256 = { version = "0.13", optional = true, features = [
+  "arithmetic",
+  "jwk",
+  "pem"
+] }
 rand = { version = "0.8", optional = true , features = ["min_const_gen"]}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
