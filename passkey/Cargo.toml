@@ -18,6 +18,7 @@ workspace = true
 [features]
 default = []
 linux = ["passkey-authenticator/linux", "passkey-client/linux"]
+js = ["passkey-crypto/js"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
