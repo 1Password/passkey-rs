@@ -39,10 +39,28 @@ impl SecretKeyT for p256::SecretKey {
             .algorithm(iana::Algorithm::ES256)
             .build()
     }
+
+    fn public_key(&self) -> Self::PublicKey {
+        self.public_key()
+    }
 }
 
 impl PublicKeyT for p256::PublicKey {
     type Signature = p256::ecdsa::Signature;
+
+    fn to_cose_key(&self) -> CoseKey {
+        let encoded_public_key = p256::ecdsa::VerifyingKey::from(self).to_encoded_point(false);
+
+        // SAFETY: These unwraps are safe because the public_key above is not compressed (false
+        // parameter) therefore x and y are guarateed to contain values.
+        #[allow(deprecated)]
+        let x = encoded_public_key.x().unwrap().as_slice().to_vec();
+        #[allow(deprecated)]
+        let y = encoded_public_key.y().unwrap().as_slice().to_vec();
+        CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y)
+            .algorithm(iana::Algorithm::ES256)
+            .build()
+    }
 }
 
 impl SignatureT for p256::ecdsa::Signature {}

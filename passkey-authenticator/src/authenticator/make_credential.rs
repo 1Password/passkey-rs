@@ -124,7 +124,7 @@ where
         // Encoding of the key pair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested
         // credential.
-        let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key, algorithm);
+        let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key);
 
         let store_info = self.store.get_info().await;
 

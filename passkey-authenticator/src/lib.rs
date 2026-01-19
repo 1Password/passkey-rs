@@ -42,6 +42,7 @@ use p256::{
     elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint},
     pkcs8::EncodePublicKey,
 };
+use passkey_crypto::PublicKeyT;
 use passkey_types::{Bytes, ctap2::Ctap2Error};
 
 pub use self::{
@@ -156,27 +157,13 @@ pub struct CoseKeyPair {
 
 impl CoseKeyPair {
     /// Create a new COSE key pair from a secret key and algorithm.
-    pub fn from_secret_key(private_key: &SecretKey, algorithm: Algorithm) -> Self {
-        let public_key = SigningKey::from(private_key)
-            .verifying_key()
-            .to_encoded_point(false);
-        // SAFETY: These unwraps are safe because the public_key above is not compressed (false
-        // parameter) therefore x and y are guarateed to contain values.
-        let x = public_key.x().unwrap().as_slice().to_vec();
-        let y = public_key.y().unwrap().as_slice().to_vec();
-        let private = CoseKeyBuilder::new_ec2_priv_key(
-            iana::EllipticCurve::P_256,
-            x.clone(),
-            y.clone(),
-            private_key.to_bytes().to_vec(),
-        )
-        .algorithm(algorithm)
-        .build();
-        let public = CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y)
-            .algorithm(algorithm)
-            .build();
+    pub fn from_secret_key<SK: passkey_crypto::SecretKeyT>(private_key: &SK) -> Self {
+        let public_key = private_key.public_key();
 
-        Self { public, private }
+        Self {
+            public: public_key.to_cose_key(),
+            private: private_key.to_cose_key(),
+        }
     }
 }
 
