@@ -3,7 +3,10 @@
 use authenticator::MakeCredentialsResult;
 use coset::iana;
 use passkey_authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod};
-use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_crypto::{
+    rng::{Rng, RngBackend},
+    rust_crypto::RustCryptoBackend,
+};
 use passkey_types::{
     Passkey,
     ctap2::{Ctap2Error, make_credential},
@@ -39,7 +42,7 @@ impl UserValidationMethod for MockUV {
 
 #[tokio::test]
 async fn ensure_attestation_object_compatibility() {
-    let mut auth = Authenticator::new([0; 16].into(), None::<Passkey>, MockUV);
+    let mut auth = Authenticator::new([0; 16].into(), None::<Passkey>, MockUV, RustCryptoBackend);
     let cred_response = auth
         .make_credential(make_credential::Request {
             client_data_hash: Rng::random_vec(32).into(),

@@ -33,12 +33,11 @@ mod user_validation;
 pub mod linux;
 
 use coset::{
-    CoseKey, CoseKeyBuilder,
+    CoseKey,
     iana::{self, Algorithm, EnumI64},
 };
 use p256::{
     EncodedPoint, PublicKey, SecretKey,
-    ecdsa::SigningKey,
     elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint},
     pkcs8::EncodePublicKey,
 };

@@ -5,19 +5,22 @@
 //!
 //! <https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html#authenticator-api>
 
+use passkey_crypto::CryptoBackend;
 use passkey_types::ctap2::{StatusCode, get_assertion, get_info, make_credential};
 
 use crate::{Authenticator, CredentialStore, UserValidationMethod};
 
 mod sealed {
-    use crate::{Authenticator, CredentialStore, UserValidationMethod};
+    use super::{Authenticator, CredentialStore, CryptoBackend, UserValidationMethod};
 
     pub trait Sealed {}
 
-    impl<S: CredentialStore, U: UserValidationMethod> Sealed for Authenticator<S, U> {}
-
     #[cfg(all(feature = "linux", target_os = "linux"))]
     impl Sealed for crate::linux::LinuxAuthenticator {}
+    impl<S: CredentialStore, U: UserValidationMethod, C: CryptoBackend> Sealed
+        for Authenticator<S, U, C>
+    {
+    }
 }
 
 /// Methods defined as being required for a [CTAP 2.0] compliant authenticator to implement.
@@ -49,10 +52,11 @@ pub trait Ctap2Api: sealed::Sealed {
 }
 
 #[async_trait::async_trait]
-impl<S, U> Ctap2Api for Authenticator<S, U>
+impl<S, U, C> Ctap2Api for Authenticator<S, U, C>
 where
     S: CredentialStore + Sync + Send,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync + Send,
+    C: CryptoBackend + Sync + Send,
 {
     async fn get_info(&self) -> Box<get_info::Response> {
         Authenticator::get_info(self).await

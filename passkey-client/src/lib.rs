@@ -16,6 +16,7 @@
 //! [Webauthn]: https://w3c.github.io/webauthn/
 mod client_data;
 pub use client_data::*;
+use passkey_crypto::CryptoBackend;
 
 use std::{borrow::Cow, fmt::Display};
 
@@ -246,27 +247,29 @@ impl Display for Origin<'_> {
 /// default provider implementation. Use `new_with_custom_tld_provider()` to provide a custom
 /// `EffectiveTLDProvider` if your application needs to interpret eTLDs differently from the Mozilla
 /// Public Suffix List.
-pub struct Client<S, U, P, F>
+pub struct Client<S, U, C, P, F>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
+    C: CryptoBackend,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
 {
-    authenticator: Authenticator<S, U>,
+    authenticator: Authenticator<S, U, C>,
     rp_id_verifier: RpIdVerifier<P, F>,
     /// When the RP sends [`UserVerificationRequirement::Preferred`], whether to set CTAP `uv` to true.
     uv_when_preferred: bool,
 }
 
-impl<S, U> Client<S, U, public_suffix::PublicSuffixList, ()>
+impl<S, U, C> Client<S, U, C, public_suffix::PublicSuffixList, ()>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
+    C: CryptoBackend + Sync,
     Passkey: TryFrom<<S as CredentialStore>::PasskeyItem>,
 {
     /// Create a `Client` with a given `Authenticator` that uses the default
     /// TLD verifier provided by `[public_suffix]`.
-    pub fn new(authenticator: Authenticator<S, U>) -> Self {
+    pub fn new(authenticator: Authenticator<S, U, C>) -> Self {
         Self {
             authenticator,
             rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
@@ -275,17 +278,18 @@ where
     }
 }
 
-impl<S, U, P, F> Client<S, U, P, F>
+impl<S, U, C, P, F> Client<S, U, C, P, F>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
+    C: CryptoBackend,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
     F: Fetcher + Sync,
 {
     /// Create a `Client` with a given `Authenticator` and a custom TLD provider
     /// that implements `[public_suffix::EffectiveTLDProvider]`.
     pub fn new_with_custom_tld_provider(
-        authenticator: Authenticator<S, U>,
+        authenticator: Authenticator<S, U, C>,
         custom_provider: P,
         fetcher: Option<F>,
     ) -> Self {
@@ -303,12 +307,12 @@ where
     }
 
     /// Read access to the Client's `Authenticator`.
-    pub fn authenticator(&self) -> &Authenticator<S, U> {
+    pub fn authenticator(&self) -> &Authenticator<S, U, C> {
         &self.authenticator
     }
 
     /// Write access to the Client's `Authenticator`.
-    pub fn authenticator_mut(&mut self) -> &mut Authenticator<S, U> {
+    pub fn authenticator_mut(&mut self) -> &mut Authenticator<S, U, C> {
         &mut self.authenticator
     }
 

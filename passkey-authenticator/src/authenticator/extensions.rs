@@ -54,7 +54,7 @@ pub(super) struct GetExtensionOutputs {
     pub unsigned: Option<get_assertion::UnsignedExtensionOutputs>,
 }
 
-impl<S, U> Authenticator<S, U> {
+impl<S, U, C> Authenticator<S, U, C> {
     pub(super) fn make_extensions(
         &self,
         request: Option<make_credential::ExtensionInputs>,

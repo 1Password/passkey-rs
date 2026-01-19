@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use coset::iana;
-use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_crypto::{
+    rng::{Rng, RngBackend},
+    rust_crypto::RustCryptoBackend,
+};
 use passkey_types::{
     Bytes,
     ctap2::{
@@ -62,8 +65,12 @@ async fn assert_storage_on_success() {
         MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
     );
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     authenticator
         .make_credential(request)
@@ -122,8 +129,12 @@ async fn assert_excluded_credentials() {
 
     shared_store.lock().await.insert(cred_id.into(), passkey);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     authenticator
         .make_credential(response)
@@ -138,7 +149,12 @@ async fn assert_excluded_credentials() {
 #[tokio::test]
 async fn assert_unsupported_algorithm() {
     let user_mock = MockUserValidationMethod::verified_user(0);
-    let mut authenticator = Authenticator::new(Aaguid::new_empty(), MemoryStore::new(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        MemoryStore::new(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     let request = Request {
         pub_key_cred_params: vec![webauthn::PublicKeyCredentialParameters {
@@ -162,8 +178,12 @@ async fn make_credential_counter_is_some_0_when_counters_are_enabled() {
     let shared_store = Arc::new(Mutex::new(None));
     let user_mock = MockUserValidationMethod::verified_user(1);
     let request = good_request();
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
     authenticator.set_make_credentials_with_signature_counter(true);
 
     // Act
@@ -179,8 +199,12 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     let request = Request {
         extensions: Some(ExtensionInputs {
@@ -206,8 +230,12 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
 async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     let request = Request {
         extensions: Some(ExtensionInputs::default()),
@@ -228,9 +256,13 @@ async fn supported_extension_with_empty_request_gives_no_ext_output() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
-            .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    )
+    .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
     let request = Request {
         extensions: Some(ExtensionInputs::default()),
@@ -251,9 +283,13 @@ async fn supported_extension_without_extension_request_gives_no_ext_output() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
-            .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    )
+    .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
     let request = good_request();
 
@@ -271,9 +307,13 @@ async fn supported_extension_with_request_gives_output() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
-            .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    )
+    .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
     let request = Request {
         extensions: Some(ExtensionInputs {
@@ -305,10 +345,13 @@ async fn hmac_secret_mc_happy_path() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock).hmac_secret(
-            extensions::HmacSecretConfig::new_with_uv_only().enable_on_make_credential(),
-        );
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    )
+    .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only().enable_on_make_credential());
 
     let request = Request {
         extensions: Some(ExtensionInputs {
@@ -351,10 +394,14 @@ async fn hmac_secret_mc_without_hmac_secret_support() {
     let shared_store = Arc::new(Mutex::new(MemoryStore::new()));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock)
-            //support on make credential is not set.
-            .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    )
+    //support on make credential is not set.
+    .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
     let request = Request {
         extensions: Some(ExtensionInputs {
@@ -428,7 +475,8 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
     let store = StoreWithoutDiscoverableSupport;
     let user_mock = MockUserValidationMethod::verified_user(0);
     let request = good_request();
-    let mut authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock);
+    let mut authenticator =
+        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
     authenticator.set_make_credentials_with_signature_counter(true);
 
     // Act
@@ -464,8 +512,12 @@ async fn empty_store_with_exclude_credentials_succeeds() {
         MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
     );
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     // This should succeed - an empty store means no credentials to exclude
     authenticator
@@ -491,8 +543,12 @@ async fn empty_exclude_credentials_with_empty_store_succeeds() {
         MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
     );
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     authenticator
         .make_credential(request)
@@ -545,8 +601,12 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
         MockUiHint::RequestNewCredential(request.user.clone().into(), request.rp.clone()),
     );
 
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), shared_store.clone(), user_mock);
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        user_mock,
+        RustCryptoBackend,
+    );
 
     // This should succeed - the store contains credentials, but not the excluded one
     authenticator

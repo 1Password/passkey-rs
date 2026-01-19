@@ -1,4 +1,5 @@
 use p256::ecdsa::{SigningKey, signature::SignerMut};
+use passkey_crypto::CryptoBackend;
 use passkey_types::{
     Bytes,
     ctap2::{
@@ -15,10 +16,11 @@ use crate::{
     user_validation::UiHint,
 };
 
-impl<S, U> Authenticator<S, U>
+impl<S, U, C> Authenticator<S, U, C>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
+    C: CryptoBackend,
 {
     /// This method is used by a host to request cryptographic proof of user authentication as well
     /// as user consent to a given transaction, using a previously generated credential that is

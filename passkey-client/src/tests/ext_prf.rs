@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use passkey_authenticator::extensions::HmacSecretConfig;
+use passkey_crypto::rust_crypto::RustCryptoBackend;
 use passkey_types::{
     crypto::hmac_sha256,
     ctap2::{AuthenticatorData, Flags},
@@ -31,6 +32,7 @@ async fn registration_without_eval() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(1),
+        RustCryptoBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
 
@@ -69,6 +71,7 @@ async fn registration_with_single_input_eval() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(1),
+        RustCryptoBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
@@ -138,6 +141,7 @@ async fn registration_with_eval_by_credential() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_user_check_skip(1),
+        RustCryptoBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -197,6 +201,7 @@ macro_rules! valid_authentication_with_prf {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_with_creation(2),
+                    RustCryptoBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -310,6 +315,7 @@ async fn auth_empty_allow_credentials() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_user_check_skip(2),
+        RustCryptoBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -364,6 +370,7 @@ macro_rules! invalid_eval_by_credential_in_authentication {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_user_check_skip(2),
+                    RustCryptoBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -437,6 +444,7 @@ macro_rules! compare_auth_calls {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_with_creation(3),
+                    RustCryptoBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -554,6 +562,7 @@ async fn registration_and_authentication_with_unsupported_authenticator_ignores_
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -602,6 +611,7 @@ async fn empty_extension_and_no_hmac_secret_support() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -648,6 +658,7 @@ async fn empty_extension_with_hmac_secret_support() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -697,6 +708,7 @@ async fn two_eval_by_credential_entries() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(3),
+        RustCryptoBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -812,8 +824,13 @@ async fn prf_already_hashed_does_not_hash_again() {
 
     let origin = Url::parse("https://future.1password.com").unwrap();
 
-    let auth = Authenticator::new(ctap2::Aaguid::new_empty(), None, uv_mock_with_creation(2))
-        .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        None,
+        uv_mock_with_creation(2),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
     let create_request = webauthn::CredentialCreationOptions {
         public_key: webauthn::PublicKeyCredentialCreationOptions {
@@ -901,8 +918,13 @@ async fn prf_takes_precedence_over_prf_already_hashed() {
 
     let origin = Url::parse("https://future.1password.com").unwrap();
 
-    let auth = Authenticator::new(ctap2::Aaguid::new_empty(), None, uv_mock_with_creation(2))
-        .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        None,
+        uv_mock_with_creation(2),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
     let create_request = webauthn::CredentialCreationOptions {
         public_key: webauthn::PublicKeyCredentialCreationOptions {

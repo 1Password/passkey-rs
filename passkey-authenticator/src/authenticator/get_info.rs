@@ -1,3 +1,4 @@
+use passkey_crypto::CryptoBackend;
 use passkey_types::{
     ctap2::get_info::{Options, Response, Version},
     webauthn::PublicKeyCredentialParameters,
@@ -7,7 +8,12 @@ use crate::{
     Authenticator, CredentialStore, UserValidationMethod, credential_store::DiscoverabilitySupport,
 };
 
-impl<S: CredentialStore, U: UserValidationMethod> Authenticator<S, U> {
+impl<S, U, C> Authenticator<S, U, C>
+where
+    S: CredentialStore,
+    U: UserValidationMethod,
+    C: CryptoBackend,
+{
     /// Using this method, the host can request that the authenticator report a list of all
     /// supported protocol versions, supported extensions, AAGUID of the device, and its capabilities.
     pub async fn get_info(&self) -> Box<Response> {
