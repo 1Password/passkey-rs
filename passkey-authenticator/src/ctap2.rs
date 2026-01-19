@@ -56,7 +56,7 @@ impl<S, U, C> Ctap2Api for Authenticator<S, U, C>
 where
     S: CredentialStore + Sync + Send,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync + Send,
-    C: CryptoBackend + Sync + Send,
+    C: CryptoBackend<SecretKey: Sync + Send> + Sync + Send,
 {
     async fn get_info(&self) -> Box<get_info::Response> {
         Authenticator::get_info(self).await
