@@ -1,26 +1,23 @@
 use coset::iana;
-use p256::{
-    SecretKey,
-    ecdsa::{
-        SigningKey,
-        signature::{Signer, Verifier},
-    },
+use p256::ecdsa::{
+    SigningKey,
+    signature::{Signer, Verifier},
 };
-use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_crypto::{
+    CryptoBackend, SecretKeyT,
+    rng::{Rng, RngBackend},
+    rust_crypto::RustCryptoBackend,
+};
 use passkey_types::ctap2::AuthenticatorData;
 
-use super::{CoseKeyPair, private_key_from_cose_key};
+use super::private_key_from_cose_key;
 
 #[test]
 fn private_key_cose_round_trip_sanity_check() {
-    let private_key = {
-        let mut rng = Rng::new();
-        SecretKey::random(&mut rng)
-    };
-    let CoseKeyPair {
-        private: private_cose,
-        ..
-    } = CoseKeyPair::from_secret_key(&private_key, iana::Algorithm::ES256);
+    let private_key = RustCryptoBackend
+        .generate_key(iana::Algorithm::ES256)
+        .expect("Backend does not support ES256");
+    let private_cose = private_key.to_cose_key();
     let public_signing_key = SigningKey::from(&private_key);
     let public_key = public_signing_key.verifying_key();
 

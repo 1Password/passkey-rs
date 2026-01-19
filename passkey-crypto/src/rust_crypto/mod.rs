@@ -1,8 +1,8 @@
-use coset::iana;
+use coset::{CoseKey, CoseKeyBuilder, iana};
 
 use crate::{CryptoBackend, PublicKeyT, SecretKeyT, SignatureT};
 
-pub struct RustCryptoBackend {}
+pub struct RustCryptoBackend;
 
 impl CryptoBackend for RustCryptoBackend {
     type Rng = ::rand::rngs::ThreadRng;
@@ -24,6 +24,21 @@ impl SecretKeyT for p256::SecretKey {
     type Signature = p256::ecdsa::Signature;
 
     type PublicKey = p256::PublicKey;
+
+    fn to_cose_key(&self) -> CoseKey {
+        let public_key = p256::ecdsa::SigningKey::from(self)
+            .verifying_key()
+            .to_encoded_point(false);
+        // SAFETY: These unwraps are safe because the public_key above is not compressed (false
+        // parameter) therefore x and y are guaranteed to contain values.
+        #[allow(deprecated)]
+        let x = public_key.x().unwrap().as_slice().to_vec();
+        #[allow(deprecated)]
+        let y = public_key.y().unwrap().as_slice().to_vec();
+        CoseKeyBuilder::new_ec2_priv_key(iana::EllipticCurve::P_256, x, y, self.to_bytes().to_vec())
+            .algorithm(iana::Algorithm::ES256)
+            .build()
+    }
 }
 
 impl PublicKeyT for p256::PublicKey {

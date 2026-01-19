@@ -1,6 +1,8 @@
-use coset::{CoseKeyBuilder, iana};
-use p256::{SecretKey, ecdsa::SigningKey};
-use passkey_crypto::rng::{Rng, RngBackend};
+use coset::iana;
+use passkey_crypto::{
+    CryptoBackend, SecretKeyT,
+    rng::{Rng, RngBackend},
+};
 
 use crate::{Passkey, StoredHmacSecret};
 
@@ -11,30 +13,13 @@ pub struct PasskeyBuilder {
 
 impl PasskeyBuilder {
     /// Create a new
-    pub(super) fn new(rp_id: String) -> Self {
-        let private_key = {
-            let mut rng = Rng::new();
-            SecretKey::random(&mut rng)
-        };
+    pub(super) fn new<C: CryptoBackend>(rp_id: String, crypto: C) -> Self {
+        // This expect is safe since this is test code and should never be used in production.
+        let private_key = crypto
+            .generate_key(iana::Algorithm::ES256)
+            .expect("The crypto backend does not support ES256");
 
-        let public_key = SigningKey::from(&private_key)
-            .verifying_key()
-            .to_encoded_point(false);
-        // SAFETY: These unwraps are safe because the public_key above is not compressed (false
-        // parameter) therefore x and y are guaranteed to contain values.
-        #[allow(deprecated)]
-        let x = public_key.x().unwrap().as_slice().to_vec();
-        #[allow(deprecated)]
-        let y = public_key.y().unwrap().as_slice().to_vec();
-        let private = CoseKeyBuilder::new_ec2_priv_key(
-            iana::EllipticCurve::P_256,
-            x,
-            y,
-            private_key.to_bytes().to_vec(),
-        )
-        .algorithm(iana::Algorithm::ES256)
-        .build();
-
+        let private = private_key.to_cose_key();
         Self {
             inner: Passkey {
                 key: private,
