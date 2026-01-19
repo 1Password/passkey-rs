@@ -81,7 +81,7 @@ impl HmacSecretCredentialSupport {
     }
 }
 
-impl<S, U> Authenticator<S, U> {
+impl<S, U, C> Authenticator<S, U, C> {
     pub(super) fn make_hmac_secret(
         &self,
         hmac_secret_request: Option<bool>,

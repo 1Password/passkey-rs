@@ -11,6 +11,7 @@
 //! [prf]: https://w3c.github.io/webauthn/#prf-extension
 
 use passkey_authenticator::{CredentialStore, StoreInfo, UserValidationMethod};
+use passkey_crypto::CryptoBackend;
 use passkey_types::{
     ctap2::{get_assertion, get_info, make_credential},
     webauthn::{
@@ -23,10 +24,11 @@ use crate::{Client, WebauthnError};
 
 mod prf;
 
-impl<S, U, P, F> Client<S, U, P, F>
+impl<S, U, C, P, F> Client<S, U, C, P, F>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod + Sync,
+    C: CryptoBackend,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
 {
     /// Create the extension inputs to be passed to an authenticator over CTAP2

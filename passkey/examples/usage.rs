@@ -2,7 +2,10 @@
 use passkey::{
     authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
-    crypto::rng::{Rng, RngBackend},
+    crypto::{
+        rng::{Rng, RngBackend},
+        rust_crypto::RustCryptoBackend,
+    },
     types::{Bytes, Passkey, crypto::sha256, ctap2::*, webauthn::*},
 };
 
@@ -50,7 +53,8 @@ async fn client_setup(
     // Create the CredentialStore for the Authenticator.
     // Option<Passkey> is the simplest possible implementation of CredentialStore
     let store: Option<Passkey> = None;
-    let my_authenticator = Authenticator::new(my_aaguid, store, user_validation_method);
+    let my_authenticator =
+        Authenticator::new(my_aaguid, store, user_validation_method, RustCryptoBackend);
 
     // Create the Client
     // If you are creating credentials, you need to declare the Client as mut
@@ -117,7 +121,8 @@ async fn authenticator_setup(
     let user_validation_method = MyUserValidationMethod {};
     let my_aaguid = Aaguid::new_empty();
 
-    let mut my_authenticator = Authenticator::new(my_aaguid, store, user_validation_method);
+    let mut my_authenticator =
+        Authenticator::new(my_aaguid, store, user_validation_method, RustCryptoBackend);
 
     let reg_request = make_credential::Request {
         client_data_hash: client_data_hash.clone(),

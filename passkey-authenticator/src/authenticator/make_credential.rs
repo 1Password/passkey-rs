@@ -1,5 +1,8 @@
 use p256::SecretKey;
-use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_crypto::{
+    CryptoBackend,
+    rng::{Rng, RngBackend},
+};
 use passkey_types::{
     Passkey,
     ctap2::{
@@ -10,10 +13,11 @@ use passkey_types::{
 
 use crate::{Authenticator, CoseKeyPair, CredentialStore, UiHint, UserValidationMethod};
 
-impl<S, U> Authenticator<S, U>
+impl<S, U, C> Authenticator<S, U, C>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
+    C: CryptoBackend,
 {
     /// This method is invoked by the host to request generation of a new credential in the authenticator.
     pub async fn make_credential(&mut self, input: Request) -> Result<Response, StatusCode> {

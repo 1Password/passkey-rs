@@ -1,5 +1,5 @@
 use coset::iana;
-use passkey_crypto::rng::RngBackend;
+use passkey_crypto::{CryptoBackend, rng::RngBackend};
 use passkey_types::{
     ctap2::{Aaguid, Ctap2Error, Flags},
     webauthn,
@@ -93,7 +93,7 @@ impl ValidationOptions for passkey_types::ctap2::get_assertion::Options {
 }
 
 /// A virtual authenticator with all the necessary state and information.
-pub struct Authenticator<S, U> {
+pub struct Authenticator<S, U, C> {
     /// The authenticator's AAGUID
     aaguid: Aaguid,
     /// Provides credential storage capabilities
@@ -120,15 +120,19 @@ pub struct Authenticator<S, U> {
 
     /// Supported authenticator extensions
     extensions: Extensions,
+
+    /// The cryptographic backend of the Authenticator
+    crypto: C,
 }
 
-impl<S, U> Authenticator<S, U>
+impl<S, U, C> Authenticator<S, U, C>
 where
     S: CredentialStore,
     U: UserValidationMethod,
+    C: CryptoBackend,
 {
     /// Create an authenticator with a known aaguid, a backing storage and a User verification system.
-    pub fn new(aaguid: Aaguid, store: S, user: U) -> Self {
+    pub fn new(aaguid: Aaguid, store: S, user: U, crypto: C) -> Self {
         Self {
             aaguid,
             store,
@@ -142,6 +146,7 @@ where
             make_credentials_with_signature_counter: false,
             credential_id_length: CredentialIdLength::default(),
             extensions: Extensions::default(),
+            crypto,
         }
     }
 

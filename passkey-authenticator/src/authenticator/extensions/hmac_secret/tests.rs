@@ -20,8 +20,13 @@ pub(crate) fn prf_eval_request(eval: Option<Vec<u8>>) -> AuthenticatorPrfInputs 
 
 #[test]
 fn hmac_secret_cycle_works() {
-    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
-        .hmac_secret(HmacSecretConfig::new_without_uv());
+    let auth = Authenticator::new(
+        Aaguid::new_empty(),
+        None,
+        MockUserValidationMethod::new(),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_without_uv());
 
     let ext = auth
         .make_hmac_secret(Some(true))
@@ -99,8 +104,13 @@ fn hmac_secret_cycle_works() {
 
 #[test]
 fn hmac_secret_cycle_works_with_one_cred() {
-    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
-        .hmac_secret(HmacSecretConfig::new_with_uv_only());
+    let auth = Authenticator::new(
+        Aaguid::new_empty(),
+        None,
+        MockUserValidationMethod::new(),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_with_uv_only());
 
     let ext = auth
         .make_hmac_secret(Some(true))
@@ -156,8 +166,13 @@ fn hmac_secret_cycle_works_with_one_cred() {
 
 #[test]
 fn hmac_secret_cycle_works_with_one_salt() {
-    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
-        .hmac_secret(HmacSecretConfig::new_with_uv_only());
+    let auth = Authenticator::new(
+        Aaguid::new_empty(),
+        None,
+        MockUserValidationMethod::new(),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_with_uv_only());
 
     let ext = auth
         .make_hmac_secret(Some(true))
