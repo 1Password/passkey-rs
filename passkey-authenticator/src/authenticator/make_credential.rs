@@ -1,4 +1,5 @@
 use p256::SecretKey;
+use passkey_crypto::rng::{Rng, RngBackend};
 use passkey_types::{
     Passkey,
     ctap2::{
@@ -111,10 +112,10 @@ where
             .await?;
 
         // 9. Generate a new credential key pair for the algorithm specified.
-        let credential_id = passkey_types::rand::random_vec(self.credential_id_length.into());
+        let credential_id = Rng::random_vec(self.credential_id_length.into());
 
         let private_key = {
-            let mut rng = rand::thread_rng();
+            let mut rng = Rng::new();
             SecretKey::random(&mut rng)
         };
 

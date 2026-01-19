@@ -6,14 +6,15 @@ use p256::{
         signature::{Signer, Verifier},
     },
 };
-use passkey_types::{ctap2::AuthenticatorData, rand::random_vec};
+use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_types::ctap2::AuthenticatorData;
 
 use super::{CoseKeyPair, private_key_from_cose_key};
 
 #[test]
 fn private_key_cose_round_trip_sanity_check() {
     let private_key = {
-        let mut rng = rand::thread_rng();
+        let mut rng = Rng::new();
         SecretKey::random(&mut rng)
     };
     let CoseKeyPair {
@@ -25,7 +26,7 @@ fn private_key_cose_round_trip_sanity_check() {
 
     let auth_data = AuthenticatorData::new("future.1password.com", None);
     let mut signature_target = auth_data.to_vec();
-    signature_target.extend(random_vec(32));
+    signature_target.extend(Rng::random_vec(32));
 
     let secret_key = private_key_from_cose_key(&private_cose).expect("to get a private key");
 

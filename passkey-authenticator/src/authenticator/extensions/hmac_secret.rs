@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+use passkey_crypto::rng::{Rng, RngBackend};
 use passkey_types::{
     crypto::hmac_sha256,
     ctap2::{
@@ -9,7 +10,6 @@ use passkey_types::{
             AuthenticatorPrfValues, HmacSecretSaltOrOutput,
         },
     },
-    rand::random_vec,
 };
 
 use crate::Authenticator;
@@ -96,8 +96,8 @@ impl<S, U> Authenticator<S, U> {
         }
 
         Some(passkey_types::StoredHmacSecret {
-            cred_with_uv: random_vec(32),
-            cred_without_uv: config.credentials.without_uv().then(|| random_vec(32)),
+            cred_with_uv: Rng::random_vec(32),
+            cred_without_uv: config.credentials.without_uv().then(|| Rng::random_vec(32)),
         })
     }
 

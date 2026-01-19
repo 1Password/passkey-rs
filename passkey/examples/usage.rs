@@ -2,7 +2,8 @@
 use passkey::{
     authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
-    types::{Bytes, Passkey, crypto::sha256, ctap2::*, rand::random_vec, webauthn::*},
+    crypto::rng::{Rng, RngBackend},
+    types::{Bytes, Passkey, crypto::sha256, ctap2::*, webauthn::*},
 };
 
 use coset::iana;
@@ -83,7 +84,7 @@ async fn client_setup(
 
     // Let's try and authenticate.
     // Create a challenge that would usually come from the RP.
-    let challenge_bytes_from_rp: Bytes = random_vec(32).into();
+    let challenge_bytes_from_rp: Bytes = Rng::random_vec(32).into();
     // Now try and authenticate
     let credential_request = CredentialRequestOptions {
         public_key: PublicKeyCredentialRequestOptions {
@@ -173,14 +174,14 @@ fn ctap2_other_error(code: StatusCode) {
 async fn main() -> Result<(), WebauthnError> {
     let rp_url = Url::parse("https://future.1password.com").expect("Should Parse");
     let user_entity = PublicKeyCredentialUserEntity {
-        id: random_vec(32).into(),
+        id: Rng::random_vec(32).into(),
         display_name: "Johnny Passkey".into(),
         name: "jpasskey@example.org".into(),
     };
 
     // Set up a client, create and authenticate a credential, then report results.
     let (created_cred, authed_cred) = client_setup(
-        random_vec(32).into(), // challenge_bytes_from_rp
+        Rng::random_vec(32).into(), // challenge_bytes_from_rp
         PublicKeyCredentialParameters {
             ty: PublicKeyCredentialType::PublicKey,
             alg: iana::Algorithm::ES256,

@@ -176,12 +176,12 @@ impl PrfValuesConfig {
         match self {
             PrfValuesConfig::None => None,
             PrfValuesConfig::One => Some(webauthn::AuthenticationExtensionsPrfValues {
-                first: Bytes::from(random_vec(128)),
+                first: Bytes::from(Rng::random_vec(128)),
                 second: None,
             }),
             PrfValuesConfig::Two => Some(webauthn::AuthenticationExtensionsPrfValues {
-                first: Bytes::from(random_vec(128)),
-                second: Some(Bytes::from(random_vec(128))),
+                first: Bytes::from(Rng::random_vec(128)),
+                second: Some(Bytes::from(Rng::random_vec(128))),
             }),
         }
     }
@@ -316,7 +316,7 @@ async fn auth_empty_allow_credentials() {
 
     let origin = Url::parse("https://future.1password.com").unwrap();
     let eval_by_cred = webauthn::AuthenticationExtensionsPrfValues {
-        first: Bytes::from(random_vec(128)),
+        first: Bytes::from(Rng::random_vec(128)),
         second: None,
     };
     let options = good_credential_creation_options_with_prf(Some(eval_by_cred.clone()));
@@ -369,7 +369,7 @@ macro_rules! invalid_eval_by_credential_in_authentication {
                 let mut client = Client::new(auth);
 
                 let eval_by_cred = webauthn::AuthenticationExtensionsPrfValues {
-                    first: Bytes::from(random_vec(128)),
+                    first: Bytes::from(Rng::random_vec(128)),
                     second: None,
                 };
 
@@ -417,7 +417,7 @@ macro_rules! invalid_eval_by_credential_in_authentication {
 invalid_eval_by_credential_in_authentication! {
     auth_empty_key_in_eval_by_credential: String::from(""),
     auth_invalid_base64url_key_in_eval_by_credential: String::from("xyz"),
-    auth_no_matching_credential_id_in_allow_credentials: String::from(Bytes::from(random_vec(64)))
+    auth_no_matching_credential_id_in_allow_credentials: String::from(Bytes::from(Rng::random_vec(64)))
 }
 
 #[cfg(test)]
@@ -441,8 +441,8 @@ macro_rules! compare_auth_calls {
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
 
-                let mut first = Bytes::from(random_vec(128));
-                let mut second = Some(Bytes::from(random_vec(128)));
+                let mut first = Bytes::from(Rng::random_vec(128));
+                let mut second = Some(Bytes::from(Rng::random_vec(128)));
 
                 let eval_by_cred = webauthn::AuthenticationExtensionsPrfValues {
                     first: first.clone(),
@@ -486,8 +486,8 @@ macro_rules! compare_auth_calls {
                     .expect("failed to authenticate with PRF input");
 
                 if $same_inputs == SameInputs::No {
-                    first = Bytes::from(random_vec(128));
-                    second = Some(Bytes::from(random_vec(128)));
+                    first = Bytes::from(Rng::random_vec(128));
+                    second = Some(Bytes::from(Rng::random_vec(128)));
                 }
 
                 let auth_options = webauthn::CredentialRequestOptions {
@@ -702,8 +702,8 @@ async fn two_eval_by_credential_entries() {
     let mut client = Client::new(auth);
 
     let eval_values = webauthn::AuthenticationExtensionsPrfValues {
-        first: Bytes::from(random_vec(128)),
-        second: Some(Bytes::from(random_vec(128))),
+        first: Bytes::from(Rng::random_vec(128)),
+        second: Some(Bytes::from(Rng::random_vec(128))),
     };
 
     let origin = Url::parse("https://future.1password.com").unwrap();
@@ -739,8 +739,8 @@ async fn two_eval_by_credential_entries() {
         .expect("failed to authenticate with PRF input");
 
     let eval_values_2 = webauthn::AuthenticationExtensionsPrfValues {
-        first: Bytes::from(random_vec(128)),
-        second: Some(Bytes::from(random_vec(128))),
+        first: Bytes::from(Rng::random_vec(128)),
+        second: Some(Bytes::from(Rng::random_vec(128))),
     };
 
     let mut cred_id_2 = cred_id.clone();

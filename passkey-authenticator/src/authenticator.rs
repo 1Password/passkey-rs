@@ -1,4 +1,5 @@
 use coset::iana;
+use passkey_crypto::rng::RngBackend;
 use passkey_types::{
     ctap2::{Aaguid, Ctap2Error, Flags},
     webauthn,
@@ -38,8 +39,8 @@ impl CredentialIdLength {
     const MAX: u8 = 64;
 
     /// Generates and returns a uniformly random [CredentialIdLength].
-    pub fn randomized(rng: &mut impl rand::Rng) -> Self {
-        let length = rng.gen_range(Self::MIN..=Self::MAX);
+    pub fn randomized<Rng: RngBackend>() -> Self {
+        let length = Rng::from_range(Self::MIN..=Self::MAX);
         Self(length)
     }
 }

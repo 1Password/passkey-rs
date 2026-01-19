@@ -8,4 +8,3 @@ pub(crate) mod serde_workaround;
 
 pub mod crypto;
 pub mod encoding;
-pub mod rand;
