@@ -17,6 +17,7 @@ workspace = true
 
 [features]
 default = []
+js = ["passkey-crypto/js"]
 serialize_bytes_as_base64_string = []
 testable = ["dep:p256"]
 typeshare = ["dep:typeshare"]

@@ -17,6 +17,7 @@ workspace = true
 
 [features]
 default = []
+js = ["passkey-crypto/js"]
 testable = ["dep:mockall", "passkey-types/testable"]
 tokio = ["dep:tokio"]
 linux = ["dep:ciborium", "dep:tokio", "dep:passkey-transports", "tokio/macros", "passkey-transports/linux"]

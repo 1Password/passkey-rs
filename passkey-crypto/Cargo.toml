@@ -12,7 +12,16 @@ repository.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
+[features]
+default = ["rand"]
+rand = ["dep:rand", "dep:getrandom"]
+js = ["getrandom/js"]
+
 [dependencies]
+rand = { version = "0.8", optional = true , features = ["min_const_gen"]}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", optional = true }
 
 [lints]
 workspace = true
