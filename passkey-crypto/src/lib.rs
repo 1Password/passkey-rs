@@ -20,7 +20,7 @@ pub trait SecretKeyT {
     type PublicKey: PublicKeyT<Signature = Self::Signature>;
     // fn sign(&mut self, target: &[u8]) -> Self::Signature;
     // fn public_key(&self) -> Self::PublicKey;
-    // fn to_cose_key(&self) -> CoseKey;
+    fn to_cose_key(&self) -> CoseKey;
 }
 
 pub trait PublicKeyT {

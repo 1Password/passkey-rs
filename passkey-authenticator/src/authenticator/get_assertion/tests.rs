@@ -1,4 +1,5 @@
 use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_crypto::rust_crypto::RustCryptoBackend;
 use passkey_types::{
     Passkey, StoredHmacSecret,
     ctap2::{
@@ -14,7 +15,7 @@ use crate::{
 };
 
 fn create_passkey(hmac_secret: Option<Vec<u8>>) -> Passkey {
-    let builder = Passkey::mock("example.com".into());
+    let builder = Passkey::mock("example.com".into(), RustCryptoBackend);
 
     if let Some(hs) = hmac_secret {
         builder.hmac_secret(StoredHmacSecret {

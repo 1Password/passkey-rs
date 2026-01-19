@@ -1,3 +1,4 @@
+use passkey_crypto::rust_crypto::RustCryptoBackend;
 use passkey_types::{Passkey, ctap2::Aaguid};
 
 use crate::{Authenticator, MockUserValidationMethod};
@@ -27,7 +28,7 @@ fn hmac_secret_cycle_works() {
         .expect("There should be passkey extensions");
     assert!(ext.cred_without_uv.is_some());
 
-    let passkey = Passkey::mock("sneakernetsend.com".into())
+    let passkey = Passkey::mock("sneakernetsend.com".into(), RustCryptoBackend)
         .hmac_secret(ext)
         .build();
 
@@ -106,7 +107,7 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .expect("There should be passkey extensions");
     assert!(ext.cred_without_uv.is_none());
 
-    let passkey = Passkey::mock("sneakernetsend.com".into())
+    let passkey = Passkey::mock("sneakernetsend.com".into(), RustCryptoBackend)
         .hmac_secret(ext)
         .build();
 
@@ -163,7 +164,7 @@ fn hmac_secret_cycle_works_with_one_salt() {
         .expect("There should be passkey extensions");
     assert!(ext.cred_without_uv.is_none());
 
-    let passkey = Passkey::mock("sneakernetsend.com".into())
+    let passkey = Passkey::mock("sneakernetsend.com".into(), RustCryptoBackend)
         .hmac_secret(ext)
         .build();
 
