@@ -1,12 +1,32 @@
 //! Sample App for Linux Client
+use std::io::{stdin, stdout, Write};
+
 use passkey::{
     client::{linux::LinuxClient, WebauthnError},
     types::{Bytes, rand::random_vec, webauthn::*},
 };
 
 use coset::iana;
-use passkey_client::DefaultClientData;
+use passkey_client::{linux::{PinPrompt, PinPromptError}, DefaultClientData};
 use url::Url;
+use zeroize::Zeroizing;
+
+struct MyPinPrompt;
+
+#[async_trait::async_trait]
+impl PinPrompt for MyPinPrompt {
+     async fn prompt_authenticator_selection(&self, num_authenticators: usize) -> Result<(), PinPromptError> {
+        println!("Touch one of the {} attached authenticator devices to select it.", num_authenticators);
+        Ok(())
+    }
+     async fn request_pin(&self, attempts_remaining: u32) -> Result<Zeroizing<String>, PinPromptError> {
+         print!("Enter PIN ({} attempts remaining): ", attempts_remaining);
+         stdout().flush().map_err(|e| PinPromptError::Other(Box::new(e)))?;
+         let mut buf = String::new();
+         stdin().read_line(&mut buf).map_err(|e| PinPromptError::Other(Box::new(e)))?;
+         Ok(Zeroizing::new(buf.trim_ascii().into()))
+    }
+}
 
 // Example of how to set up, register and authenticate with a `Client`.
 async fn client_setup(
@@ -16,7 +36,7 @@ async fn client_setup(
     user_entity: PublicKeyCredentialUserEntity,
 ) -> Result<(CreatedPublicKeyCredential, AuthenticatedPublicKeyCredential), WebauthnError> {
     // Create the Client
-    let my_client = LinuxClient::open_all().await.unwrap().user_verification_when_preferred(false);
+    let my_client = LinuxClient::open_all(Box::new(MyPinPrompt)).await.unwrap().user_verification_when_preferred(false);
 
     // The following values, provided as parameters to this function would usually be
     // retrieved from a Relying Party according to the context of the application.
@@ -43,6 +63,7 @@ async fn client_setup(
     };
 
     // Now create the credential.
+    println!("Attempting credential creation");
     let my_webauthn_credential = my_client
         .register(origin, request, DefaultClientData)
         .await?;
@@ -65,6 +86,7 @@ async fn client_setup(
         },
     };
 
+    println!("Attempting authentication");
     let authenticated_cred = my_client
         .authenticate(origin, credential_request, DefaultClientData)
         .await?;

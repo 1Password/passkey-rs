@@ -18,11 +18,13 @@
 use std::io;
 use std::path::Path;
 
+use p256::SecretKey;
 use passkey_transports::hid::{Command, Message};
 use passkey_transports::hidraw::{DeviceInfo, HidDevice, HidrawError, enumerate_fido_devices};
 use passkey_types::ctap2::{
-    Ctap2Error, StatusCode, U2FError, get_assertion, get_info, make_credential,
+    client_pin, get_assertion, get_info, make_credential, Ctap2Code, Ctap2Error, StatusCode, U2FError
 };
+use passkey_types::Bytes;
 use tokio::sync::Mutex;
 
 use crate::Ctap2Api;
@@ -36,6 +38,28 @@ const CTAP_CMD_MAKE_CREDENTIAL: u8 = 0x01;
 const CTAP_CMD_GET_ASSERTION: u8 = 0x02;
 /// CTAP2 command byte for `authenticatorGetInfo`.
 const CTAP_CMD_GET_INFO: u8 = 0x04;
+/// CTAP2 command byte for `authenticatorClientPin`
+const CTAP_CMD_CLIENT_PIN: u8 = 0x06;
+/// CTAP2 subcommand byte for `getPinRetries`.
+const CTAP_GET_PIN_RETRIES: u8 = 0x01;
+/// CTAP2 subcommand byte for `getKeyAgreement`.
+const CTAP_GET_KEY_AGREEMENT: u8 = 0x02;
+/// CTAP2 subcommand byte for `getPinToken`.
+const CTAP_GET_PIN_TOKEN: u8 = 0x05;
+/// CTAP2 subcommand byte for
+/// `getPinUvAuthTokenUsingUvWithPermissions`.
+const CTAP_GET_PIN_UV_AUTH_TOKEN_USING_UV_WITH_PERMISSIONS: u8 = 0x06;
+/// CTAP2 subcommand byte for
+/// `getPinUvAuthTokenUsingPinWithPermissions`.
+const CTAP_GET_PIN_UV_AUTH_TOKEN_USING_PIN_WITH_PERMISSIONS: u8 = 0x09;
+/// CTAP2 command byte for `authenticatorSelection`
+const CTAP_CMD_AUTHENTICATOR_SELECTION: u8 = 0x0B;
+
+pub enum GetPinUvAuthTokenOp {
+    GetPinUvAuthTokenUsingUvWithPermissions,
+    GetPinUvAuthTokenUsingPinWithPermissions,
+    GetPinToken,
+}
 
 /// Errors that can occur while constructing a [`LinuxAuthenticator`].
 #[derive(Debug)]
@@ -112,6 +136,27 @@ impl LinuxAuthenticator {
         enumerate_fido_devices()
     }
 
+    /// Whether builtin UV is configured for this device.
+    pub fn uv_configured(&self) -> bool {
+        self.info().options.and_then(|o| o.uv).unwrap_or(false)
+    }
+
+    /// Whether a PIN is configured for this device.
+    pub fn pin_configured(&self) -> bool {
+        self.info().options.and_then(|o| o.client_pin).unwrap_or(false)
+    }
+
+    /// Whether this device supports storing resident keys.
+    pub fn rk_supported(&self) -> bool {
+        self.info().options.is_some_and(|o| o.rk)
+    }
+
+    /// Whether the authenticator supports authenticatorClientPIN's
+    /// getPinUvAuthTokenUsingUvWithPermissions subcommand.
+    pub fn pin_uv_auth_token_supported(&self) -> bool {
+        self.info().options.map(|o| o.pin_uv_auth_token == Some(true)).unwrap_or(false)
+    }
+
     /// Open a specific `/dev/hidrawN` path, run `CTAPHID_INIT` to obtain a private
     /// channel, and prime the cached `authenticatorGetInfo` response.
     pub async fn open(path: &Path) -> Result<Self, OpenError> {
@@ -140,6 +185,23 @@ impl LinuxAuthenticator {
     /// Capabilities reported by the device in its `CTAPHID_INIT` response.
     pub fn capabilities(&self) -> Capabilities {
         self.capabilities
+    }
+    
+    pub async fn authenticator_selection(
+        &self,
+    ) -> Result<(), StatusCode> {
+        let _guard = self.txn_lock.lock().await;
+        let response = send_cbor(&self.device, self.channel, CTAP_CMD_AUTHENTICATOR_SELECTION, &[])
+            .await;
+        if let Err(
+            TransactionError::Status(StatusCode::Ctap2(
+                Ctap2Code::Known(Ctap2Error::Ok)
+            ))
+        ) = response {
+            return Ok(());
+        } else {
+            response.map(|_| ()).map_err(StatusCode::from)
+        }
     }
 
     /// Issue `authenticatorMakeCredential` against the device. Holds an internal mutex for the
@@ -191,6 +253,149 @@ impl LinuxAuthenticator {
     /// Read and decode the cached `authenticatorGetInfo` response.
     pub fn info(&self) -> get_info::Response {
         ciborium::de::from_reader(self.get_info_cbor.as_slice()).unwrap_or_default()
+    }
+
+    /// Fetch public key from device using the given protocol.
+    pub async fn get_public_key(&self, protocol: u8) -> Result<coset::CoseKey, StatusCode>  {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: CTAP_GET_KEY_AGREEMENT,
+            key_agreement: None,
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let _guard = self.txn_lock.lock().await;
+        let response = send_cbor(&self.device, self.channel, CTAP_CMD_CLIENT_PIN, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.as_slice()).unwrap();
+        // TODO: remove this expect
+        Ok(response.key_agreement.expect("should have a key agreement"))
+    }
+
+    pub async fn get_pin_token(
+        &self,
+        protocol: u8,
+        key_agreement: coset::CoseKey,
+        pin_hash_enc: Bytes,
+    ) -> Result<Bytes, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: CTAP_GET_PIN_TOKEN,
+            key_agreement: Some(key_agreement),
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: Some(pin_hash_enc),
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let _guard = self.txn_lock.lock().await;
+        let response = send_cbor(&self.device, self.channel, CTAP_CMD_CLIENT_PIN, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.as_slice()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
+    }
+
+    pub async fn get_pin_uv_auth_token_using_uv(
+        &self,
+        protocol: u8,
+        key_agreement: coset::CoseKey,
+        permissions: client_pin::Permissions,
+        // rp_id is required for both make_credential and get_assertion, but we leave
+        // it as an Option here in case we need to add support for other permissions and don't
+        // want to break backwards compatibility.
+        rp_id: Option<String>,
+    ) -> Result<Bytes, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: CTAP_GET_PIN_UV_AUTH_TOKEN_USING_UV_WITH_PERMISSIONS,
+            key_agreement: Some(key_agreement),
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: Some(permissions),
+            rp_id,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let _guard = self.txn_lock.lock().await;
+        let response = send_cbor(&self.device, self.channel, CTAP_CMD_CLIENT_PIN, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.as_slice()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
+    }
+
+    pub async fn get_pin_uv_auth_token_using_pin(
+        &self,
+        protocol: u8,
+        key_agreement: coset::CoseKey,
+        pin_hash_enc: Bytes,
+        permissions: client_pin::Permissions,
+        // rp_id is required for both make_credential and get_assertion, but we leave
+        // it as an Option here in case we need to add support for other permissions and don't
+        // want to break backwards compatibility.
+        rp_id: Option<String>,
+    ) -> Result<Bytes, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: CTAP_GET_PIN_UV_AUTH_TOKEN_USING_PIN_WITH_PERMISSIONS,
+            key_agreement: Some(key_agreement),
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: Some(pin_hash_enc),
+            permissions: Some(permissions),
+            rp_id,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let _guard = self.txn_lock.lock().await;
+        let response = send_cbor(&self.device, self.channel, CTAP_CMD_CLIENT_PIN, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.as_slice()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
+    }
+
+    pub async fn get_pin_retries(
+        &self,
+        protocol: u8,
+    ) -> Result<u32, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: CTAP_GET_PIN_RETRIES,
+            key_agreement: None,
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let _guard = self.txn_lock.lock().await;
+        let response = send_cbor(&self.device, self.channel, CTAP_CMD_CLIENT_PIN, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.as_slice()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_retries.expect("Should have pin retries"))
     }
 }
 
