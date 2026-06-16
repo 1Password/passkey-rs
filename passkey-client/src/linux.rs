@@ -22,7 +22,7 @@
 use std::sync::{Arc, Mutex};
 
 use coset::{Algorithm, iana::EnumI64};
-use passkey_authenticator::linux::{GetPinUvAuthTokenOp, LinuxAuthenticator, OpenError};
+use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
 use passkey_authenticator::public_key_der_from_cose_key;
 use passkey_types::crypto::{aes_256_cbc, hmac_sha256};
 use passkey_types::ctap2::client_pin::Permissions;
@@ -44,7 +44,8 @@ use tokio::sync::mpsc;
 
 use crate::{ClientData, Fetcher, Origin, RpIdVerifier, WebauthnError};
 
-/// 
+/// Trait to be implemented by the consumer that allows custom logic for displaying a PIN
+/// prompt/authenticator selection request.
 #[async_trait::async_trait]
 pub trait PinPrompt: Send + Sync {
     /// Prompt user to provide User Presence to a particular authenticator to select it for use.
@@ -66,6 +67,16 @@ pub enum PinPromptError {
     /// Any other error.
     Other(Box<dyn std::error::Error + Send + Sync>),
 }
+
+// Allow "redundant" prefixes - these are the names of the actual authenticatorClientPin
+// subcommands
+#[allow(clippy::enum_variant_names)]
+enum GetPinUvAuthTokenOp {
+    GetPinUvAuthTokenUsingUvWithPermissions,
+    GetPinUvAuthTokenUsingPinWithPermissions,
+    GetPinToken,
+}
+
 
 /// A WebAuthn client backed by zero or more USB security keys serving as authenticators.
 pub struct LinuxClient<P, F>
@@ -169,16 +180,15 @@ where
     async fn get_valid_devices(
         &self,
         uv: bool,
-        rp_id: &String,
+        rp_id: &str,
     ) -> Result<&[Arc<LinuxAuthenticatorWithToken>], WebauthnError> {
         // Determine if any device has been configured to use built-in UV or a PIN.
         let any_device_requires_uv = self
             .devices
             .iter()
-            .map(|device| 
+            .any(|device| 
                 device.authenticator.uv_configured() || device.authenticator.pin_configured()
-            )
-            .fold(false, |acc, e| acc || e);
+            );
 
         // We need to prompt the user to provide UV if the request requires user verification OR if
         // any device requires UV. In order to do this, we first need them to provide UP to an authenticator
@@ -229,7 +239,7 @@ where
         &self,
         selected_device: &LinuxAuthenticatorWithToken,
         selected_operation: Option<GetPinUvAuthTokenOp>,
-        rp_id: &String,
+        rp_id: &str,
     ) -> Result<(), WebauthnError> {
         let token_and_protocol = match selected_operation {
             None => None,
@@ -237,7 +247,7 @@ where
                 // Obtain platform key-agreement key and shared secret.
                 let pin_uv_auth_protocol = 1;
                 let public_key = selected_device.authenticator.get_public_key(pin_uv_auth_protocol).await?;
-                let (platform_key_agreement_key, shared_secret) = self.pin_uv_auth_protocol_state.encapsulate(&public_key).map_err(|e| StatusCode::from(e))?;
+                let (platform_key_agreement_key, shared_secret) = self.pin_uv_auth_protocol_state.encapsulate(&public_key).map_err(StatusCode::from)?;
                 let permissions = Permissions::MC | Permissions::GA;
                 let encrypted_token = match op {
                     GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingPinWithPermissions => {
@@ -246,25 +256,23 @@ where
                         let encrypted_pin = aes_256_cbc(
                             shared_secret,
                             [0; 16],
-                            &sha256(&pin.as_bytes())[0..16]
+                            &sha256(pin.as_bytes())[0..16]
                         ).into();
-                        let token = selected_device.authenticator.get_pin_uv_auth_token_using_pin(
+                        selected_device.authenticator.get_pin_uv_auth_token_using_pin(
                             pin_uv_auth_protocol,
                             platform_key_agreement_key,
                             encrypted_pin,
                             permissions,
-                            Some(rp_id.clone()),
-                        ).await?;
-                        token
+                            Some(rp_id.to_owned()),
+                        ).await?
                     }
                     GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingUvWithPermissions => {
-                        let token = selected_device.authenticator.get_pin_uv_auth_token_using_uv(
+                        selected_device.authenticator.get_pin_uv_auth_token_using_uv(
                             pin_uv_auth_protocol,
                             platform_key_agreement_key,
                             permissions,
-                            Some(rp_id.clone()),
-                        ).await?;
-                        token
+                            Some(rp_id.to_owned()),
+                        ).await?
                     }
                     GetPinUvAuthTokenOp::GetPinToken => {
                         let attempts_remaining = selected_device.authenticator.get_pin_retries(pin_uv_auth_protocol).await?;
@@ -272,14 +280,13 @@ where
                         let encrypted_pin = aes_256_cbc(
                             shared_secret,
                             [0; 16],
-                            &sha256(&pin.as_bytes())[0..16]
+                            &sha256(pin.as_bytes())[0..16]
                         ).into();
-                        let token = selected_device.authenticator.get_pin_token(
+                        selected_device.authenticator.get_pin_token(
                             pin_uv_auth_protocol,
                             platform_key_agreement_key,
                             encrypted_pin,
-                        ).await?;
-                        token
+                        ).await?
                     }
                 };
 
@@ -374,7 +381,7 @@ where
                 continue;
             }
 
-            let (pin_auth, pin_protocol) = self.get_pin_auth_and_protocol(&device, client_data_hash.as_slice());
+            let (pin_auth, pin_protocol) = self.get_pin_auth_and_protocol(device, client_data_hash.as_slice());
             let request = ctap2::make_credential::Request {
                 client_data_hash: client_data_hash.clone().into(),
                 rp: ctap2::make_credential::PublicKeyCredentialRpEntity {
@@ -390,7 +397,7 @@ where
                 pin_protocol,
             };
             *device.token_with_protocol.lock().unwrap() = None;
-            candidates.push((Arc::clone(&device), request));
+            candidates.push((Arc::clone(device), request));
         }
 
         if candidates.is_empty() {
@@ -403,7 +410,7 @@ where
             .auth_data
             .attested_credential_data
             .as_ref()
-            .ok_or_else(|| WebauthnError::AuthenticatorError(0x7F))?;
+            .ok_or(WebauthnError::AuthenticatorError(0x7F))?;
         let alg = match credential_id.key.alg.as_ref() {
             Some(Algorithm::PrivateUse(val)) => *val,
             Some(Algorithm::Assigned(a)) => EnumI64::to_i64(a),
@@ -476,7 +483,7 @@ where
                 continue;
             }
 
-            let (pin_auth, pin_protocol) = self.get_pin_auth_and_protocol(&device, client_data_hash.as_slice());
+            let (pin_auth, pin_protocol) = self.get_pin_auth_and_protocol(device, client_data_hash.as_slice());
             let request = ctap2::get_assertion::Request {
                 rp_id: rp_id.clone(),
                 client_data_hash: client_data_hash.clone().into(),
@@ -490,7 +497,7 @@ where
                 pin_protocol,
             };
             *device.token_with_protocol.lock().unwrap() = None;
-            candidates.push((Arc::clone(&device), request));
+            candidates.push((Arc::clone(device), request));
         }
 
         if candidates.is_empty() {

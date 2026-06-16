@@ -185,7 +185,10 @@ fn device_has_fido_usage(file: &File) -> io::Result<bool> {
     let Ok(size) = u32::try_from(size) else {
         return Ok(false);
     };
-    if size as usize > HID_MAX_DESCRIPTOR_SIZE {
+    let Ok(size_usize) = usize::try_from(size) else {
+        return Ok(false);
+    };
+    if size_usize > HID_MAX_DESCRIPTOR_SIZE {
         return Ok(false);
     }
 
@@ -198,7 +201,7 @@ fn device_has_fido_usage(file: &File) -> io::Result<bool> {
     // by HID_MAX_DESCRIPTOR_SIZE, so the kernel will not write past the buffer.
     unsafe { ioctls::hidiocgrdesc(fd, &mut desc) }.map_err(io::Error::from)?;
 
-    Ok(report_descriptor_has_fido_usage(&desc.value[..size as usize]))
+    Ok(report_descriptor_has_fido_usage(&desc.value[..size_usize]))
 }
 
 /// Walk an HID report descriptor and return whether it includes a `Usage Page (0xF1D0)` item.

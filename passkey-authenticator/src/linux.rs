@@ -18,7 +18,6 @@
 use std::io;
 use std::path::Path;
 
-use p256::SecretKey;
 use passkey_transports::hid::{Command, Message};
 use passkey_transports::hidraw::{DeviceInfo, HidDevice, HidrawError, enumerate_fido_devices};
 use passkey_types::ctap2::{
@@ -54,12 +53,6 @@ const CTAP_GET_PIN_UV_AUTH_TOKEN_USING_UV_WITH_PERMISSIONS: u8 = 0x06;
 const CTAP_GET_PIN_UV_AUTH_TOKEN_USING_PIN_WITH_PERMISSIONS: u8 = 0x09;
 /// CTAP2 command byte for `authenticatorSelection`
 const CTAP_CMD_AUTHENTICATOR_SELECTION: u8 = 0x0B;
-
-pub enum GetPinUvAuthTokenOp {
-    GetPinUvAuthTokenUsingUvWithPermissions,
-    GetPinUvAuthTokenUsingPinWithPermissions,
-    GetPinToken,
-}
 
 /// Errors that can occur while constructing a [`LinuxAuthenticator`].
 #[derive(Debug)]
@@ -187,6 +180,8 @@ impl LinuxAuthenticator {
         self.capabilities
     }
     
+    /// Issue an `authenticatorSelection` command against the device. Returns when the user
+    /// provides UP on the device.
     pub async fn authenticator_selection(
         &self,
     ) -> Result<(), StatusCode> {
@@ -198,7 +193,7 @@ impl LinuxAuthenticator {
                 Ctap2Code::Known(Ctap2Error::Ok)
             ))
         ) = response {
-            return Ok(());
+            Ok(())
         } else {
             response.map(|_| ()).map_err(StatusCode::from)
         }
@@ -279,6 +274,8 @@ impl LinuxAuthenticator {
         Ok(response.key_agreement.expect("should have a key agreement"))
     }
 
+    /// `getPinToken` subcommand of `authenticatorClientPin`. Superseded by
+    /// `getPinUvAuthTokenUsingPinWithPermissions`.
     pub async fn get_pin_token(
         &self,
         protocol: u8,
@@ -307,6 +304,8 @@ impl LinuxAuthenticator {
         Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
     }
 
+    /// `getPinUvAuthTokenUsingUvWithPermissions` subcommand of `authenticatorClientPin`.
+    /// Uses UV method built in to the authenticator to obtain token.
     pub async fn get_pin_uv_auth_token_using_uv(
         &self,
         protocol: u8,
@@ -339,6 +338,8 @@ impl LinuxAuthenticator {
         Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
     }
 
+    /// `getPinUvAuthTokenUsingPinWithPermissions` subcommand of `authenticatorClientPin`.
+    /// Uses PIN configured on the authenticator to obtain token.
     pub async fn get_pin_uv_auth_token_using_pin(
         &self,
         protocol: u8,
@@ -372,6 +373,9 @@ impl LinuxAuthenticator {
         Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
     }
 
+    /// `getPinRetries` subcommand of `authenticatorClientPin`.
+    /// Returns the number of times PIN authentication can fail before the authenticator's data is
+    /// wiped and it is fully reset.
     pub async fn get_pin_retries(
         &self,
         protocol: u8,

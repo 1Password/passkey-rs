@@ -123,6 +123,7 @@ pub mod cose_key {
         serde::Serialize::serialize(&cbor, ser)
     }
 
+    #[allow(dead_code)]
     pub fn deserialize<'de, D>(de: D) -> Result<coset::CoseKey, D::Error>
     where
         D: serde::Deserializer<'de>,
