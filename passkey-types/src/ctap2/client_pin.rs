@@ -25,7 +25,7 @@ serde_workaround! {
         )]
         pub key_agreement: Option<coset::CoseKey>,
 
-        /// The output of calling PinProtocol::authenticate on some context specific to the subcommand. 
+        /// The output of calling PinProtocol::authenticate on some context specific to the subcommand.
         #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub pin_uv_auth_param: Option<Bytes>,
 
@@ -33,11 +33,11 @@ serde_workaround! {
         #[serde(rename = 0x05; default, skip_serializing_if = Option::is_none)]
         pub new_pin_enc: Option<Bytes>,
 
-        /// An encrypted proof-of-knowledge of a PIN. 
+        /// An encrypted proof-of-knowledge of a PIN.
         #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub pin_hash_enc: Option<Bytes>,
 
-        /// Bitfield of permissions for the requested auth token. If present, MUST NOT be 0. 
+        /// Bitfield of permissions for the requested auth token. If present, MUST NOT be 0.
         #[serde(rename = 0x09; default, skip_serializing_if = Option::is_none)]
         pub permissions: Option<Permissions>,
 
@@ -61,7 +61,7 @@ serde_workaround! {
         )]
         pub key_agreement: Option<coset::CoseKey>,
 
-        /// The pinUvAuthToken, encrypted by calling aes-256-cbc with the shared secret as the key. 
+        /// The pinUvAuthToken, encrypted by calling aes-256-cbc with the shared secret as the key.
         #[serde(rename = 0x02; default, skip_serializing_if = Option::is_none)]
         pub pin_uv_auth_token: Option<Bytes>,
 
@@ -73,7 +73,7 @@ serde_workaround! {
         #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub power_cycle_state: Option<bool>,
 
-        /// Number of uv attempts remaining before lockout. 
+        /// Number of uv attempts remaining before lockout.
         #[serde(rename = 0x05; default, skip_serializing_if = Option::is_none)]
         pub uv_retries: Option<u32>,
     }

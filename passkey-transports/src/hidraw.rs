@@ -16,8 +16,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use hidparser::ReportField;
-use rand::rngs::ChaCha20Rng;
 use rand::Rng;
+use rand::rngs::ChaCha20Rng;
 use tokio::io::Interest;
 use tokio::io::unix::AsyncFd;
 use tokio::time::timeout;
@@ -84,7 +84,9 @@ impl std::fmt::Display for HidrawError {
         match self {
             HidrawError::Io(e) => write!(f, "I/O error: {e}"),
             HidrawError::Protocol(s) => write!(f, "protocol error: {s}"),
-            HidrawError::MessageTooLarge => f.write_str("message too large to fit in CTAPHID frame"),
+            HidrawError::MessageTooLarge => {
+                f.write_str("message too large to fit in CTAPHID frame")
+            }
             HidrawError::Timeout => f.write_str("timed out waiting for response"),
         }
     }
@@ -347,7 +349,9 @@ impl HidDevice {
                     if n != MAX_PACKET_SIZE {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
-                            format!("HID report had unexpected size: got {n} bytes, expected {MAX_PACKET_SIZE}"),
+                            format!(
+                                "HID report had unexpected size: got {n} bytes, expected {MAX_PACKET_SIZE}"
+                            ),
                         ));
                     }
                     return Ok(buf);
@@ -419,7 +423,9 @@ impl HidDevice {
 
         let response = self.recv(BROADCAST_CID).await?;
         if !matches!(response.command, Command::Init) {
-            return Err(HidrawError::Protocol("unexpected command in CTAPHID_INIT response"));
+            return Err(HidrawError::Protocol(
+                "unexpected command in CTAPHID_INIT response",
+            ));
         }
         // Payload layout:
         // 8 bytes nonce
@@ -433,7 +439,9 @@ impl HidDevice {
             return Err(HidrawError::Protocol("short CTAPHID_INIT response payload"));
         }
         if response.payload[..8] != nonce {
-            return Err(HidrawError::Protocol("CTAPHID_INIT response nonce mismatch"));
+            return Err(HidrawError::Protocol(
+                "CTAPHID_INIT response nonce mismatch",
+            ));
         }
         // Multi-byte fields must be specified in little endian order, per the HID specification.
         let cid = u32::from_le_bytes([
