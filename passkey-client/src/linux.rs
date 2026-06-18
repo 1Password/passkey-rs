@@ -26,7 +26,6 @@ use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
 use passkey_authenticator::public_key_der_from_cose_key;
 use passkey_types::Bytes;
 use passkey_types::crypto::{aes_256_cbc, hmac_sha256};
-use passkey_types::ctap2::StatusCode;
 use passkey_types::ctap2::client_pin::Permissions;
 use passkey_types::ctap2::pin_uv_auth_protocol::PinUvAuthProtocolOne;
 use passkey_types::{
@@ -190,7 +189,11 @@ where
 
     async fn get_valid_devices(
         &self,
+        // Whether UV is required for this request.
         uv: bool,
+        // authenticatorSelection field of request wrapped in Some if this is a makeCredential
+        // request; None otherwise.
+        sel: Option<Option<&webauthn::AuthenticatorSelectionCriteria>>,
         rp_id: &str,
     ) -> Result<&[Arc<LinuxAuthenticatorWithToken>], WebauthnError> {
         // Determine if any device has been configured to use built-in UV or a PIN.
@@ -198,47 +201,67 @@ where
             device.authenticator.uv_configured() || device.authenticator.pin_configured()
         });
 
+        let any_device_requires_rk = if let Some(sel) = sel {
+            self.devices
+                .iter()
+                .any(|device| map_rk(sel, &device.authenticator.info()))
+        } else {
+            false
+        };
+
         // We need to prompt the user to provide UV if the request requires user verification OR if
         // any device requires UV. In order to do this, we first need them to provide UP to an authenticator
         // to select it.
-        let selected_devices = if uv || any_device_requires_uv {
+
+        // We need to request device selection in the following cases:
+        // 1. The register() request requires UV. In this case, choose a device to provide either
+        //    PIN or builtin UV.
+        // 2. Any attached device requires UV. Same protocol as above.
+        // 3. Any device requires RK. Device selection is necessary in this case because it is
+        //    possible that two devices attempt to register a credential at the same time, but since
+        //    only one can return from race_make_credential, one of the devices will use an RK slot
+        //    but not have the RP recognize the credential.
+        let selected_devices = if uv || any_device_requires_uv || any_device_requires_rk {
             let idx = if self.device_count() == 1 {
                 0
             } else {
                 self.race_authenticator_selection(self.devices.clone())
                     .await?
             };
-            let selected_device = self.devices[idx].clone();
 
-            if selected_device
-                .token_with_protocol
-                .lock()
-                .unwrap()
-                .is_none()
-            {
-                let selected_operation = if selected_device.authenticator.uv_configured() {
-                    if selected_device.authenticator.pin_uv_auth_token_supported() {
-                        // Use UV
-                        Some(GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingUvWithPermissions)
+            if uv || any_device_requires_uv {
+                let selected_device = self.devices[idx].clone();
+
+                if selected_device
+                    .token_with_protocol
+                    .lock()
+                    .unwrap()
+                    .is_none()
+                {
+                    let selected_operation = if selected_device.authenticator.uv_configured() {
+                        if selected_device.authenticator.pin_uv_auth_token_supported() {
+                            // Use UV
+                            Some(GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingUvWithPermissions)
+                        } else {
+                            // Just set uv = true in request
+                            // TODO: retry with PIN if we get error code 0x36
+                            None
+                        }
+                    } else if selected_device.authenticator.pin_configured() {
+                        if selected_device.authenticator.pin_uv_auth_token_supported() {
+                            // Use PIN
+                            Some(GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingPinWithPermissions)
+                        } else {
+                            Some(GetPinUvAuthTokenOp::GetPinToken)
+                        }
                     } else {
-                        // Just set uv = true in request
-                        // TODO: retry with PIN if we get error code 0x36
+                        // Dispatch request with no pinUvAuthToken to selected authenticator
                         None
-                    }
-                } else if selected_device.authenticator.pin_configured() {
-                    if selected_device.authenticator.pin_uv_auth_token_supported() {
-                        // Use PIN
-                        Some(GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingPinWithPermissions)
-                    } else {
-                        Some(GetPinUvAuthTokenOp::GetPinToken)
-                    }
-                } else {
-                    // Dispatch request with no pinUvAuthToken to selected authenticator
-                    None
-                };
+                    };
 
-                self.get_auth_token_for_device(&selected_device, selected_operation, rp_id)
-                    .await?;
+                    self.get_auth_token_for_device(&selected_device, selected_operation, rp_id)
+                        .await?;
+                }
             }
 
             &self.devices[idx..idx + 1]
@@ -268,7 +291,7 @@ where
                 let (platform_key_agreement_key, shared_secret) = self
                     .pin_uv_auth_protocol_state
                     .encapsulate(&public_key)
-                    .map_err(StatusCode::from)?;
+                    .map_err(ctap2::StatusCode::from)?;
                 let permissions = Permissions::MC | Permissions::GA;
                 let encrypted_token = match op {
                     GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingPinWithPermissions => {
@@ -402,7 +425,9 @@ where
             .unwrap_or_default();
         let uv = self.ctap_uv_option(uv_requirement);
 
-        let selected_devices = self.get_valid_devices(uv, &rp_id).await?;
+        let selected_devices = self
+            .get_valid_devices(uv, Some(opts.authenticator_selection.as_ref()), &rp_id)
+            .await?;
 
         let mut candidates: Vec<(
             Arc<LinuxAuthenticatorWithToken>,
@@ -523,7 +548,7 @@ where
 
         let uv = self.ctap_uv_option(opts.user_verification);
 
-        let selected_devices = self.get_valid_devices(uv, &rp_id).await?;
+        let selected_devices = self.get_valid_devices(uv, None, &rp_id).await?;
 
         let mut candidates: Vec<(
             Arc<LinuxAuthenticatorWithToken>,

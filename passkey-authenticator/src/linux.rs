@@ -20,11 +20,11 @@ use std::path::Path;
 
 use passkey_transports::hid::{Command, Message};
 use passkey_transports::hidraw::{DeviceInfo, HidDevice, HidrawError, enumerate_fido_devices};
-use passkey_types::Bytes;
 use passkey_types::ctap2::{
     Ctap2Code, Ctap2Error, StatusCode, U2FError, client_pin, get_assertion, get_info,
     make_credential,
 };
+use passkey_types::{Bytes, webauthn};
 use tokio::sync::Mutex;
 
 use crate::Ctap2Api;
@@ -187,23 +187,73 @@ impl LinuxAuthenticator {
         self.capabilities
     }
 
-    /// Issue an `authenticatorSelection` command against the device. Returns when the user
-    /// provides UP on the device.
+    /// Determine whether the device supports CTAP 2.1 or greater. If it does, issue an
+    /// `authenticatorSelection` command. Otherwise, issue `authenticatorMakeCredential` with a
+    /// zero-length `pinUvAuthToken`. Returns when the user provides UP on the device.
     pub async fn authenticator_selection(&self) -> Result<(), StatusCode> {
-        let _guard = self.txn_lock.lock().await;
-        let response = send_cbor(
-            &self.device,
-            self.channel,
-            CTAP_CMD_AUTHENTICATOR_SELECTION,
-            &[],
-        )
-        .await;
-        if let Err(TransactionError::Status(StatusCode::Ctap2(Ctap2Code::Known(Ctap2Error::Ok)))) =
-            response
-        {
-            Ok(())
+        let authenticator_selection_unsupported = self
+            .info()
+            .versions
+            .iter()
+            .all(|e| *e == get_info::Version::U2F_V2 || *e == get_info::Version::FIDO_2_0);
+        if !authenticator_selection_unsupported {
+            let _guard = self.txn_lock.lock().await;
+            let response = send_cbor(
+                &self.device,
+                self.channel,
+                CTAP_CMD_AUTHENTICATOR_SELECTION,
+                &[],
+            )
+            .await;
+            if matches!(
+                response,
+                Err(TransactionError::Status(StatusCode::Ctap2(
+                    Ctap2Code::Known(Ctap2Error::Ok)
+                )))
+            ) {
+                Ok(())
+            } else {
+                response.map(|_| ()).map_err(StatusCode::from)
+            }
         } else {
-            response.map(|_| ()).map_err(StatusCode::from)
+            let _guard = self.txn_lock.lock().await;
+            let dummy_request = make_credential::Request {
+                client_data_hash: Bytes::from(&[][..]),
+                rp: make_credential::PublicKeyCredentialRpEntity {
+                    id: String::new(),
+                    name: None,
+                },
+                user: webauthn::PublicKeyCredentialUserEntity {
+                    id: Bytes::from(&[][..]),
+                    display_name: String::new(),
+                    name: String::new(),
+                },
+                pub_key_cred_params: webauthn::PublicKeyCredentialParameters::default_algorithms(),
+                exclude_list: None,
+                extensions: None,
+                options: make_credential::Options {
+                    rk: false,
+                    up: false,
+                    uv: false,
+                },
+                pin_auth: Some(Bytes::from(&[][..])),
+                pin_protocol: Some(1),
+            };
+            let mut body = Vec::new();
+            ciborium::ser::into_writer(&dummy_request, &mut body)
+                .map_err(|_| StatusCode::from(U2FError::Other))?;
+            let response =
+                send_cbor(&self.device, self.channel, CTAP_CMD_MAKE_CREDENTIAL, &body).await;
+            if matches!(
+                response,
+                Err(TransactionError::Status(StatusCode::Ctap2(
+                    Ctap2Code::Known(Ctap2Error::PinNotSet | Ctap2Error::PinInvalid)
+                )))
+            ) {
+                Ok(())
+            } else {
+                response.map(|_| ()).map_err(StatusCode::from)
+            }
         }
     }
 
