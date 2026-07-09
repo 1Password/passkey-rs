@@ -37,6 +37,7 @@ use url::Url;
 mod extensions;
 mod rp_id_verifier;
 
+/// Windows client for use with hardware authenticators. Uses the webauthn.dll API.
 // #[cfg(all(feature = "windows", target_os = "windows"))]
 pub mod windows;
 
