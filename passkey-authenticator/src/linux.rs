@@ -23,7 +23,7 @@ use passkey_transports::hidraw::{DeviceInfo, HidDevice, HidrawError, enumerate_f
 use passkey_types::ctap2::{
     client_pin, get_assertion, get_info, make_credential, Ctap2ClientPinSubcommand, Ctap2Code, Ctap2Command, Ctap2Error, StatusCode, U2FError
 };
-use passkey_types::Bytes;
+use passkey_types::{webauthn, Bytes};
 use tokio::sync::mpsc;
 
 use crate::Ctap2Api;
@@ -107,20 +107,69 @@ pub struct LinuxAuthenticatorInner {
 }
 
 impl LinuxAuthenticatorInner {
-    /// Issue `authenticatorSelection` against the device.
-    pub async fn authenticator_selection(
-        &mut self,
-    ) -> Result<(), StatusCode> {
-        let response = self.send_cbor_with_cancel(Ctap2Command::AuthenticatorSelection, &[])
+    /// Determine whether the device supports CTAP 2.1 or greater. If it does, issue an
+    /// `authenticatorSelection` command. Otherwise, issue `authenticatorMakeCredential` with a
+    /// zero-length `pinUvAuthToken`. Returns when the user provides UP on the device.
+    pub async fn authenticator_selection(&mut self) -> Result<(), StatusCode> {
+        let info: get_info::Response = ciborium::de::from_reader(self.get_info_cbor.get_payload()).unwrap_or_default();
+        let authenticator_selection_unsupported = info
+            .versions
+            .iter()
+            .all(|e| *e == get_info::Version::U2F_V2 || *e == get_info::Version::FIDO_2_0);
+        if !authenticator_selection_unsupported {
+            let response = self.send_cbor_with_cancel(
+                Ctap2Command::AuthenticatorSelection,
+                &[],
+            )
             .await;
-        if let Err(
-            TransactionError::Status(StatusCode::Ctap2(
-                Ctap2Code::Known(Ctap2Error::Ok)
-            ))
-        ) = response {
-            Ok(())
+            if matches!(
+                response,
+                Err(TransactionError::Status(StatusCode::Ctap2(
+                    Ctap2Code::Known(Ctap2Error::Ok)
+                )))
+            ) {
+                Ok(())
+            } else {
+                response.map(|_| ()).map_err(StatusCode::from)
+            }
         } else {
-            response.map(|_| ()).map_err(StatusCode::from)
+            let dummy_request = make_credential::Request {
+                client_data_hash: Bytes::from(&[][..]),
+                rp: make_credential::PublicKeyCredentialRpEntity {
+                    id: String::new(),
+                    name: None,
+                },
+                user: webauthn::PublicKeyCredentialUserEntity {
+                    id: Bytes::from(&[][..]),
+                    display_name: String::new(),
+                    name: String::new(),
+                },
+                pub_key_cred_params: webauthn::PublicKeyCredentialParameters::default_algorithms(),
+                exclude_list: None,
+                extensions: None,
+                options: make_credential::Options {
+                    rk: false,
+                    up: false,
+                    uv: false,
+                },
+                pin_auth: Some(Bytes::from(&[][..])),
+                pin_protocol: Some(1),
+            };
+            let mut body = Vec::new();
+            ciborium::ser::into_writer(&dummy_request, &mut body)
+                .map_err(|_| StatusCode::from(U2FError::Other))?;
+            let response =
+                self.send_cbor_with_cancel(Ctap2Command::MakeCredential, &body).await;
+            if matches!(
+                response,
+                Err(TransactionError::Status(StatusCode::Ctap2(
+                    Ctap2Code::Known(Ctap2Error::PinNotSet | Ctap2Error::PinInvalid)
+                )))
+            ) {
+                Ok(())
+            } else {
+                response.map(|_| ()).map_err(StatusCode::from)
+            }
         }
     }
 
