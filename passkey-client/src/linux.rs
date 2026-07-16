@@ -47,13 +47,6 @@ use crate::{
 /// Consumer-provided authenticator selection and PIN input prompts.
 #[async_trait::async_trait]
 pub trait PinPrompt: Send + Sync {
-    /// Prompt user to provide User Presence to a particular authenticator to select it for use.
-    /// Returning an error aborts the in-flight authenticator-selection race.
-    async fn prompt_authenticator_selection(
-        &self,
-        num_authenticators: usize,
-    ) -> Result<(), PinPromptError>;
-
     /// Prompt user to enter a PIN.
     async fn request_pin(
         &self,

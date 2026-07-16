@@ -17,16 +17,6 @@ struct MyPinPrompt;
 
 #[async_trait::async_trait]
 impl PinPrompt for MyPinPrompt {
-    async fn prompt_authenticator_selection(
-        &self,
-        num_authenticators: usize,
-    ) -> Result<(), PinPromptError> {
-        println!(
-            "Touch one of the {} attached authenticator devices to select it.",
-            num_authenticators
-        );
-        Ok(())
-    }
     async fn request_pin(
         &self,
         attempts_remaining: u32,
