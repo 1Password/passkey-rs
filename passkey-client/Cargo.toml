@@ -20,11 +20,12 @@ android-asset-validation = ["dep:nom"]
 testable = ["dep:mockall"]
 tokio = ["dep:tokio"]
 typeshare = ["passkey-types/typeshare", "dep:typeshare"]
-linux = ["dep:tokio", "passkey-authenticator/linux", "tokio/rt"]
+linux = ["dep:async-trait", "dep:tokio", "dep:zeroize", "passkey-authenticator/linux", "tokio/rt"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = { version = "0.1", optional = true }
 ciborium = "0.2"
 coset = { workspace = true }
 idna = "1"
@@ -40,6 +41,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["sync", "time", "rt"], optional = true }
 typeshare = { version = "1", optional = true }
 url = "2"
+zeroize = { version = "1", features = ["zeroize_derive"], optional = true }
 
 [dev-dependencies]
 coset = { workspace = true }

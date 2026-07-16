@@ -21,8 +21,9 @@ use std::path::Path;
 use passkey_transports::hid::{Command, Message};
 use passkey_transports::hidraw::{DeviceInfo, HidDevice, HidrawError, enumerate_fido_devices};
 use passkey_types::ctap2::{
-    Ctap2Command, Ctap2Error, StatusCode, U2FError, get_assertion, get_info, make_credential,
+    client_pin, get_assertion, get_info, make_credential, Ctap2ClientPinSubcommand, Ctap2Code, Ctap2Command, Ctap2Error, StatusCode, U2FError
 };
+use passkey_types::Bytes;
 use tokio::sync::mpsc;
 
 use crate::Ctap2Api;
@@ -106,6 +107,23 @@ pub struct LinuxAuthenticatorInner {
 }
 
 impl LinuxAuthenticatorInner {
+    /// Issue `authenticatorSelection` against the device.
+    pub async fn authenticator_selection(
+        &mut self,
+    ) -> Result<(), StatusCode> {
+        let response = self.send_cbor_with_cancel(Ctap2Command::AuthenticatorSelection, &[])
+            .await;
+        if let Err(
+            TransactionError::Status(StatusCode::Ctap2(
+                Ctap2Code::Known(Ctap2Error::Ok)
+            ))
+        ) = response {
+            Ok(())
+        } else {
+            response.map(|_| ()).map_err(StatusCode::from)
+        }
+    }
+
     /// Issue `authenticatorMakeCredential` against the device.
     pub async fn make_credential(
         &mut self,
@@ -136,6 +154,148 @@ impl LinuxAuthenticatorInner {
             .map_err(StatusCode::from)?;
         ciborium::de::from_reader(response.get_payload())
             .map_err(|_| StatusCode::from(Ctap2Error::InvalidCbor))
+    }
+
+     /// Fetch public key from device using the given protocol.
+    pub async fn get_public_key(&mut self, protocol: u8) -> Result<coset::CoseKey, StatusCode>  {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: Ctap2ClientPinSubcommand::GetKeyAgreement.into(),
+            key_agreement: None,
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let response = self.send_cbor_with_cancel(Ctap2Command::ClientPin, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.get_payload()).unwrap();
+        // TODO: remove this expect
+        Ok(response.key_agreement.expect("should have a key agreement"))
+    }
+
+    /// `getPinToken` subcommand of `clientPin`.
+    pub async fn get_pin_token(
+        &mut self,
+        protocol: u8,
+        key_agreement: coset::CoseKey,
+        pin_hash_enc: Bytes,
+    ) -> Result<Bytes, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: Ctap2ClientPinSubcommand::GetPinToken.into(),
+            key_agreement: Some(key_agreement),
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: Some(pin_hash_enc),
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let response = self.send_cbor_with_cancel(Ctap2Command::ClientPin, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.get_payload()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
+    }
+
+    /// `getPinUvAuthTokenUsingUvWithPermissions` subcommand of `clientPin`.
+    pub async fn get_pin_uv_auth_token_using_uv(
+        &mut self,
+        protocol: u8,
+        key_agreement: coset::CoseKey,
+        permissions: client_pin::Permissions,
+        // rp_id is required for both make_credential and get_assertion, but we leave
+        // it as an Option here in case we need to add support for other permissions and don't
+        // want to break backwards compatibility.
+        rp_id: Option<String>,
+    ) -> Result<Bytes, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: Ctap2ClientPinSubcommand::GetPinUvAuthTokenUsingUvWithPermissions.into(),
+            key_agreement: Some(key_agreement),
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: Some(permissions),
+            rp_id,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let response = self.send_cbor_with_cancel(Ctap2Command::ClientPin, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.get_payload()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
+    }
+
+    /// `getPinUvAuthTokenUsingPinWithPermissions` subcommand of `clientPin`.
+    pub async fn get_pin_uv_auth_token_using_pin(
+        &mut self,
+        protocol: u8,
+        key_agreement: coset::CoseKey,
+        pin_hash_enc: Bytes,
+        permissions: client_pin::Permissions,
+        // rp_id is required for both make_credential and get_assertion, but we leave
+        // it as an Option here in case we need to add support for other permissions and don't
+        // want to break backwards compatibility.
+        rp_id: Option<String>,
+    ) -> Result<Bytes, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: Ctap2ClientPinSubcommand::GetPinUvAuthTokenUsingPinWithPermissions.into(),
+            key_agreement: Some(key_agreement),
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: Some(pin_hash_enc),
+            permissions: Some(permissions),
+            rp_id,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let response = self.send_cbor_with_cancel(Ctap2Command::ClientPin, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.get_payload()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_uv_auth_token.expect("should have a pinUvAuthToken"))
+    }
+
+    /// `getPinRetries` subcommand of `clientPin`.
+    pub async fn get_pin_retries(
+        &mut self,
+        protocol: u8,
+    ) -> Result<u32, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: Ctap2ClientPinSubcommand::GetPinRetries.into(),
+            key_agreement: None,
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let response = self.send_cbor_with_cancel(Ctap2Command::ClientPin, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response = ciborium::de::from_reader(response.get_payload()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_retries.expect("Should have pin retries"))
     }
 
     /// Send a CTAPHID_CBOR request and await its response, forwarding any
@@ -182,6 +342,27 @@ impl LinuxAuthenticator {
         enumerate_fido_devices()
     }
 
+    /// Whether builtin UV is configured for this device.
+    pub fn uv_configured(&self) -> bool {
+        self.info().options.and_then(|o| o.uv).unwrap_or(false)
+    }
+
+    /// Whether a PIN is configured for this device.
+    pub fn pin_configured(&self) -> bool {
+        self.info().options.and_then(|o| o.client_pin).unwrap_or(false)
+    }
+
+    /// Whether this device supports storing resident keys.
+    pub fn rk_supported(&self) -> bool {
+        self.info().options.is_some_and(|o| o.rk)
+    }
+
+    /// Whether the authenticator supports authenticatorClientPIN's
+    /// getPinUvAuthTokenUsingUvWithPermissions subcommand.
+    pub fn pin_uv_auth_token_supported(&self) -> bool {
+        self.info().options.map(|o| o.pin_uv_auth_token == Some(true)).unwrap_or(false)
+    }
+
     /// Open a specific `/dev/hidrawN` path, run `CTAPHID_INIT` to obtain a private
     /// channel, and prime the cached `authenticatorGetInfo` response.
     pub async fn open(path: &Path) -> Result<Self, OpenError> {
@@ -221,6 +402,8 @@ impl LinuxAuthenticator {
     pub fn info(&self) -> get_info::Response {
         ciborium::de::from_reader(self.inner.get_info_cbor.get_payload()).unwrap_or_default()
     }
+
+    // TODO: remove these functions?
 
     /// Issue `authenticatorMakeCredential` against the device.
     pub async fn make_credential(

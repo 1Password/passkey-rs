@@ -10,9 +10,11 @@ mod commands;
 mod error;
 mod flags;
 
+pub mod client_pin;
 pub mod extensions;
 pub mod get_assertion;
 pub mod get_info;
 pub mod make_credential;
+pub mod pin_uv_auth_protocol;
 
 pub use self::{aaguid::*, attestation_fmt::*, commands::*, error::*, flags::*};

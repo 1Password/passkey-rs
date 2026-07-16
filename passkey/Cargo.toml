@@ -42,3 +42,4 @@ passkey-client = { path = "../passkey-client", version = "0.6", features = [
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-test = "0.4"
 url = "2"
+zeroize = "1.9"

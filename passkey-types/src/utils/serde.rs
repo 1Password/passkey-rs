@@ -106,6 +106,62 @@ pub mod i64_to_iana {
     }
 }
 
+/// Adapters for `serde_workaround` to (de)serialize a `coset::CoseKey` as an inline CBOR map,
+/// the wire form used by CTAP2 (e.g. authenticatorClientPIN `keyAgreement`).
+pub mod cose_key {
+    use ciborium::value::Value;
+    use coset::AsCborValue;
+
+    pub fn serialize<S>(value: &coset::CoseKey, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let cbor = value
+            .clone()
+            .to_cbor_value()
+            .map_err(serde::ser::Error::custom)?;
+        serde::Serialize::serialize(&cbor, ser)
+    }
+
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D>(de: D) -> Result<coset::CoseKey, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = <Value as serde::Deserialize>::deserialize(de)?;
+        coset::CoseKey::from_cbor_value(value).map_err(serde::de::Error::custom)
+    }
+
+    pub mod option {
+        use ciborium::value::Value;
+        use coset::AsCborValue;
+
+        pub fn serialize<S>(value: &Option<coset::CoseKey>, ser: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            match value {
+                Some(v) => super::serialize(v, ser),
+                None => ser.serialize_none(),
+            }
+        }
+
+        pub fn deserialize<'de, D>(de: D) -> Result<Option<coset::CoseKey>, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let value = <Value as serde::Deserialize>::deserialize(de)?;
+            if matches!(value, Value::Null) {
+                Ok(None)
+            } else {
+                coset::CoseKey::from_cbor_value(value)
+                    .map(Some)
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+    }
+}
+
 struct StringOrNum<T>(pub std::marker::PhantomData<T>);
 
 impl<T> Visitor<'_> for StringOrNum<T>

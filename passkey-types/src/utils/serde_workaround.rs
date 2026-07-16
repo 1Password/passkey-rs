@@ -11,7 +11,7 @@ macro_rules! serde_workaround {
         $(#[$attr:meta])*
         pub struct $name:ident {$(
             $(#[doc=$doc:literal])*
-            #[serde(rename = $discriminant:literal$(;$default:ident)?$(,skip_serializing_if = $method:path)?$(,deserialize_with = $de:path)?)]
+            #[serde(rename = $discriminant:literal$(;$default:ident)?$(,skip_serializing_if = $method:path)?$(,serialize_with = $ser:path)?$(,deserialize_with = $de:path)?)]
             $vis:vis $field:ident: $ty:ty,
         )*}
     ) => {
@@ -59,7 +59,7 @@ macro_rules! serde_workaround {
                 {
                     let mut serde_state = serde::Serializer::serialize_map(serializer, Some(struct_len(&self)))?;
                     $(
-                        serde_serialize_entry!{serde_state; self.$field $(;$method)?}
+                        serde_serialize_entry!{serde_state; self.$field $(;skip = $method)? $(;ser = $ser, $ty)?}
                     )*
                     serde_state.end()
                 }
@@ -180,11 +180,30 @@ macro_rules! serde_workaround_struct_len {
 }
 
 macro_rules! serde_serialize_entry {
-    ($state:ident; $self:ident.$field:ident; $skip_if:path) => {
+    ($state:ident; $self:ident.$field:ident; skip = $skip_if:path; ser = $ser_with:path, $ty:ty) => {
+        if !$skip_if(&$self.$field) {
+            serde_serialize_entry!($state; $self.$field; ser = $ser_with, $ty)
+        }
+    };
+    ($state:ident; $self:ident.$field:ident; skip = $skip_if:path) => {
         if !$skip_if(&$self.$field) {
             serde_serialize_entry!($state; $self.$field)
         }
     };
+    ($state:ident; $self:ident.$field:ident; ser = $ser_with:path, $ty:ty) => {{
+        struct __SerializeWith<'__a> {
+            value: &'__a $ty,
+        }
+        impl<'__a> ::serde::Serialize for __SerializeWith<'__a> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                $ser_with(self.value, serializer)
+            }
+        }
+        $state.serialize_entry(&Ident::$field, &__SerializeWith { value: &$self.$field })?
+    }};
     ($state:ident; $self:ident.$field:ident) => {
         $state.serialize_entry(&Ident::$field, &$self.$field)?
     };
