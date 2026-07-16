@@ -99,7 +99,9 @@ fn cose_to_p256_public(key: &CoseKey) -> Result<PublicKey, Ctap2Error> {
         let Label::Int(i) = label else { continue };
         match Ec2KeyParameter::from_i64(*i) {
             Some(Ec2KeyParameter::Crv) => {
-                crv = value.as_integer().and_then(|n| i128::from(n).try_into().ok());
+                crv = value
+                    .as_integer()
+                    .and_then(|n| i128::from(n).try_into().ok());
             }
             Some(Ec2KeyParameter::X) => x = value.as_bytes(),
             Some(Ec2KeyParameter::Y) => y = value.as_bytes(),

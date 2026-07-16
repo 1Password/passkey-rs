@@ -25,15 +25,15 @@ serde_workaround! {
         )]
         pub key_agreement: Option<coset::CoseKey>,
 
-        /// The output of calling authenticate on some context specific to the subcommand. 
+        /// The output of calling authenticate on some context specific to the subcommand.
         #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub pin_uv_auth_param: Option<Bytes>,
 
-        /// An encrypted PIN. 
+        /// An encrypted PIN.
         #[serde(rename = 0x05; default, skip_serializing_if = Option::is_none)]
         pub new_pin_enc: Option<Bytes>,
 
-        /// An encrypted proof-of-knowledge of a PIN. 
+        /// An encrypted proof-of-knowledge of a PIN.
         #[serde(rename = 0x06; default, skip_serializing_if = Option::is_none)]
         pub pin_hash_enc: Option<Bytes>,
 
@@ -41,7 +41,7 @@ serde_workaround! {
         #[serde(rename = 0x09; default, skip_serializing_if = Option::is_none)]
         pub permissions: Option<Permissions>,
 
-        /// The RP ID to assign as the permissions RP ID. 
+        /// The RP ID to assign as the permissions RP ID.
         #[serde(rename = 0x0A; default, skip_serializing_if = Option::is_none)]
         pub rp_id: Option<String>,
     }
@@ -70,7 +70,7 @@ serde_workaround! {
 
         /// Present and true if the authenticator requires a power cycle before any future PIN
         /// operation, false if no power cycle needed. If the field is omitted, no information is
-        /// given about whether a power cycle is needed or not. 
+        /// given about whether a power cycle is needed or not.
         #[serde(rename = 0x04; default, skip_serializing_if = Option::is_none)]
         pub power_cycle_state: Option<bool>,
 
