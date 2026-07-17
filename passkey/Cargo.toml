@@ -15,6 +15,10 @@ version = "0.5.0"
 [lints]
 workspace = true
 
+[features]
+default = []
+linux = ["passkey-authenticator/linux", "passkey-client/linux"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.cargo-udeps.ignore]
