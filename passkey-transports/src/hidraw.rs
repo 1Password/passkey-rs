@@ -24,7 +24,7 @@ use tokio::time::timeout;
 
 use crate::hid::{ChannelHandler, Command, CreationError, MAX_PACKET_SIZE, Message};
 
-/// HID usage page assigned to the FIDO Alliance for U2F / CTAP authenticators.
+/// HID usage page assigned to the FIDO Alliance for CTAP authenticators.
 pub const FIDO_USAGE_PAGE: u16 = 0xF1D0;
 
 /// CTAPHID broadcast channel identifier used during `CTAPHID_INIT`.

@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
-use super::u2f::{AuthenticationRequest, RegisterRequest, RegisterResponse};
-use crate::{Bytes, ctap2::make_credential as ctap2, webauthn};
+use crate::{Bytes, webauthn};
 use coset::CoseKey;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -113,74 +112,6 @@ pub struct Passkey {
 }
 
 impl Passkey {
-    /// Standardized way to "upgrade" a U2F register request into a passkey
-    pub fn from_u2f_register_response(
-        request: &RegisterRequest,
-        response: &RegisterResponse,
-        private_key: &CoseKey,
-    ) -> Self {
-        let app_id: Bytes = request.application.to_vec().into();
-        Self {
-            key: private_key.clone(),
-            credential_id: response.key_handle.clone().to_vec().into(),
-            rp_id: app_id.into(),
-            user_handle: None,
-            username: None,
-            user_display_name: None,
-            counter: Some(0),
-            extensions: Default::default(),
-        }
-    }
-
-    /// Upgrade a U2F Authentication Request into a Passkey
-    pub fn from_u2f_auth_request(
-        request: &AuthenticationRequest,
-        counter: u32,
-        private_key: &CoseKey,
-    ) -> Self {
-        let app_id: Bytes = request.application.to_vec().into();
-        Self {
-            key: private_key.clone(),
-            credential_id: request.key_handle.clone().to_vec().into(),
-            rp_id: app_id.into(),
-            user_handle: None,
-            username: None,
-            user_display_name: None,
-            counter: Some(counter),
-            extensions: Default::default(),
-        }
-    }
-
-    /// This function wraps up a U2F registration request as a Passkey for storing
-    /// in a CredentialStore.
-    pub fn wrap_u2f_registration_request(
-        request: &RegisterRequest,
-        response: &RegisterResponse,
-        key_handle: &[u8],
-        private_key: &CoseKey,
-    ) -> (
-        Passkey,
-        ctap2::PublicKeyCredentialUserEntity,
-        ctap2::PublicKeyCredentialRpEntity,
-    ) {
-        let passkey = Passkey::from_u2f_register_response(request, response, private_key);
-
-        let user_entity = ctap2::PublicKeyCredentialUserEntity {
-            id: key_handle.to_vec().into(),
-            display_name: None,
-            name: None,
-            icon_url: None,
-        };
-
-        let app_id: Bytes = request.application.to_vec().into();
-        let rp = ctap2::PublicKeyCredentialRpEntity {
-            id: app_id.into(),
-            name: None,
-        };
-
-        (passkey, user_entity, rp)
-    }
-
     /// Create a passkey mock builder.
     ///
     /// The default credential Id length is 16, change it with the [`PasskeyBuilder::credential_id`]
