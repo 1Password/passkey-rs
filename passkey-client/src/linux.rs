@@ -313,10 +313,9 @@ where
                             .await?
                     }
                     GetPinUvAuthTokenOp::GetPinToken => {
-                        // TODO: use getUvRetries here
                         let attempts_remaining = selected_device
                             .inner
-                            .get_pin_retries(pin_uv_auth_protocol)
+                            .get_uv_retries(pin_uv_auth_protocol)
                             .await?;
                         let pin = self
                             .pin_prompt

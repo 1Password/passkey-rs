@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 /// Authenticator commands enumerated by the CTAP 2 specification.
 #[repr(u8)]
 pub enum Ctap2Command {
@@ -21,6 +23,8 @@ impl From<Ctap2Command> for u8 {
 }
 
 /// Possible values for `subCommand` field of `clientPin` request.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(into = "u8")]
 #[repr(u8)]
 pub enum Ctap2ClientPinSubcommand {
     /// getPinRetries
@@ -31,6 +35,8 @@ pub enum Ctap2ClientPinSubcommand {
     GetPinToken = 0x05,
     /// getPinUvAuthTokenUsingUvWithPermissions
     GetPinUvAuthTokenUsingUvWithPermissions = 0x06,
+    /// getUvRetires
+    GetUvRetries = 0x07,
     /// getPinUvAuthTokenUsingPinWithPermissions
     GetPinUvAuthTokenUsingPinWithPermissions = 0x09,
 }

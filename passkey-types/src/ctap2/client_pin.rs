@@ -3,6 +3,7 @@ use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 
 use crate::Bytes;
+use crate::ctap2::commands::Ctap2ClientPinSubcommand;
 
 serde_workaround! {
     /// Request type for the authenticatorClientPin command.
@@ -11,9 +12,9 @@ serde_workaround! {
         #[serde(rename = 0x01; default, skip_serializing_if = Option::is_none)]
         pub pin_uv_auth_protocol: Option<u8>,
 
-        /// TODO: make this just use the subcommand enum
+        /// The specific action being requested.
         #[serde(rename = 0x02)]
-        pub sub_command: u8,
+        pub sub_command: Ctap2ClientPinSubcommand,
 
         /// The platform key-agreement key.
         #[serde(

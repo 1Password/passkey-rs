@@ -39,7 +39,6 @@ url = { version = "2", features = ["serde"] }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = { workspace = true }
-# TODO: feature gate this for Linux
 p256 = { version = "0.13", features = ["arithmetic", "ecdh", "jwk", "pem"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

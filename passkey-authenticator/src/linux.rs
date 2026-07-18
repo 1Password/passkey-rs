@@ -210,7 +210,7 @@ impl LinuxAuthenticatorInner {
     pub async fn get_public_key(&mut self, protocol: u8) -> Result<coset::CoseKey, StatusCode> {
         let request = client_pin::Request {
             pin_uv_auth_protocol: Some(protocol),
-            sub_command: Ctap2ClientPinSubcommand::GetKeyAgreement.into(),
+            sub_command: Ctap2ClientPinSubcommand::GetKeyAgreement,
             key_agreement: None,
             pin_uv_auth_param: None,
             new_pin_enc: None,
@@ -240,7 +240,7 @@ impl LinuxAuthenticatorInner {
     ) -> Result<Bytes, StatusCode> {
         let request = client_pin::Request {
             pin_uv_auth_protocol: Some(protocol),
-            sub_command: Ctap2ClientPinSubcommand::GetPinToken.into(),
+            sub_command: Ctap2ClientPinSubcommand::GetPinToken,
             key_agreement: Some(key_agreement),
             pin_uv_auth_param: None,
             new_pin_enc: None,
@@ -276,7 +276,7 @@ impl LinuxAuthenticatorInner {
     ) -> Result<Bytes, StatusCode> {
         let request = client_pin::Request {
             pin_uv_auth_protocol: Some(protocol),
-            sub_command: Ctap2ClientPinSubcommand::GetPinUvAuthTokenUsingUvWithPermissions.into(),
+            sub_command: Ctap2ClientPinSubcommand::GetPinUvAuthTokenUsingUvWithPermissions,
             key_agreement: Some(key_agreement),
             pin_uv_auth_param: None,
             new_pin_enc: None,
@@ -313,7 +313,7 @@ impl LinuxAuthenticatorInner {
     ) -> Result<Bytes, StatusCode> {
         let request = client_pin::Request {
             pin_uv_auth_protocol: Some(protocol),
-            sub_command: Ctap2ClientPinSubcommand::GetPinUvAuthTokenUsingPinWithPermissions.into(),
+            sub_command: Ctap2ClientPinSubcommand::GetPinUvAuthTokenUsingPinWithPermissions,
             key_agreement: Some(key_agreement),
             pin_uv_auth_param: None,
             new_pin_enc: None,
@@ -340,7 +340,7 @@ impl LinuxAuthenticatorInner {
     pub async fn get_pin_retries(&mut self, protocol: u8) -> Result<u32, StatusCode> {
         let request = client_pin::Request {
             pin_uv_auth_protocol: Some(protocol),
-            sub_command: Ctap2ClientPinSubcommand::GetPinRetries.into(),
+            sub_command: Ctap2ClientPinSubcommand::GetPinRetries,
             key_agreement: None,
             pin_uv_auth_param: None,
             new_pin_enc: None,
@@ -359,6 +359,31 @@ impl LinuxAuthenticatorInner {
             ciborium::de::from_reader(response.get_payload()).unwrap_or_default();
         // TODO: remove this expect
         Ok(response.pin_retries.expect("Should have pin retries"))
+    }
+
+    /// `getUvRetries` subcommand of `clientPin`.
+    pub async fn get_uv_retries(&mut self, protocol: u8) -> Result<u32, StatusCode> {
+        let request = client_pin::Request {
+            pin_uv_auth_protocol: Some(protocol),
+            sub_command: Ctap2ClientPinSubcommand::GetUvRetries,
+            key_agreement: None,
+            pin_uv_auth_param: None,
+            new_pin_enc: None,
+            pin_hash_enc: None,
+            permissions: None,
+            rp_id: None,
+        };
+        let mut body = Vec::new();
+        ciborium::ser::into_writer(&request, &mut body)
+            .map_err(|_| StatusCode::from(U2FError::Other))?;
+        let response = self
+            .send_cbor_with_cancel(Ctap2Command::ClientPin, &body)
+            .await
+            .map_err(StatusCode::from)?;
+        let response: client_pin::Response =
+            ciborium::de::from_reader(response.get_payload()).unwrap_or_default();
+        // TODO: remove this expect
+        Ok(response.pin_retries.expect("Should have UV retries"))
     }
 
     /// Send a CTAPHID_CBOR request and await its response, forwarding any
@@ -470,24 +495,6 @@ impl LinuxAuthenticator {
     /// Read and decode the cached `authenticatorGetInfo` response.
     pub fn info(&self) -> get_info::Response {
         ciborium::de::from_reader(self.inner.get_info_cbor.get_payload()).unwrap_or_default()
-    }
-
-    // TODO: remove these functions?
-
-    /// Issue `authenticatorMakeCredential` against the device.
-    pub async fn make_credential(
-        &mut self,
-        request: make_credential::Request,
-    ) -> Result<make_credential::Response, StatusCode> {
-        self.inner.make_credential(request).await
-    }
-
-    /// Issue `authenticatorGetAssertion` against the device.
-    pub async fn get_assertion(
-        &mut self,
-        request: get_assertion::Request,
-    ) -> Result<get_assertion::Response, StatusCode> {
-        self.inner.get_assertion(request).await
     }
 }
 
