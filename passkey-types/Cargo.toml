@@ -18,11 +18,13 @@ workspace = true
 [features]
 default = []
 serialize_bytes_as_base64_string = []
-testable = ["dep:p256"]
+testable = []
 typeshare = ["dep:typeshare"]
 
 [dependencies]
-bitflags = "2"
+aes = "0.8"
+bitflags = { version = "2", features = ["serde"] }
+cbc = "0.1"
 ciborium = "0.2"
 data-encoding = "2"
 hmac = "0.12"
@@ -37,11 +39,7 @@ url = { version = "2", features = ["serde"] }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 # TODO: investigate rolling our own IANA listings and COSE keys
 coset = { workspace = true }
-p256 = { version = "0.13", features = [
-  "arithmetic",
-  "jwk",
-  "pem",
-], optional = true }
+p256 = { version = "0.13", features = ["arithmetic", "ecdh", "jwk", "pem"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

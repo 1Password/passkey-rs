@@ -1,12 +1,37 @@
 //! Sample App for Linux Client
 use passkey::{
-    client::{WebauthnError, linux::LinuxClient},
+    client::{
+        WebauthnError,
+        linux::{LinuxClient, PinPrompt, PinPromptError},
+    },
     types::{Bytes, rand::random_vec, webauthn::*},
 };
+use std::io::{Write, stdin, stdout};
 
 use coset::iana;
 use passkey_client::DefaultClientData;
 use url::Url;
+use zeroize::Zeroizing;
+
+struct MyPinPrompt;
+
+#[async_trait::async_trait]
+impl PinPrompt for MyPinPrompt {
+    async fn request_pin(
+        &self,
+        attempts_remaining: u32,
+    ) -> Result<Zeroizing<String>, PinPromptError> {
+        print!("Enter PIN ({} attempts remaining): ", attempts_remaining);
+        stdout()
+            .flush()
+            .map_err(|e| PinPromptError::Other(Box::new(e)))?;
+        let mut buf = String::new();
+        stdin()
+            .read_line(&mut buf)
+            .map_err(|e| PinPromptError::Other(Box::new(e)))?;
+        Ok(Zeroizing::new(buf.trim_ascii().into()))
+    }
+}
 
 // Example of how to set up, register and authenticate with a `Client`.
 async fn client_setup(
@@ -16,7 +41,7 @@ async fn client_setup(
     user_entity: PublicKeyCredentialUserEntity,
 ) -> Result<(CreatedPublicKeyCredential, AuthenticatedPublicKeyCredential), WebauthnError> {
     // Create the Client
-    let mut my_client = LinuxClient::open_all()
+    let mut my_client = LinuxClient::open_all(Box::new(MyPinPrompt))
         .await
         .unwrap()
         .user_verification_when_preferred(false);

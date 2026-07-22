@@ -24,6 +24,9 @@ use std::future::Future;
 use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
 use passkey_authenticator::public_key_der_from_cose_key;
+use passkey_types::Bytes;
+use passkey_types::crypto::{aes_256_cbc, hmac_sha256, sha256};
+use passkey_types::ctap2::pin_uv_auth_protocol::PinUvAuthProtocolOne;
 use passkey_types::{
     ctap2, encoding,
     webauthn::{
@@ -41,6 +44,32 @@ use crate::{
     map_rk,
 };
 
+/// Consumer-provided authenticator selection and PIN input prompts.
+#[async_trait::async_trait]
+pub trait PinPrompt: Send + Sync {
+    /// Prompt user to enter a PIN.
+    async fn request_pin(
+        &self,
+        attempts_remaining: u32,
+    ) -> Result<zeroize::Zeroizing<String>, PinPromptError>;
+}
+
+/// Error resulting from a prompt.
+pub enum PinPromptError {
+    /// PIN request was cancelled by the user.
+    Cancelled,
+
+    /// Any other error.
+    Other(Box<dyn std::error::Error + Send + Sync>),
+}
+
+#[allow(clippy::enum_variant_names)]
+enum GetPinUvAuthTokenOp {
+    GetPinUvAuthTokenUsingUvWithPermissions,
+    GetPinUvAuthTokenUsingPinWithPermissions,
+    GetPinToken,
+}
+
 /// A WebAuthn client backed by zero or more USB security keys serving as authenticators.
 pub struct LinuxClient<P, F>
 where
@@ -50,22 +79,49 @@ where
     devices: Vec<LinuxAuthenticator>,
     rp_id_verifier: RpIdVerifier<P, F>,
     uv_when_preferred: bool,
+    pin_prompt: Box<dyn PinPrompt>,
+    // TODO: support multiple pin protocols
+    pin_uv_auth_protocol_state: PinUvAuthProtocolOne,
+}
+
+#[derive(Clone)]
+struct TokenWithProtocol {
+    token: Bytes,
+    protocol: u8,
+}
+
+fn get_pin_auth_and_protocol(
+    token_with_protocol: Option<TokenWithProtocol>,
+    client_data_hash: &[u8],
+) -> (Option<Bytes>, Option<u8>) {
+    token_with_protocol
+        .map(|e| {
+            (
+                Some(Bytes::from(
+                    &hmac_sha256(e.token.as_slice(), client_data_hash)[0..16],
+                )),
+                Some(e.protocol),
+            )
+        })
+        .unwrap_or((None, None))
 }
 
 impl LinuxClient<public_suffix::PublicSuffixList, ()> {
     /// Build a `LinuxClient` over the supplied authenticators using the default public-suffix list
     /// TLD provider.
-    pub fn new(authenticators: Vec<LinuxAuthenticator>) -> Self {
+    pub fn new(authenticators: Vec<LinuxAuthenticator>, pin_prompt: Box<dyn PinPrompt>) -> Self {
         Self {
             devices: authenticators,
             rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
             uv_when_preferred: true,
+            pin_prompt,
+            pin_uv_auth_protocol_state: PinUvAuthProtocolOne::new(),
         }
     }
 
     /// Enumerate every FIDO-capable USB HID device on the system and open each
     /// one. Devices that fail to open are skipped silently.
-    pub async fn open_all() -> Result<Self, OpenError> {
+    pub async fn open_all(pin_prompt: Box<dyn PinPrompt>) -> Result<Self, OpenError> {
         let infos = LinuxAuthenticator::list_devices()?;
         let mut authenticators = Vec::new();
         for info in infos {
@@ -73,7 +129,7 @@ impl LinuxClient<public_suffix::PublicSuffixList, ()> {
                 authenticators.push(auth);
             }
         }
-        Ok(Self::new(authenticators))
+        Ok(Self::new(authenticators, pin_prompt))
     }
 }
 
@@ -87,11 +143,14 @@ where
         authenticators: Vec<LinuxAuthenticator>,
         custom_provider: P,
         fetcher: Option<F>,
+        pin_prompt: Box<dyn PinPrompt>,
     ) -> Self {
         Self {
             devices: authenticators,
             rp_id_verifier: RpIdVerifier::new(custom_provider, fetcher),
             uv_when_preferred: true,
+            pin_prompt,
+            pin_uv_auth_protocol_state: PinUvAuthProtocolOne::new(),
         }
     }
 }
@@ -110,6 +169,185 @@ where
     /// How many authenticators this client will dispatch to.
     pub fn device_count(&self) -> usize {
         self.devices.len()
+    }
+
+    /// Return "valid" devices (devices that can be used for this combination of UV/PIN
+    /// configuration). Invalid devices are left in self.devices.
+    async fn get_valid_devices(
+        &mut self,
+        uv: bool,
+        rp_id: &str,
+    ) -> Result<Vec<(LinuxAuthenticator, Option<TokenWithProtocol>)>, WebauthnError> {
+        let mut devices = std::mem::take(&mut self.devices);
+
+        // Determine if any device has been configured to use built-in UV or a PIN.
+        let any_device_requires_uv = devices
+            .iter()
+            .any(|device| device.uv_configured() || device.pin_configured());
+
+        // We need to prompt the user to provide UV if the request requires user verification OR if
+        // any device requires UV. In order to do this, we first need them to provide UP to an authenticator
+        // to select it.
+        let selected_devices = if uv || any_device_requires_uv {
+            let mut selected_device = if devices.len() == 1 {
+                devices.pop().unwrap()
+            } else {
+                let candidates = devices.into_iter().map(|e| (e, ())).collect();
+                let RaceOutcome {
+                    winner,
+                    mut errors,
+                    losers,
+                } = race_request(candidates, |mut auth, _| async move {
+                    let result = auth.inner.authenticator_selection().await;
+                    (auth, result)
+                })
+                .await;
+
+                // Put losers back into the devices list
+                self.devices.extend(losers);
+                if let Some((_, winning_device)) = winner {
+                    winning_device
+                } else {
+                    return Err(WebauthnError::AuthenticatorError(
+                        errors
+                            .pop()
+                            .unwrap_or(ctap2::StatusCode::Ctap2(ctap2::Ctap2Code::Known(
+                                ctap2::Ctap2Error::UserPresenceRequired,
+                            )))
+                            .into(),
+                    ));
+                }
+            };
+
+            let selected_operation = if selected_device.uv_configured() {
+                if selected_device.pin_uv_auth_token_supported() {
+                    // Use UV
+                    Some(GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingUvWithPermissions)
+                } else {
+                    // Just set uv = true in request
+                    // TODO: retry with PIN if we get error code 0x36
+                    None
+                }
+            } else if selected_device.pin_configured() {
+                if selected_device.pin_uv_auth_token_supported() {
+                    // Use PIN
+                    Some(GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingPinWithPermissions)
+                } else {
+                    Some(GetPinUvAuthTokenOp::GetPinToken)
+                }
+            } else {
+                // Dispatch request with no pinUvAuthToken to selected authenticator
+                None
+            };
+
+            let token_with_protocol = self
+                .get_auth_token_for_device(&mut selected_device, selected_operation, rp_id)
+                .await?;
+
+            vec![(selected_device, token_with_protocol)]
+        } else {
+            // The request doesn't require UV, and no authenticator device requires UV.
+            // Therefore, do the regular authentication flow (race all authenticators).
+            devices.into_iter().map(|e| (e, None)).collect()
+        };
+        Ok(selected_devices)
+    }
+
+    // Take a device and an operation and obtain an auth token for that device using the method
+    // appropriate to the operation.
+    async fn get_auth_token_for_device(
+        &self,
+        selected_device: &mut LinuxAuthenticator,
+        selected_operation: Option<GetPinUvAuthTokenOp>,
+        rp_id: &str,
+    ) -> Result<Option<TokenWithProtocol>, WebauthnError> {
+        let token_and_protocol = match selected_operation {
+            None => None,
+            Some(op) => {
+                // Obtain platform key-agreement key and shared secret.
+                let pin_uv_auth_protocol = 1;
+                let public_key = selected_device
+                    .inner
+                    .get_public_key(pin_uv_auth_protocol)
+                    .await?;
+                let (platform_key_agreement_key, shared_secret) = self
+                    .pin_uv_auth_protocol_state
+                    .encapsulate(&public_key)
+                    .map_err(ctap2::StatusCode::from)?;
+                let permissions =
+                    ctap2::client_pin::Permissions::MC | ctap2::client_pin::Permissions::GA;
+                let encrypted_token = match op {
+                    GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingPinWithPermissions => {
+                        let attempts_remaining = selected_device
+                            .inner
+                            .get_pin_retries(pin_uv_auth_protocol)
+                            .await?;
+                        let pin = self
+                            .pin_prompt
+                            .request_pin(attempts_remaining)
+                            .await
+                            .map_err(|_| WebauthnError::NotSupportedError)?;
+                        let encrypted_pin =
+                            aes_256_cbc(shared_secret, [0; 16], &sha256(pin.as_bytes())[0..16])
+                                .into();
+                        selected_device
+                            .inner
+                            .get_pin_uv_auth_token_using_pin(
+                                pin_uv_auth_protocol,
+                                platform_key_agreement_key,
+                                encrypted_pin,
+                                permissions,
+                                Some(rp_id.to_owned()),
+                            )
+                            .await?
+                    }
+                    GetPinUvAuthTokenOp::GetPinUvAuthTokenUsingUvWithPermissions => {
+                        selected_device
+                            .inner
+                            .get_pin_uv_auth_token_using_uv(
+                                pin_uv_auth_protocol,
+                                platform_key_agreement_key,
+                                permissions,
+                                Some(rp_id.to_owned()),
+                            )
+                            .await?
+                    }
+                    GetPinUvAuthTokenOp::GetPinToken => {
+                        let attempts_remaining = selected_device
+                            .inner
+                            .get_uv_retries(pin_uv_auth_protocol)
+                            .await?;
+                        let pin = self
+                            .pin_prompt
+                            .request_pin(attempts_remaining)
+                            .await
+                            .map_err(|_| WebauthnError::NotSupportedError)?;
+                        let encrypted_pin =
+                            aes_256_cbc(shared_secret, [0; 16], &sha256(pin.as_bytes())[0..16])
+                                .into();
+                        selected_device
+                            .inner
+                            .get_pin_token(
+                                pin_uv_auth_protocol,
+                                platform_key_agreement_key,
+                                encrypted_pin,
+                            )
+                            .await?
+                    }
+                };
+
+                // Decrypt the token using the shared secret before returning it.
+                let pin_uv_auth_token = Bytes::from(PinUvAuthProtocolOne::decrypt(
+                    &shared_secret,
+                    encrypted_token.as_slice(),
+                ));
+                Some((pin_uv_auth_token, pin_uv_auth_protocol))
+            }
+        };
+        Ok(token_and_protocol.map(|e| TokenWithProtocol {
+            token: e.0,
+            protocol: e.1,
+        }))
     }
 
     /// Register a credential by racing every connected security key.
@@ -150,19 +388,19 @@ where
 
         // Per-device filter + tailored request build. Owned devices that don't
         // qualify are held aside so we can restore them after the race.
-        let devices = std::mem::take(&mut self.devices);
+        let selected_devices = self.get_valid_devices(uv, &rp_id).await?;
         let mut candidates: Vec<(LinuxAuthenticator, ctap2::make_credential::Request)> = Vec::new();
         let mut preserved: Vec<LinuxAuthenticator> = Vec::new();
-        for device in devices {
+        for (device, token_with_protocol) in selected_devices {
             let info = device.info();
 
             let rk = map_rk(opts.authenticator_selection.as_ref(), &info);
-            if rk && !info.options.as_ref().is_some_and(|o| o.rk) {
+            if rk && !device.rk_supported() {
                 // RP requires a resident key but this device can't store one.
                 preserved.push(device);
                 continue;
             }
-            if uv && !device_supports_uv(&info) {
+            if uv && !(device.uv_configured() || device.pin_configured()) {
                 // RP requires UV but this device has no built-in UV (and we don't implement
                 // clientPIN yet, so PIN-only devices can't satisfy `uv`).
                 preserved.push(device);
@@ -176,6 +414,8 @@ where
                 continue;
             }
 
+            let (pin_auth, pin_protocol) =
+                get_pin_auth_and_protocol(token_with_protocol, &client_data_hash);
             let request = ctap2::make_credential::Request {
                 client_data_hash: client_data_hash.clone().into(),
                 rp: ctap2::make_credential::PublicKeyCredentialRpEntity {
@@ -187,14 +427,14 @@ where
                 exclude_list: opts.exclude_credentials.clone(),
                 extensions: None,
                 options: ctap2::make_credential::Options { rk, up: false, uv },
-                pin_auth: None,
-                pin_protocol: None,
+                pin_auth,
+                pin_protocol,
             };
             candidates.push((device, request));
         }
 
         if candidates.is_empty() {
-            self.devices = preserved;
+            self.devices.extend(preserved);
             return Err(WebauthnError::NotSupportedError);
         }
 
@@ -283,29 +523,30 @@ where
 
         let uv = ctap_uv_option(opts.user_verification, self.uv_when_preferred);
 
-        let devices = std::mem::take(&mut self.devices);
+        let selected_devices = self.get_valid_devices(uv, &rp_id).await?;
         let mut candidates: Vec<(LinuxAuthenticator, ctap2::get_assertion::Request)> = Vec::new();
         let mut preserved: Vec<LinuxAuthenticator> = Vec::new();
-        for device in devices {
-            let info = device.info();
-            if uv && !device_supports_uv(&info) {
+        for (device, token_with_protocol) in selected_devices {
+            if uv && !(device.uv_configured() || device.pin_configured()) {
                 preserved.push(device);
                 continue;
             }
+            let (pin_auth, pin_protocol) =
+                get_pin_auth_and_protocol(token_with_protocol, &client_data_hash);
             let request = ctap2::get_assertion::Request {
                 rp_id: rp_id.clone(),
                 client_data_hash: client_data_hash.clone().into(),
                 allow_list: opts.allow_credentials.clone(),
                 extensions: None,
                 options: ctap2::get_assertion::Options { up: true, uv },
-                pin_auth: None,
-                pin_protocol: None,
+                pin_auth,
+                pin_protocol,
             };
             candidates.push((device, request));
         }
 
         if candidates.is_empty() {
-            self.devices = preserved;
+            self.devices.extend(preserved);
             return Err(WebauthnError::NotSupportedError);
         }
 
@@ -359,12 +600,6 @@ where
             client_extension_results: Default::default(),
         })
     }
-}
-
-/// Whether the given `get_info::Response` indicates that the device supports a user verification
-/// method that's already configured.
-fn device_supports_uv(info: &ctap2::get_info::Response) -> bool {
-    info.options.as_ref().and_then(|o| o.uv).unwrap_or(false)
 }
 
 /// Keep only the algorithms the device's `get_info` advertises (if it advertises any). The
