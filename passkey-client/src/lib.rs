@@ -110,13 +110,10 @@ impl WebauthnError {
 impl From<ctap2::StatusCode> for WebauthnError {
     fn from(value: ctap2::StatusCode) -> Self {
         match value {
-            ctap2::StatusCode::Ctap1(u2f) => WebauthnError::AuthenticatorError(u2f.into()),
-            ctap2::StatusCode::Ctap2(ctap2::Ctap2Code::Known(ctap2::Ctap2Error::NoCredentials)) => {
+            ctap2::StatusCode::Known(ctap2::Ctap2Error::NoCredentials) => {
                 WebauthnError::CredentialNotFound
             }
-            ctap2::StatusCode::Ctap2(ctap2code) => {
-                WebauthnError::AuthenticatorError(ctap2code.into())
-            }
+            ctap2code => WebauthnError::AuthenticatorError(ctap2code.into()),
         }
     }
 }

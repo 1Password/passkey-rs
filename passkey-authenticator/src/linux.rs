@@ -21,7 +21,7 @@ use std::path::Path;
 use passkey_transports::hid::{Command, Message};
 use passkey_transports::hidraw::{DeviceInfo, HidDevice, HidrawError, enumerate_fido_devices};
 use passkey_types::ctap2::{
-    Ctap2Command, Ctap2Error, StatusCode, U2FError, get_assertion, get_info, make_credential,
+    Ctap2Command, Ctap2Error, StatusCode, get_assertion, get_info, make_credential,
 };
 use tokio::sync::mpsc;
 
@@ -113,7 +113,7 @@ impl LinuxAuthenticatorInner {
     ) -> Result<make_credential::Response, StatusCode> {
         let mut body = Vec::new();
         ciborium::ser::into_writer(&request, &mut body)
-            .map_err(|_| StatusCode::from(U2FError::Other))?;
+            .map_err(|_| StatusCode::from(Ctap2Error::Other))?;
         let response = self
             .send_cbor_with_cancel(Ctap2Command::MakeCredential, &body)
             .await
@@ -129,7 +129,7 @@ impl LinuxAuthenticatorInner {
     ) -> Result<get_assertion::Response, StatusCode> {
         let mut body = Vec::new();
         ciborium::ser::into_writer(&request, &mut body)
-            .map_err(|_| StatusCode::from(U2FError::Other))?;
+            .map_err(|_| StatusCode::from(Ctap2Error::Other))?;
         let response = self
             .send_cbor_with_cancel(Ctap2Command::GetAssertion, &body)
             .await
@@ -261,8 +261,8 @@ impl From<TransactionError> for StatusCode {
         match e {
             TransactionError::Status(s) => s,
             // CTAP doesn't have a dedicated "transport failed" status code; surface
-            // it as the catch-all CTAP1 `U2FError::Other` (0x7F).
-            TransactionError::Hid(_) => StatusCode::from(U2FError::Other),
+            // it as the catch-all `Ctap2Error::Other` (0x7F).
+            TransactionError::Hid(_) => StatusCode::from(Ctap2Error::Other),
         }
     }
 }
@@ -282,7 +282,7 @@ impl CtaphidCborResponse {
         let Some(status) = raw.first() else {
             return Err(CtaphidCborResponseError::ResponseEmpty);
         };
-        if *status != u8::from(U2FError::Success) {
+        if *status != u8::from(Ctap2Error::Ok) {
             return Err(CtaphidCborResponseError::BadStatus(*status));
         };
         Ok(Self { raw })

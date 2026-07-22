@@ -1,4 +1,4 @@
-use crate::ctap2::error::{ExtensionError, U2FError, UnknownSpecError, VendorError};
+use crate::ctap2::error::{ExtensionError, UnknownSpecError, VendorError};
 
 use super::{Ctap2Error, StatusCode};
 
@@ -9,7 +9,7 @@ fn from_byte_conversions() {
     assert_eq!(success, Ctap2Error::Ok.into());
 
     let invalid_len = StatusCode::from(0x03);
-    assert_eq!(invalid_len, U2FError::InvalidLength.into());
+    assert_eq!(invalid_len, Ctap2Error::InvalidLength.into());
 
     let unsupported_alg = StatusCode::from(0x26);
     assert_eq!(unsupported_alg, Ctap2Error::UnsupportedAlgorithm.into());
