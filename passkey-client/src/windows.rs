@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::public_key_der_from_cose_key;
 use passkey_types::{
@@ -13,19 +15,7 @@ use serde::Serialize;
 
 use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
 use windows::Win32::{Foundation::HWND, Networking::WindowsWebServices::{
-    WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetErrorName,
-    WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
-    WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM,
-    WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION,
-    WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION,
-    WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION,
-    WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION,
-    WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY,
-    WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB,
-    WEBAUTHN_ENTERPRISE_ATTESTATION_NONE, WEBAUTHN_ENTERPRISE_ATTESTATION_VENDOR_FACILITATED,
-    WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION,
-    WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION,
-    WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED,
+    WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetCancellationId, WebAuthNGetErrorName, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION, WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB, WEBAUTHN_ENTERPRISE_ATTESTATION_NONE, WEBAUTHN_ENTERPRISE_ATTESTATION_VENDOR_FACILITATED, WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED
 }, UI::WindowsAndMessaging::GetForegroundWindow};
 use windows_strings::{HSTRING, PCWSTR};
 
@@ -479,18 +469,36 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
 
         let rp_id_wide = HSTRING::from(rp_id);
 
+        let timeout = request.timeout.unwrap_or(Duration::from_secs(120).as_millis().try_into().unwrap());
+
         // Translate the Rust request into the Windows options struct.
         let mut allow_list =
             WinCredentialList::from_descriptors(request.allow_credentials.as_deref().unwrap_or(&[]));
         let get_assertion_options = WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS {
             dwVersion: WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION,
-            dwTimeoutMilliseconds: request.timeout.unwrap_or(0),
+            dwTimeoutMilliseconds: timeout,
             // Attachment isn't specified in the getAssertion request.
             dwAuthenticatorAttachment: WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY,
             dwUserVerificationRequirement: win_uv(request.user_verification),
             pAllowCredentialList: allow_list.as_ptr(),
             ..Default::default()
         };
+
+        let cancellation_id = {
+            // SAFETY: `cancelation_id` is valid to write to and uses the correct type.
+            let res = unsafe { WebAuthNGetCancellationId() };
+            res.map_err(|_| WebauthnError::ValidationError)?
+        };
+
+        // TODO: Test and re-evaluate this in the future.
+        // To test: Comment out the `thread::spawn` and see if Windows
+        // closes the dialog after 2 minutes.
+        // Windows will rarely respect the timeout provided, so we cancel it after our own timeout.
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(timeout.into()));
+            // SAFETY: `cancelation_id` is valid and can be used.
+            unsafe { WebAuthNCancelCurrentOperation(&cancellation_id) }
+        });
 
         let get_assertion_result = unsafe {
             WebAuthNAuthenticatorGetAssertion(
