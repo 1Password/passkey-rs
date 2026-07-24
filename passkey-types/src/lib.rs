@@ -34,7 +34,6 @@ mod utils;
 mod passkey;
 
 pub mod ctap2;
-pub mod u2f;
 pub mod webauthn;
 
 // Re-exports

@@ -154,10 +154,6 @@ serde_workaround! {
         /// User identifiable information (name, DisplayName, icon) MUST not be returned if user
         /// verification is not done by the authenticator.
         ///
-        /// ## U2F Devices:
-        /// For U2F devices, this parameter is not returned as this user information is not present
-        /// for U2F credentials.
-        ///
         /// ## FIDO Devices - server resident credentials:
         /// For server resident credentials on FIDO devices, this parameter is optional as server
         /// resident credentials behave same as U2F credentials where they are discovered given the

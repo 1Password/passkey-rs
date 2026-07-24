@@ -191,10 +191,11 @@ jobs:
           persist-credentials: false
 
       - name: Install typeshare CLI
-        uses: actions-rs/install@9da1d2adcfe5e7c16992e8242ca33a56b6d9b101 # v0.1.2
+        uses: baptiste0928/cargo-install@f204293d9709061b7bc1756fec3ec4e2cd57dec0 # v3.4.0
         with:
           crate: typeshare-cli
           version: "1.13.4"
+          locked: true
 
       - name: Run typeshare CLI
         run: typeshare --lang=${{ matrix.lang }} . -o test.${{ matrix.fs }}

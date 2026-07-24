@@ -2,21 +2,28 @@
 
 use crate::utils::repr_enum::CodeOutOfRange;
 
+/// Ctap2 error which may or may not be explicitly defined
+///
 /// <https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#error-responses>
 #[derive(Debug, PartialEq, Eq)]
 pub enum StatusCode {
-    /// Ctap1 or U2F error codes
-    Ctap1(U2FError),
-    /// CTAP2 error codes
-    Ctap2(Ctap2Code),
+    /// Known error codes
+    Known(Ctap2Error),
+    /// last spec reserved number 0xDF
+    Other(UnknownSpecError),
+    /// Range 0xE0..=0xEF
+    Extension(ExtensionError),
+    /// Range 0xF0..=0xFF
+    Vendor(VendorError),
 }
 
 impl From<u8> for StatusCode {
     fn from(value: u8) -> Self {
-        // Default to trying Ctap2, otherwise it must be a U2F error
-        Ctap2Code::try_from(value)
+        Ctap2Error::try_from(value)
             .map(Self::from)
-            .or_else(|err| U2FError::try_from(err.0).map(Self::from))
+            .or_else(|err| ExtensionError::try_from(err.0).map(Self::from))
+            .or_else(|err| VendorError::try_from(err.0).map(Self::from))
+            .or_else(|err| UnknownSpecError::try_from(err.0).map(Self::from))
             // SAFETY: this unwrap is safe because at this point we have exhausted all values of a byte.
             .unwrap()
     }
@@ -25,17 +32,19 @@ impl From<u8> for StatusCode {
 impl From<StatusCode> for u8 {
     fn from(src: StatusCode) -> Self {
         match src {
-            StatusCode::Ctap1(u2f) => u2f.into(),
-            StatusCode::Ctap2(ctap2) => ctap2.into(),
+            StatusCode::Known(known) => known.into(),
+            StatusCode::Other(other) => other.into(),
+            StatusCode::Extension(extension) => extension.into(),
+            StatusCode::Vendor(vendor) => vendor.into(),
         }
     }
 }
 
 repr_enum! {
-    /// U2F or CTAP1 error variants
-    U2FError: u8 {
+    /// Explicitly defined CTAP2 error variants
+    Ctap2Error: u8 {
         /// Indicates successful response.
-        Success : 0x00,
+        Ok : 0x00,
         /// The command is not a valid CTAP command.
         InvalidCommand : 0x01,
         /// The command included an invalid parameter.
@@ -53,67 +62,6 @@ repr_enum! {
         LockRequired : 0x0A,
         /// Command not allowed on this cid.
         InvalidChannel : 0x0B,
-        /// Other unspecified error.
-        Other : 0x7F,
-    }
-}
-
-impl From<U2FError> for StatusCode {
-    fn from(ctap1: U2FError) -> Self {
-        StatusCode::Ctap1(ctap1)
-    }
-}
-
-/// Ctap2 error which may or may not be explicitly defined
-#[derive(Debug, PartialEq, Eq)]
-pub enum Ctap2Code {
-    /// Known error codes
-    Known(Ctap2Error),
-    /// last spec reserved number 0xDF
-    Other(UnknownSpecError),
-    /// Range 0xE0..=0xEF
-    Extension(ExtensionError),
-    /// Range 0xF0..=0xFF
-    Vendor(VendorError),
-}
-
-impl From<Ctap2Code> for StatusCode {
-    fn from(src: Ctap2Code) -> Self {
-        Self::Ctap2(src)
-    }
-}
-
-impl TryFrom<u8> for Ctap2Code {
-    type Error = CodeOutOfRange<u8>;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Ctap2Error::try_from(value)
-            .map(Self::from)
-            .or_else(|err| ExtensionError::try_from(err.0).map(Self::from))
-            .or_else(|err| VendorError::try_from(err.0).map(Self::from))
-            .or_else(|err| UnknownSpecError::try_from(err.0).map(Self::from))
-    }
-}
-
-impl From<Ctap2Code> for u8 {
-    fn from(src: Ctap2Code) -> Self {
-        match src {
-            Ctap2Code::Known(known) => known.into(),
-            Ctap2Code::Other(other) => other.into(),
-            Ctap2Code::Extension(extension) => extension.into(),
-            Ctap2Code::Vendor(vendor) => vendor.into(),
-        }
-    }
-}
-
-repr_enum! {
-    /// Explicitly defined CTAP2 error variants
-    Ctap2Error: u8 {
-        /// Indicates successful response.
-        ///
-        /// > Note that this clashes with [`U2FError::Success`] but when deserializing from
-        /// > [`StatusCode`] we will default to this one.
-        Ok : 0x00,
         /// Invalid/unexpected CBOR error.
         CborUnexpectedType : 0x11,
         /// Error when parsing CBOR.
@@ -205,18 +153,14 @@ repr_enum! {
         ///
         /// [permissions]: https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-errata-20220621.html#perms-param-permissions
         UnauthorizedPermission : 0x40,
-    }
-}
-
-impl From<Ctap2Error> for Ctap2Code {
-    fn from(src: Ctap2Error) -> Self {
-        Ctap2Code::Known(src)
+        /// Other unspecified error.
+        Other : 0x7F,
     }
 }
 
 impl From<Ctap2Error> for StatusCode {
     fn from(src: Ctap2Error) -> Self {
-        StatusCode::Ctap2(src.into())
+        StatusCode::Known(src)
     }
 }
 
@@ -249,15 +193,9 @@ impl From<UnknownSpecError> for u8 {
     }
 }
 
-impl From<UnknownSpecError> for Ctap2Code {
-    fn from(src: UnknownSpecError) -> Self {
-        Ctap2Code::Other(src)
-    }
-}
-
 impl From<UnknownSpecError> for StatusCode {
     fn from(src: UnknownSpecError) -> Self {
-        StatusCode::Ctap2(src.into())
+        StatusCode::Other(src)
     }
 }
 
@@ -282,15 +220,9 @@ impl From<ExtensionError> for u8 {
     }
 }
 
-impl From<ExtensionError> for Ctap2Code {
-    fn from(src: ExtensionError) -> Self {
-        Ctap2Code::Extension(src)
-    }
-}
-
 impl From<ExtensionError> for StatusCode {
     fn from(src: ExtensionError) -> Self {
-        StatusCode::Ctap2(src.into())
+        StatusCode::Extension(src)
     }
 }
 
@@ -315,15 +247,9 @@ impl From<VendorError> for u8 {
     }
 }
 
-impl From<VendorError> for Ctap2Code {
-    fn from(src: VendorError) -> Self {
-        Ctap2Code::Vendor(src)
-    }
-}
-
 impl From<VendorError> for StatusCode {
     fn from(src: VendorError) -> Self {
-        StatusCode::Ctap2(src.into())
+        StatusCode::Vendor(src)
     }
 }
 

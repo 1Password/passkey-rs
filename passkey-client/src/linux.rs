@@ -231,7 +231,7 @@ where
             .attested_credential_data
             .as_ref()
             .ok_or(WebauthnError::AuthenticatorError(
-                ctap2::StatusCode::Ctap1(ctap2::U2FError::Other).into(),
+                ctap2::Ctap2Error::Other.into(),
             ))?;
         let alg = match credential_id.key.alg.as_ref() {
             Some(Algorithm::PrivateUse(val)) => *val,

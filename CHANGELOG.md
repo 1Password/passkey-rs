@@ -2,9 +2,24 @@
 
 ## Unreleased
 
+### passkey-authenticator
+
+- ⚠ BREAKING: Remove U2F support ([#105](https://github.com/1Password/passkey-rs/pull/105))
+
 ### passkey-client
 
 - Fix RP ID validation to require dot boundary ([#92](https://github.com/1Password/passkey-rs/pull/92))
+
+### passkey-transports
+
+- ⚠ BREAKING: Remove `hid::Command::Msg` variant as that is U2F only and U2F support is now being removed.
+  ([#105](https://github.com/1Password/passkey-rs/pull/105))
+
+### passkey-types
+
+- ⚠ BREAKING: Remove U2F support ([#105](https://github.com/1Password/passkey-rs/pull/105))
+- ⚠ BREAKING: Migrate `U2FError` variant into `Ctap2Error`, rename `Ctap2Code` to `StatusCode`,
+  and finaly remove the old `StatusCode`. ([#105](https://github.com/1Password/passkey-rs/pull/105))
 
 ## Passkey v0.5.0
 

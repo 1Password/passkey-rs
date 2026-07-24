@@ -4,9 +4,6 @@ use std::collections::HashMap;
 /// The CTAPHID protocol implements the following commands.
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
-    /// This command sends an encapsulated CTAP1/U2F message to the device. The semantics of the
-    /// data message is defined in the U2F Raw Message Format encoding specification. See [passkey-rs::u2f].
-    Msg = 0x03,
     /// This command sends an encapsulated CTAP CBOR encoded message. The semantics of the data
     /// message is defined in the CTAP Message encoding specification. Please note that keep-alive
     /// messages MAY be sent from the device to the client before the response message is returned.
@@ -95,7 +92,6 @@ impl TryFrom<u8> for Command {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Ok(match value {
-            0x03 => Self::Msg,
             0x10 => Self::Cbor,
             0x06 => Self::Init,
             0x01 => Self::Ping,

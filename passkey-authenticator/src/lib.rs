@@ -27,7 +27,6 @@ mod authenticator;
 mod credential_store;
 mod ctap2;
 mod passkey;
-mod u2f;
 mod user_validation;
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
@@ -50,7 +49,6 @@ pub use self::{
     credential_store::{CredentialStore, DiscoverabilitySupport, MemoryStore, StoreInfo},
     ctap2::Ctap2Api,
     passkey::PasskeyAccessor,
-    u2f::U2fApi,
     user_validation::{UiHint, UserCheck, UserValidationMethod},
 };
 

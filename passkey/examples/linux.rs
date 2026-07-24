@@ -1,13 +1,14 @@
 //! Sample App for Linux Client
+#[cfg(all(feature = "linux", target_os = "linux"))]
 use passkey::{
-    client::{WebauthnError, linux::LinuxClient},
+    client::{DefaultClientData, WebauthnError, linux::LinuxClient},
     types::{Bytes, rand::random_vec, webauthn::*},
 };
 
-use coset::iana;
-use passkey_client::DefaultClientData;
-use url::Url;
+#[cfg(all(feature = "linux", target_os = "linux"))]
+use {coset::iana, url::Url};
 
+#[cfg(all(feature = "linux", target_os = "linux"))]
 // Example of how to set up, register and authenticate with a `Client`.
 async fn client_setup(
     challenge_bytes_from_rp: Bytes,
@@ -75,6 +76,7 @@ async fn client_setup(
     Ok((my_webauthn_credential, authenticated_cred))
 }
 
+#[cfg(all(feature = "linux", target_os = "linux"))]
 #[tokio::main]
 async fn main() -> Result<(), WebauthnError> {
     let rp_url = Url::parse("https://future.1password.com").expect("Should Parse");
@@ -100,4 +102,9 @@ async fn main() -> Result<(), WebauthnError> {
     println!("Webauthn credential auth'ed:\n\n{authed_cred:?}\n\n");
 
     Ok(())
+}
+
+#[cfg(any(not(feature = "linux"), not(target_os = "linux")))]
+fn main() {
+    println!("must enable linux feature and compile for linux");
 }
