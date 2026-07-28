@@ -29,6 +29,7 @@ pub trait SecretKeyT {
     fn to_cose_key(&self) -> CoseKey;
 }
 
+// TODO: is this conformant with CTAP2? Do we need to expose other error variants?
 #[derive(Debug)]
 pub enum CoseKeyConversionError {
     UnsupportedAlgorithm,
