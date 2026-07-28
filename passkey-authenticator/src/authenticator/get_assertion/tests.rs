@@ -1,5 +1,5 @@
-use passkey_crypto::rng::{Rng, RngBackend};
-use passkey_crypto::rust_crypto::RustCryptoBackend;
+use passkey_crypto::rng::RngBackend;
+use passkey_crypto::rust_crypto::{RustCryptoBackend, RustCryptoRng};
 use passkey_types::{
     Passkey, StoredHmacSecret,
     ctap2::{
@@ -107,7 +107,7 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
 
     let request = Request {
         extensions: Some(ExtensionInputs {
-            prf: Some(prf_eval_request(Some(Rng::random_vec(32)))),
+            prf: Some(prf_eval_request(Some(RustCryptoRng::random_vec(32)))),
             ..Default::default()
         }),
         ..good_request()
@@ -150,7 +150,7 @@ async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
 
 #[tokio::test]
 async fn supported_extension_with_empty_request_gives_no_ext_output() {
-    let shared_store = Some(create_passkey(Some(Rng::random_vec(32))));
+    let shared_store = Some(create_passkey(Some(RustCryptoRng::random_vec(32))));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
     let mut authenticator = Authenticator::new(
@@ -177,7 +177,7 @@ async fn supported_extension_with_empty_request_gives_no_ext_output() {
 
 #[tokio::test]
 async fn supported_extension_without_extension_request_gives_no_ext_output() {
-    let shared_store = Some(create_passkey(Some(Rng::random_vec(32))));
+    let shared_store = Some(create_passkey(Some(RustCryptoRng::random_vec(32))));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
     let mut authenticator = Authenticator::new(
@@ -201,7 +201,7 @@ async fn supported_extension_without_extension_request_gives_no_ext_output() {
 
 #[tokio::test]
 async fn supported_extension_with_request_gives_output() {
-    let shared_store = Some(create_passkey(Some(Rng::random_vec(32))));
+    let shared_store = Some(create_passkey(Some(RustCryptoRng::random_vec(32))));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
     let mut authenticator = Authenticator::new(
@@ -214,7 +214,7 @@ async fn supported_extension_with_request_gives_output() {
 
     let request = Request {
         extensions: Some(ExtensionInputs {
-            prf: Some(prf_eval_request(Some(Rng::random_vec(32)))),
+            prf: Some(prf_eval_request(Some(RustCryptoRng::random_vec(32)))),
             ..Default::default()
         }),
         ..good_request()

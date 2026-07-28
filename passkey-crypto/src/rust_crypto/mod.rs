@@ -292,3 +292,5 @@ impl CryptoBackend for RustCryptoBackend {
         }
     }
 }
+
+pub type RustCryptoRng = <RustCryptoBackend as CryptoBackend>::Rng;

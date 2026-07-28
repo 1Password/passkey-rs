@@ -3,8 +3,6 @@ use rand::RngExt;
 
 use super::RngBackend;
 
-pub(super) type _Rng = ThreadRng;
-
 impl RngBackend for ThreadRng {
     fn random_vec(len: usize) -> Vec<u8> {
         let mut data = vec![0u8; len];

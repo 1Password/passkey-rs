@@ -4,8 +4,8 @@ use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_crypto::{
-    rng::{Rng, RngBackend},
-    rust_crypto::RustCryptoBackend,
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };
 use passkey_types::{Bytes, ctap2, encoding::try_from_base64url, webauthn::CollectedClientData};
 use serde::Deserialize;
@@ -20,11 +20,11 @@ fn good_credential_creation_options() -> webauthn::PublicKeyCredentialCreationOp
             name: "future.1password.com".into(),
         },
         user: webauthn::PublicKeyCredentialUserEntity {
-            id: Rng::random_vec(16).into(),
+            id: RustCryptoRng::random_vec(16).into(),
             display_name: "wendy".into(),
             name: "wendy".into(),
         },
-        challenge: Rng::random_vec(32).into(),
+        challenge: RustCryptoRng::random_vec(32).into(),
         pub_key_cred_params: vec![webauthn::PublicKeyCredentialParameters {
             ty: webauthn::PublicKeyCredentialType::PublicKey,
             alg: iana::Algorithm::ES256,
@@ -43,7 +43,7 @@ fn good_credential_request_options(
     credential_id: impl Into<Bytes>,
 ) -> webauthn::PublicKeyCredentialRequestOptions {
     webauthn::PublicKeyCredentialRequestOptions {
-        challenge: Rng::random_vec(32).into(),
+        challenge: RustCryptoRng::random_vec(32).into(),
         timeout: None,
         rp_id: Some("future.1password.com".into()),
         allow_credentials: Some(vec![webauthn::PublicKeyCredentialDescriptor {
@@ -622,7 +622,7 @@ async fn fail_to_create_with_unrelated_origin() {
     // We can call authenticate without a passkey in the store here
     // since RP validation is before we fetch anything from the store
     let auth_options = webauthn::CredentialRequestOptions {
-        public_key: good_credential_request_options(Rng::random_vec(32)),
+        public_key: good_credential_request_options(RustCryptoRng::random_vec(32)),
     };
     let res = client
         .authenticate(&origin, auth_options, DefaultClientData)
