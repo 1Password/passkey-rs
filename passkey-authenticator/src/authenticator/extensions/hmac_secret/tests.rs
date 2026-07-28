@@ -1,4 +1,4 @@
-use passkey_crypto::rust_crypto::RustCryptoBackend;
+use passkey_crypto::rust_crypto::{RustCryptoBackend, RustCryptoRng};
 use passkey_types::{Passkey, ctap2::Aaguid};
 
 use crate::{Authenticator, MockUserValidationMethod};
@@ -37,7 +37,7 @@ fn hmac_secret_cycle_works() {
         .hmac_secret(ext)
         .build();
 
-    let request = prf_eval_request(Some(Rng::random_vec(64)));
+    let request = prf_eval_request(Some(RustCryptoRng::random_vec(64)));
 
     let res = auth
         .get_prf(
@@ -72,7 +72,7 @@ fn hmac_secret_cycle_works() {
         .get_prf(
             &passkey.credential_id,
             passkey.extensions.hmac_secret.as_ref(),
-            prf_eval_request(Some(Rng::random_vec(64))),
+            prf_eval_request(Some(RustCryptoRng::random_vec(64))),
             true,
         )
         .expect("Changing input should still succeed")
@@ -121,7 +121,7 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .hmac_secret(ext)
         .build();
 
-    let request = prf_eval_request(Some(Rng::random_vec(64)));
+    let request = prf_eval_request(Some(RustCryptoRng::random_vec(64)));
 
     let res = auth
         .get_prf(
@@ -153,7 +153,7 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .get_prf(
             &passkey.credential_id,
             passkey.extensions.hmac_secret.as_ref(),
-            prf_eval_request(Some(Rng::random_vec(64))),
+            prf_eval_request(Some(RustCryptoRng::random_vec(64))),
             true,
         )
         .expect("Changing input should still succeed")
@@ -183,7 +183,7 @@ fn hmac_secret_cycle_works_with_one_salt() {
         .hmac_secret(ext)
         .build();
 
-    let mut request = prf_eval_request(Some(Rng::random_vec(64)));
+    let mut request = prf_eval_request(Some(RustCryptoRng::random_vec(64)));
     request.eval = request.eval.map(|e| AuthenticatorPrfValues {
         first: e.first,
         second: None,

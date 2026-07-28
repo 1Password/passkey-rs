@@ -9,9 +9,6 @@ mod rand;
 
 use std::ops::RangeInclusive;
 
-#[cfg(feature = "rand")]
-use rand::*;
-
 /// The methods that all Random Number Generator backends must implement for use accross the passkey
 /// crates.
 pub trait RngBackend: Sized {
@@ -23,5 +20,3 @@ pub trait RngBackend: Sized {
     fn from_range(range: RangeInclusive<u8>) -> u8;
 }
 
-/// The enabled Random Number Generator backend
-pub type Rng = _Rng;

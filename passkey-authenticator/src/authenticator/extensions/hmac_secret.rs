@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use passkey_crypto::rng::{Rng, RngBackend};
+use passkey_crypto::{rust_crypto::RustCryptoRng, rng::RngBackend};
 use passkey_types::{
     crypto::hmac_sha256,
     ctap2::{
@@ -96,8 +96,8 @@ impl<S, U, C> Authenticator<S, U, C> {
         }
 
         Some(passkey_types::StoredHmacSecret {
-            cred_with_uv: Rng::random_vec(32),
-            cred_without_uv: config.credentials.without_uv().then(|| Rng::random_vec(32)),
+            cred_with_uv: RustCryptoRng::random_vec(32),
+            cred_without_uv: config.credentials.without_uv().then(|| RustCryptoRng::random_vec(32)),
         })
     }
 

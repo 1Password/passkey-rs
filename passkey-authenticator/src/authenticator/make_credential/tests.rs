@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use coset::iana;
 use passkey_crypto::{
-    rng::{Rng, RngBackend},
-    rust_crypto::RustCryptoBackend,
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };
 use passkey_types::{
     Bytes,
@@ -29,13 +29,13 @@ use crate::{
 
 fn good_request() -> Request {
     Request {
-        client_data_hash: Rng::random_vec(32).into(),
+        client_data_hash: RustCryptoRng::random_vec(32).into(),
         rp: PublicKeyCredentialRpEntity {
             id: "future.1password.com".into(),
             name: Some("1password".into()),
         },
         user: webauthn::PublicKeyCredentialUserEntity {
-            id: Rng::random_vec(16).into(),
+            id: RustCryptoRng::random_vec(16).into(),
             display_name: "wendy".into(),
             name: "Appleseed".into(),
         },
@@ -84,7 +84,7 @@ async fn assert_storage_on_success() {
 
 #[tokio::test]
 async fn assert_excluded_credentials() {
-    let cred_id: Bytes = Rng::random_vec(16).into();
+    let cred_id: Bytes = RustCryptoRng::random_vec(16).into();
     let response = Request {
         exclude_list: Some(vec![webauthn::PublicKeyCredentialDescriptor {
             ty: webauthn::PublicKeyCredentialType::PublicKey,
@@ -357,8 +357,8 @@ async fn hmac_secret_mc_happy_path() {
         extensions: Some(ExtensionInputs {
             prf: Some(AuthenticatorPrfInputs {
                 eval: Some(AuthenticatorPrfValues {
-                    first: Rng::random_vec(32).try_into().unwrap(),
-                    second: Some(Rng::random_vec(32).try_into().unwrap()),
+                    first: RustCryptoRng::random_vec(32).try_into().unwrap(),
+                    second: Some(RustCryptoRng::random_vec(32).try_into().unwrap()),
                 }),
                 eval_by_credential: None,
             }),
@@ -407,7 +407,7 @@ async fn hmac_secret_mc_without_hmac_secret_support() {
         extensions: Some(ExtensionInputs {
             prf: Some(AuthenticatorPrfInputs {
                 eval: Some(AuthenticatorPrfValues {
-                    first: Rng::random_vec(32).try_into().unwrap(),
+                    first: RustCryptoRng::random_vec(32).try_into().unwrap(),
                     second: None,
                 }),
                 eval_by_credential: None,
@@ -495,7 +495,7 @@ async fn empty_store_with_exclude_credentials_succeeds() {
     // would return NoCredentials error when checking excludeCredentials,
     // causing credential creation to fail incorrectly.
 
-    let cred_id: Bytes = Rng::random_vec(16).into();
+    let cred_id: Bytes = RustCryptoRng::random_vec(16).into();
     let request = Request {
         exclude_list: Some(vec![webauthn::PublicKeyCredentialDescriptor {
             ty: webauthn::PublicKeyCredentialType::PublicKey,
@@ -564,15 +564,15 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
     // but none of them are in the excludeCredentials list,
     // credential creation should succeed.
 
-    let stored_cred_id: Bytes = Rng::random_vec(16).into();
-    let excluded_cred_id: Bytes = Rng::random_vec(16).into();
+    let stored_cred_id: Bytes = RustCryptoRng::random_vec(16).into();
+    let excluded_cred_id: Bytes = RustCryptoRng::random_vec(16).into();
 
     // Create a passkey that will be stored (with different ID than excluded)
     let passkey = Passkey {
         key: Default::default(),
         rp_id: "future.1password.com".into(),
         credential_id: stored_cred_id.clone(),
-        user_handle: Some(Rng::random_vec(16).into()),
+        user_handle: Some(RustCryptoRng::random_vec(16).into()),
         username: Some("Appleseed".into()),
         user_display_name: Some("wendy".into()),
         counter: None,

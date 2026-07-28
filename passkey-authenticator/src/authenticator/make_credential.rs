@@ -1,6 +1,7 @@
 use passkey_crypto::{
+    rust_crypto::RustCryptoRng,
     CryptoBackend,
-    rng::{Rng, RngBackend},
+    rng::RngBackend,
 };
 use passkey_types::{
     Passkey,
@@ -115,7 +116,7 @@ where
             .await?;
 
         // 9. Generate a new credential key pair for the algorithm specified.
-        let credential_id = Rng::random_vec(self.credential_id_length.into());
+        let credential_id = RustCryptoRng::random_vec(self.credential_id_length.into());
 
         let private_key = self
             .crypto

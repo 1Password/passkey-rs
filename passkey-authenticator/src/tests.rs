@@ -1,8 +1,8 @@
 use coset::iana;
 use passkey_crypto::{
     CryptoBackend, PublicKeyT, SecretKeyT,
-    rng::{Rng, RngBackend},
-    rust_crypto::RustCryptoBackend,
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };
 use passkey_types::ctap2::AuthenticatorData;
 
@@ -16,7 +16,7 @@ fn private_key_cose_round_trip_sanity_check() {
 
     let auth_data = AuthenticatorData::new("future.1password.com", None);
     let mut signature_target = auth_data.to_vec();
-    signature_target.extend(Rng::random_vec(32));
+    signature_target.extend(RustCryptoRng::random_vec(32));
 
     let mut reconstructed_private_key =
         <RustCryptoBackend as CryptoBackend>::SecretKey::from_cose_key(&private_cose)

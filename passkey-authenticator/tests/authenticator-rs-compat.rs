@@ -4,8 +4,8 @@ use authenticator::MakeCredentialsResult;
 use coset::iana;
 use passkey_authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod};
 use passkey_crypto::{
-    rng::{Rng, RngBackend},
-    rust_crypto::RustCryptoBackend,
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };
 use passkey_types::{
     Passkey,
@@ -45,13 +45,13 @@ async fn ensure_attestation_object_compatibility() {
     let mut auth = Authenticator::new([0; 16].into(), None::<Passkey>, MockUV, RustCryptoBackend);
     let cred_response = auth
         .make_credential(make_credential::Request {
-            client_data_hash: Rng::random_vec(32).into(),
+            client_data_hash: RustCryptoRng::random_vec(32).into(),
             rp: make_credential::PublicKeyCredentialRpEntity {
                 id: "webauth.io".to_string(),
                 name: Some("webauthn.io".to_string()),
             },
             user: webauthn::PublicKeyCredentialUserEntity {
-                id: Rng::random_vec(16).into(),
+                id: RustCryptoRng::random_vec(16).into(),
                 name: "wendy".to_string(),
                 display_name: "wendy".to_string(),
             },

@@ -67,8 +67,8 @@
 //!     authenticator::{Authenticator, UiHint, UserValidationMethod, UserCheck},
 //!     client::{Client, DefaultClientData, WebauthnError},
 //!     crypto::{
-//!         rng::{Rng, RngBackend},
-//!         rust_crypto::RustCryptoBackend,
+//!         rng::RngBackend,
+//!         rust_crypto::{RustCryptoBackend, RustCryptoRng},
 //!     },
 //!     types::{ctap2::*, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! };
@@ -102,14 +102,14 @@
 //!
 //! // Example of how to set up, register and authenticate with a `Client`.
 //! # tokio_test::block_on(async {
-//! let challenge_bytes_from_rp: Bytes = Rng::random_vec(32).into();
+//! let challenge_bytes_from_rp: Bytes = RustCryptoRng::random_vec(32).into();
 //! let parameters_from_rp = PublicKeyCredentialParameters {
 //!     ty: PublicKeyCredentialType::PublicKey,
 //!     alg: iana::Algorithm::ES256,
 //! };
 //! let origin = Url::parse("https://future.1password.com").expect("Should parse");
 //! let user_entity = PublicKeyCredentialUserEntity {
-//!     id: Rng::random_vec(32).into(),
+//!     id: RustCryptoRng::random_vec(32).into(),
 //!     display_name: "Johnny Passkey".into(),
 //!     name: "jpasskey@example.org".into(),
 //! };
@@ -159,7 +159,7 @@
 //!
 //! // Let's try and authenticate.
 //! // Create a challenge that would usually come from the RP.
-//! let challenge_bytes_from_rp: Bytes = Rng::random_vec(32).into();
+//! let challenge_bytes_from_rp: Bytes = RustCryptoRng::random_vec(32).into();
 //! // Now try and authenticate
 //! let credential_request = CredentialRequestOptions {
 //!     public_key: PublicKeyCredentialRequestOptions {
@@ -190,8 +190,8 @@
 //! #     authenticator::{Authenticator, UiHint, UserValidationMethod, UserCheck},
 //! #     client::{Client, WebauthnError},
 //! #     crypto::{
-//! #         rng::{Rng, RngBackend},
-//! #         rust_crypto::RustCryptoBackend,
+//! #         rng::RngBackend,
+//! #         rust_crypto::{RustCryptoBackend, RustCryptoRng},
 //! #     },
 //! #     types::{ctap2::*, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! # };
@@ -226,9 +226,9 @@
 //! # tokio_test::block_on(async {
 //! // Note: this isn't really how you generate `client_data_hash` but it simplifies the example.
 //! // See usage.rs for actual technique.
-//! let client_data_hash: Bytes = Rng::random_vec(32).into();
+//! let client_data_hash: Bytes = RustCryptoRng::random_vec(32).into();
 //! let user_entity = PublicKeyCredentialUserEntity {
-//!     id: Rng::random_vec(32).into(),
+//!     id: RustCryptoRng::random_vec(32).into(),
 //!     display_name: "Johnny Passkey".into(),
 //!     name: "jpasskey@example.org".into(),
 //! };
