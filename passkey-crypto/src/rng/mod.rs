@@ -15,8 +15,6 @@ use rand::*;
 /// The methods that all Random Number Generator backends must implement for use accross the passkey
 /// crates.
 pub trait RngBackend: Sized {
-    /// TEMP: until key creation is self contained in CryptoBackend
-    fn new() -> Self;
     /// Generate random data of specific length.
     fn random_vec(len: usize) -> Vec<u8>;
     /// Generate a fixed size array of random bytes

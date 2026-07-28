@@ -16,16 +16,18 @@ version = "0.1.0"
 default = ["rust-crypto"]
 rand = ["dep:rand", "dep:getrandom"]
 js = ["getrandom/js"]
-rust-crypto = ["dep:p256", "rand"]
+rust-crypto = ["dep:p256", "dep:ed25519-dalek", "dep:signature", "rand"]
 
 [dependencies]
 coset.workspace = true
-p256 = { version = "0.13", optional = true, features = [
+ed25519-dalek = { version = "3.0", optional = true, features = [ "rand_core" ] }
+log = "0.4"
+p256 = { version = "0.14", optional = true, features = [
   "arithmetic",
-  "jwk",
   "pem"
 ] }
-rand = { version = "0.8", optional = true , features = ["min_const_gen"]}
+rand = { version = "0.10", optional = true}
+signature = { version = "3.0", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", optional = true }

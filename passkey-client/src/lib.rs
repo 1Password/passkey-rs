@@ -16,14 +16,14 @@
 //! [Webauthn]: https://w3c.github.io/webauthn/
 mod client_data;
 pub use client_data::*;
-use passkey_crypto::CryptoBackend;
+use passkey_crypto::{CryptoBackend, PublicKeyT, SecretKeyT};
 
 use std::{borrow::Cow, fmt::Display};
 
 use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
 use passkey_types::{
-    Passkey,
+    Bytes, Passkey,
     crypto::sha256,
     ctap2, encoding,
     webauthn::{
@@ -436,8 +436,11 @@ where
             }
         };
         let public_key = Some(
-            passkey_authenticator::public_key_der_from_cose_key(&credential_id.key)
-                .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
+            <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::bytes_from_cose_key(
+                &credential_id.key,
+            )
+            .map(Into::<Bytes>::into)
+            .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
         );
 
         let attestation_object = ctap2_response.as_webauthn_bytes();
