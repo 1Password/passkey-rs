@@ -32,17 +32,8 @@ mod user_validation;
 #[cfg(all(feature = "linux", target_os = "linux"))]
 pub mod linux;
 
-use coset::{
-    CoseKey,
-    iana::{self, Algorithm, EnumI64},
-};
-use p256::{
-    EncodedPoint, PublicKey, SecretKey,
-    elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint},
-    pkcs8::EncodePublicKey,
-};
+use coset::CoseKey;
 use passkey_crypto::PublicKeyT;
-use passkey_types::{Bytes, ctap2::Ctap2Error};
 
 pub use self::{
     authenticator::{Authenticator, CredentialIdLength, extensions},
@@ -54,97 +45,6 @@ pub use self::{
 
 #[cfg(any(test, feature = "testable"))]
 pub use self::user_validation::MockUserValidationMethod;
-
-/// Extract a cryptographic secret key from a [`CoseKey`].
-// possible candidate for a `passkey-crypto` crate?
-pub fn private_key_from_cose_key(key: &CoseKey) -> Result<SecretKey, Ctap2Error> {
-    if !matches!(
-        key.alg,
-        Some(coset::RegisteredLabelWithPrivate::Assigned(
-            Algorithm::ES256
-        ))
-    ) {
-        return Err(Ctap2Error::UnsupportedAlgorithm);
-    }
-    if !matches!(
-        key.kty,
-        coset::RegisteredLabel::Assigned(iana::KeyType::EC2)
-    ) {
-        return Err(Ctap2Error::InvalidCredential);
-    }
-
-    key.params
-        .iter()
-        .find_map(|(k, v)| {
-            if let coset::Label::Int(i) = k {
-                iana::Ec2KeyParameter::from_i64(*i)
-                    .filter(|p| p == &iana::Ec2KeyParameter::D)
-                    .and_then(|_| v.as_bytes())
-                    .and_then(|b| SecretKey::from_slice(b).ok())
-            } else {
-                None
-            }
-        })
-        .ok_or(Ctap2Error::InvalidCredential)
-}
-
-/// Convert a Cose Key to a X.509 SubjectPublicKeyInfo formatted byte array.
-///
-/// This should be used by the client when creating the [Easy Credential Data Accessors][ez]
-///
-/// [ez]: https://w3c.github.io/webauthn/#sctn-public-key-easy
-pub fn public_key_der_from_cose_key(key: &CoseKey) -> Result<Bytes, Ctap2Error> {
-    if !matches!(
-        key.alg,
-        Some(coset::RegisteredLabelWithPrivate::Assigned(
-            Algorithm::ES256
-        ))
-    ) {
-        return Err(Ctap2Error::UnsupportedAlgorithm);
-    }
-    if !matches!(
-        key.kty,
-        coset::RegisteredLabel::Assigned(iana::KeyType::EC2)
-    ) {
-        return Err(Ctap2Error::InvalidCredential);
-    }
-
-    let (mut x, mut y) = (None, None);
-    for (key, value) in &key.params {
-        if let coset::Label::Int(i) = key {
-            let key = iana::Ec2KeyParameter::from_i64(*i).ok_or(Ctap2Error::InvalidCbor)?;
-            match key {
-                iana::Ec2KeyParameter::X => {
-                    if value.as_bytes().and_then(|v| x.replace(v)).is_some() {
-                        log::warn!("Cose key has multiple entries for X coordinate");
-                    }
-                }
-                iana::Ec2KeyParameter::Y => {
-                    if value.as_bytes().and_then(|v| y.replace(v)).is_some() {
-                        log::warn!("Cose key has multiple entries for Y coordinate");
-                    }
-                }
-                _ => (),
-            }
-        }
-    }
-    let (Some(x), Some(y)) = (x, y) else {
-        return Err(Ctap2Error::CborUnexpectedType);
-    };
-
-    let point = EncodedPoint::from_affine_coordinates(
-        GenericArray::from_slice(x.as_slice()),
-        GenericArray::from_slice(y.as_slice()),
-        false,
-    );
-    let Some(pub_key): Option<PublicKey> = PublicKey::from_encoded_point(&point).into() else {
-        return Err(Ctap2Error::InvalidCredential);
-    };
-    pub_key
-        .to_public_key_der()
-        .map_err(|_| Ctap2Error::InvalidCredential)
-        .map(|pk| pk.as_ref().to_vec().into())
-}
 
 /// A COSE key pair, containing both the public and private keys.
 pub struct CoseKeyPair {

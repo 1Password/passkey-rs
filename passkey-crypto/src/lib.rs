@@ -1,4 +1,7 @@
-//!
+//! Swappable crypto backends for passkey operations.
+
+// TODO: remove this
+#![allow(missing_docs)]
 
 use coset::{CoseKey, iana};
 
@@ -11,26 +14,32 @@ pub trait CryptoBackend {
     type Rng: rng::RngBackend;
     type SecretKey: SecretKeyT;
 
+    fn enumerate_algorithms(&self) -> Vec<iana::Algorithm>;
+
     fn generate_key(&self, algorithm: iana::Algorithm) -> Result<Self::SecretKey, Error>;
-    // fn parse_private_cose_key(cose_key: CoseKey) -> Self::PrivateKey;
 }
 
 pub trait SecretKeyT {
-    type Signature: SignatureT;
-    type PublicKey: PublicKeyT<Signature = Self::Signature>;
-    // fn sign(&mut self, target: &[u8]) -> Self::Signature;
+    type PublicKey: PublicKeyT;
+    fn from_cose_key(cose_key: &CoseKey) -> Result<Self, CoseKeyConversionError>
+    where
+        Self: Sized;
+    fn sign(&mut self, target: &[u8]) -> Vec<u8>;
     fn public_key(&self) -> Self::PublicKey;
     fn to_cose_key(&self) -> CoseKey;
 }
 
-pub trait PublicKeyT {
-    type Signature: SignatureT;
-    // fn verify(&self, target: &[u8], signature: &Self::Signature) -> Result<(), Error>;
-    fn to_cose_key(&self) -> CoseKey;
+#[derive(Debug)]
+pub enum CoseKeyConversionError {
+    UnsupportedAlgorithm,
+    InvalidCredential,
+    Other(Box<dyn std::error::Error>),
 }
 
-pub trait SignatureT {
-    // fn to_bytes(&self) -> Vec<u8>;
+pub trait PublicKeyT {
+    fn verify(&self, target: &[u8], signature: &[u8]) -> Result<(), Error>;
+    fn bytes_from_cose_key(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError>;
+    fn to_cose_key(&self) -> CoseKey;
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;

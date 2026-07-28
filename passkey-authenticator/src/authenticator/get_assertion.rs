@@ -1,5 +1,4 @@
-use p256::ecdsa::{SigningKey, signature::SignerMut};
-use passkey_crypto::CryptoBackend;
+use passkey_crypto::{CryptoBackend, SecretKeyT};
 use passkey_types::{
     Bytes,
     ctap2::{
@@ -12,7 +11,6 @@ use passkey_types::{
 use crate::{
     Authenticator, CredentialStore, UserValidationMethod,
     passkey::{AsCredentialDescriptor, PasskeyAccessor},
-    private_key_from_cose_key,
     user_validation::UiHint,
 };
 
@@ -138,12 +136,9 @@ where
         let mut signature_target = auth_data.to_vec();
         signature_target.extend(input.client_data_hash);
 
-        let secret_key = private_key_from_cose_key(&credential.key())?;
+        let mut private_key = C::SecretKey::from_cose_key(&credential.key())?;
 
-        let mut private_key = SigningKey::from(secret_key);
-
-        let signature: p256::ecdsa::Signature = private_key.sign(&signature_target);
-        let signature_bytes = signature.to_der().to_bytes().to_vec().into();
+        let signature_bytes = private_key.sign(&signature_target).into();
 
         let user_handle = credential.user_handle().map(Bytes::from);
 
