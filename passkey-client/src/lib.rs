@@ -144,6 +144,7 @@ where
         .map_err(|_| WebauthnError::SerializationError)?;
     let client_data_hash = client_data
         .client_data_hash()
+        .filter(|v| !v.is_empty())
         .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
     Ok((client_data_json, client_data_hash))
 }
