@@ -136,8 +136,7 @@ where
         Self {
             aaguid,
             store,
-            // TODO: Change this to a method on the cryptographic backend
-            algs: vec![iana::Algorithm::ES256],
+            algs: crypto.enumerate_algorithms(),
             transports: vec![
                 webauthn::AuthenticatorTransport::Internal,
                 webauthn::AuthenticatorTransport::Hybrid,
