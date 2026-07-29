@@ -19,4 +19,3 @@ pub trait RngBackend: Sized {
     /// Randomly select a number from a given range
     fn from_range(range: RangeInclusive<u8>) -> u8;
 }
-
