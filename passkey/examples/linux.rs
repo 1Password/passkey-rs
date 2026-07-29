@@ -2,10 +2,7 @@
 #[cfg(all(feature = "linux", target_os = "linux"))]
 use passkey::{
     client::{DefaultClientData, WebauthnError, linux::LinuxClient},
-    crypto::{
-        rust_crypto::RustCryptoRng,
-        rng::RngBackend,
-    },
+    crypto::{rng::RngBackend, rust_crypto::RustCryptoRng},
     types::{Bytes, webauthn::*},
 };
 

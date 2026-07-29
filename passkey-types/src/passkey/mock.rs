@@ -1,8 +1,5 @@
 use coset::iana;
-use passkey_crypto::{
-    rust_crypto::RustCryptoRng, CryptoBackend, SecretKeyT,
-    rng::RngBackend,
-};
+use passkey_crypto::{CryptoBackend, SecretKeyT, rng::RngBackend, rust_crypto::RustCryptoRng};
 
 use crate::{Passkey, StoredHmacSecret};
 

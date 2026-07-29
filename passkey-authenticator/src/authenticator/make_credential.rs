@@ -1,8 +1,4 @@
-use passkey_crypto::{
-    rust_crypto::RustCryptoRng,
-    CryptoBackend,
-    rng::RngBackend,
-};
+use passkey_crypto::{CryptoBackend, rng::RngBackend, rust_crypto::RustCryptoRng};
 use passkey_types::{
     Passkey,
     ctap2::{

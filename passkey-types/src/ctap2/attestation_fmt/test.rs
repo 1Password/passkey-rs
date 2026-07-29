@@ -1,6 +1,6 @@
 use ciborium::cbor;
 use coset::CoseKeyBuilder;
-use passkey_crypto::{rust_crypto::RustCryptoRng, rng::RngBackend};
+use passkey_crypto::{rng::RngBackend, rust_crypto::RustCryptoRng};
 
 use super::*;
 

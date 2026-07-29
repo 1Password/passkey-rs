@@ -1,4 +1,4 @@
-use passkey_crypto::{rust_crypto::RustCryptoBackend, CryptoBackend};
+use passkey_crypto::{CryptoBackend, rust_crypto::RustCryptoBackend};
 use passkey_types::ctap2::{Aaguid, Flags};
 
 use crate::{
@@ -308,7 +308,8 @@ fn credential_id_lengths_validate() {
 fn credential_id_generation() {
     let valid_range = 0..=64;
     for _ in 0..=100 {
-        let length = CredentialIdLength::randomized::<<RustCryptoBackend as CryptoBackend>::Rng>().0;
+        let length =
+            CredentialIdLength::randomized::<<RustCryptoBackend as CryptoBackend>::Rng>().0;
         assert!(valid_range.contains(&length));
     }
 }
