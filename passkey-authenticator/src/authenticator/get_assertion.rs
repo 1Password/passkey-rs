@@ -129,7 +129,7 @@ where
         //      concatenation is safe to use here because the authenticator data describes its own
         //      length. The hash of the serialized client data (which potentially has a variable
         //      length) is always the last element.
-        let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter())
+        let auth_data = AuthenticatorData::new(&input.rp_id, credential.counter(), &self.crypto)
             .set_flags(flags)
             .set_assertion_extensions(extensions.signed)?;
 

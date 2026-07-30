@@ -26,12 +26,10 @@ typeshare = ["dep:typeshare"]
 bitflags = "2"
 ciborium = "0.2"
 data-encoding = "2"
-hmac = "0.12"
 indexmap = { version = "2", features = ["serde"] }
 passkey-crypto = { path = "../passkey-crypto", version = "0.1"}
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-sha2 = "0.10"
 strum = { version = "0.27", features = ["derive"] }
 typeshare = { version = "1", optional = true }
 url = { version = "2", features = ["serde"] }

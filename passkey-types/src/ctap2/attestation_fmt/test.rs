@@ -1,6 +1,9 @@
 use ciborium::cbor;
 use coset::CoseKeyBuilder;
-use passkey_crypto::{rng::RngBackend, rust_crypto::RustCryptoRng};
+use passkey_crypto::{
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
+};
 
 use super::*;
 
@@ -161,7 +164,7 @@ fn deserialize_authenticator_data_with_only_ed() {
 
 #[test]
 fn round_trip_deserialization() {
-    let expected = AuthenticatorData::new("future.1password.com", Some(0))
+    let expected = AuthenticatorData::new("future.1password.com", Some(0), &RustCryptoBackend)
         .set_attested_credential_data(AttestedCredentialData {
             aaguid: Aaguid::new_empty(),
             credential_id: RustCryptoRng::random_vec(16),
@@ -185,13 +188,13 @@ fn round_trip_deserialization() {
 #[test]
 fn add_empty_extensions_does_not_add_flag() {
     // Make credential with None
-    let make_auth_data = AuthenticatorData::new("1password.com", None)
+    let make_auth_data = AuthenticatorData::new("1password.com", None, &RustCryptoBackend)
         .set_make_credential_extensions(None)
         .expect("falsely tried to serialize");
     assert!(!make_auth_data.flags.contains(Flags::ED));
 
     // Make credential with empty extension
-    let make_auth_data = AuthenticatorData::new("1password.com", None)
+    let make_auth_data = AuthenticatorData::new("1password.com", None, &RustCryptoBackend)
         .set_make_credential_extensions(Some(make_credential::SignedExtensionOutputs {
             hmac_secret: None,
             hmac_secret_mc: None,
@@ -200,13 +203,13 @@ fn add_empty_extensions_does_not_add_flag() {
     assert!(!make_auth_data.flags.contains(Flags::ED));
 
     // Get assertion with None
-    let make_auth_data = AuthenticatorData::new("1password.com", None)
+    let make_auth_data = AuthenticatorData::new("1password.com", None, &RustCryptoBackend)
         .set_assertion_extensions(None)
         .expect("falsely tried to serialize");
     assert!(!make_auth_data.flags.contains(Flags::ED));
 
     // Get assertion with empty extension
-    let make_auth_data = AuthenticatorData::new("1password.com", None)
+    let make_auth_data = AuthenticatorData::new("1password.com", None, &RustCryptoBackend)
         .set_assertion_extensions(Some(get_assertion::SignedExtensionOutputs {
             hmac_secret: None,
         }))

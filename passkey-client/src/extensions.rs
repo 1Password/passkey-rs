@@ -38,7 +38,7 @@ where
         request: Option<&AuthenticationExtensionsClientInputs>,
         supported_extensions: &[get_info::Extension],
     ) -> Result<Option<make_credential::ExtensionInputs>, WebauthnError> {
-        prf::registration_prf_to_ctap2_input(request, supported_extensions)
+        Self::registration_prf_to_ctap2_input(request, supported_extensions)
     }
 
     /// Build the extension outputs for the WebAuthn client in a registration request.
@@ -75,7 +75,7 @@ where
         request: &PublicKeyCredentialRequestOptions,
         supported_extensions: &[get_info::Extension],
     ) -> Result<Option<get_assertion::ExtensionInputs>, WebauthnError> {
-        prf::auth_prf_to_ctap2_input(request, supported_extensions)
+        Self::auth_prf_to_ctap2_input(request, supported_extensions)
     }
 
     /// Build the extension outputs for the WebAuthn client in an authentication request.

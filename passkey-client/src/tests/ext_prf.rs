@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use passkey_authenticator::extensions::HmacSecretConfig;
 use passkey_crypto::rust_crypto::RustCryptoBackend;
-use passkey_types::{
-    crypto::hmac_sha256,
-    ctap2::{AuthenticatorData, Flags},
-};
+use passkey_types::ctap2::{AuthenticatorData, Flags};
 
 use super::*;
 
@@ -820,7 +817,8 @@ async fn two_eval_by_credential_entries() {
 async fn prf_already_hashed_does_not_hash_again() {
     let salt = [2; 32];
 
-    let hashed_salt = sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
+    let hashed_salt =
+        RustCryptoSha2::sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
 
     let origin = Url::parse("https://future.1password.com").unwrap();
 
@@ -866,7 +864,7 @@ async fn prf_already_hashed_does_not_hash_again() {
         .cred_with_uv
         .clone();
 
-    let expected_output = hmac_sha256(&hmac_secret, &hashed_salt);
+    let expected_output = RustCryptoSha2::hmac_sha256(&hmac_secret, &hashed_salt);
 
     let prf_results = created
         .client_extension_results
@@ -914,7 +912,8 @@ async fn prf_already_hashed_does_not_hash_again() {
 async fn prf_takes_precedence_over_prf_already_hashed() {
     let salt = [2; 32];
 
-    let hashed_salt = sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
+    let hashed_salt =
+        RustCryptoSha2::sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
 
     let origin = Url::parse("https://future.1password.com").unwrap();
 
@@ -960,7 +959,7 @@ async fn prf_takes_precedence_over_prf_already_hashed() {
         .cred_with_uv
         .clone();
 
-    let expected_output = hmac_sha256(&hmac_secret, &hashed_salt);
+    let expected_output = RustCryptoSha2::hmac_sha256(&hmac_secret, &hashed_salt);
 
     let prf_results = created
         .client_extension_results

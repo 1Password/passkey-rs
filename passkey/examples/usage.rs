@@ -3,14 +3,16 @@ use passkey::{
     authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
     crypto::{
+        hash::Sha256Backend,
         rng::RngBackend,
         rust_crypto::{RustCryptoBackend, RustCryptoRng},
     },
-    types::{Bytes, Passkey, crypto::sha256, ctap2::*, webauthn::*},
+    types::{Bytes, Passkey, ctap2::*, webauthn::*},
 };
 
 use coset::iana;
 use passkey_client::DefaultClientData;
+use passkey_crypto::rust_crypto::RustCryptoSha2;
 use url::Url;
 
 // MyUserValidationMethod is a stub impl of the UserValidationMethod trait, used later.
@@ -200,7 +202,7 @@ async fn main() -> Result<(), WebauthnError> {
     println!("Webauthn credential auth'ed:\n\n{authed_cred:?}\n\n");
 
     // Generate the client_data_hash from the created_cred response
-    let client_data_hash = sha256(&created_cred.response.client_data_json).to_vec();
+    let client_data_hash = RustCryptoSha2::sha256(&created_cred.response.client_data_json).to_vec();
 
     // Authenticator Version
     let authenticator_result = authenticator_setup(

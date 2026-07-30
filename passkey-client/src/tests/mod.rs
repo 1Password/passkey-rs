@@ -5,7 +5,7 @@ use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_crypto::{
     rng::RngBackend,
-    rust_crypto::{RustCryptoBackend, RustCryptoRng},
+    rust_crypto::{RustCryptoBackend, RustCryptoRng, RustCryptoSha2},
 };
 use passkey_types::{Bytes, ctap2, encoding::try_from_base64url, webauthn::CollectedClientData};
 use serde::Deserialize;
@@ -205,7 +205,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
             .expect("could not deserialize response");
     assert_eq!(
         att_obj.auth_data.rp_id_hash(),
-        &sha256(b"future.1password.com")
+        &RustCryptoSha2::sha256(b"future.1password.com")
     );
 
     let auth_options = webauthn::CredentialRequestOptions {
@@ -217,7 +217,10 @@ async fn create_and_authenticate_with_origin_subdomain() {
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
         .expect("could not deserialize response");
-    assert_eq!(att_obj.rp_id_hash(), &sha256(b"future.1password.com"));
+    assert_eq!(
+        att_obj.rp_id_hash(),
+        &RustCryptoSha2::sha256(b"future.1password.com")
+    );
 }
 
 #[tokio::test]
@@ -250,7 +253,7 @@ async fn create_and_authenticate_without_rp_id() {
             .expect("could not deserialize response");
     assert_eq!(
         att_obj.auth_data.rp_id_hash(),
-        &sha256(b"www.future.1password.com")
+        &RustCryptoSha2::sha256(b"www.future.1password.com")
     );
 
     let auth_options = webauthn::CredentialRequestOptions {
@@ -265,7 +268,10 @@ async fn create_and_authenticate_without_rp_id() {
         .expect("failed to authenticate with freshly created credential");
     let att_obj = ctap2::AuthenticatorData::from_slice(&res.response.authenticator_data)
         .expect("could not deserialize response");
-    assert_eq!(att_obj.rp_id_hash(), &sha256(b"www.future.1password.com"));
+    assert_eq!(
+        att_obj.rp_id_hash(),
+        &RustCryptoSha2::sha256(b"www.future.1password.com")
+    );
 }
 
 #[tokio::test]

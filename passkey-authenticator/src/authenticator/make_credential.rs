@@ -162,7 +162,7 @@ where
         )
         .unwrap();
 
-        let auth_data = AuthenticatorData::new(&input.rp.id, passkey.counter)
+        let auth_data = AuthenticatorData::new(&input.rp.id, passkey.counter, &self.crypto)
             .set_flags(flags)
             .set_attested_credential_data(acd)
             .set_make_credential_extensions(extensions.signed)?;
