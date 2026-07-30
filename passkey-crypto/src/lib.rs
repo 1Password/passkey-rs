@@ -16,8 +16,10 @@ pub trait CryptoBackend {
     /// RNG implementation.
     type Rng: rng::RngBackend;
 
-    /// Signature algorithm's secret key.
+    /// The Sha256 implementation
     type Sha256: hash::Sha256Backend;
+
+    /// Signature algorithm's secret key.
     type SecretKey: SecretKeyT;
 
     /// List the signing algorithms supported by this [CryptoBackend].

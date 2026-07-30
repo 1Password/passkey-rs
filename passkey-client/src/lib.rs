@@ -16,15 +16,15 @@
 //! [Webauthn]: https://w3c.github.io/webauthn/
 mod client_data;
 pub use client_data::*;
-use passkey_crypto::{CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64};
 
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, fmt::Display, marker::PhantomData};
 
 use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
+use passkey_crypto::{
+    CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, hash::Sha256Backend, iana::EnumI64,
+};
 use passkey_types::{
-    Bytes, Passkey,
-    crypto::sha256,
-    ctap2, encoding,
+    Bytes, Passkey, ctap2, encoding,
     webauthn::{
         self, AuthenticatorSelectionCriteria, ResidentKeyRequirement, UserVerificationRequirement,
     },
@@ -127,15 +127,17 @@ impl From<ctap2::StatusCode> for WebauthnError {
 /// hash that will be signed by the authenticator. Shared by both `Client` and
 /// `LinuxClient` because the client-data step of a WebAuthn ceremony is
 /// authenticator-independent.
-pub(crate) fn build_client_data<D, E>(
+pub(crate) fn build_client_data<D, E, C>(
     client_data: &D,
     ty: webauthn::ClientDataType,
     challenge: &[u8],
     origin: &Origin<'_>,
+    _crypto: PhantomData<C>,
 ) -> Result<(String, Vec<u8>), WebauthnError>
 where
     D: ClientData<E>,
     E: Serialize + Clone,
+    C: CryptoBackend,
 {
     let collected_client_data = webauthn::CollectedClientData::<E> {
         ty,
@@ -150,7 +152,7 @@ where
     let client_data_hash = client_data
         .client_data_hash()
         .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| sha256(client_data_json.as_bytes()).to_vec());
+        .unwrap_or_else(|| C::Sha256::sha256(client_data_json.as_bytes()).to_vec());
     Ok((client_data_json, client_data_hash))
 }
 
@@ -262,6 +264,7 @@ where
     rp_id_verifier: RpIdVerifier<P, F>,
     /// When the RP sends [`UserVerificationRequirement::Preferred`], whether to set CTAP `uv` to true.
     uv_when_preferred: bool,
+    crypto: PhantomData<C>,
 }
 
 impl<S, U, C> Client<S, U, C, public_suffix::PublicSuffixList, ()>
@@ -278,6 +281,7 @@ where
             authenticator,
             rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
             uv_when_preferred: true,
+            crypto: PhantomData,
         }
     }
 }
@@ -301,6 +305,7 @@ where
             authenticator,
             rp_id_verifier: RpIdVerifier::new(custom_provider, fetcher),
             uv_when_preferred: true,
+            crypto: PhantomData,
         }
     }
 
@@ -369,6 +374,7 @@ where
             webauthn::ClientDataType::Create,
             &request.challenge,
             &origin,
+            PhantomData::<C>,
         )?;
 
         let extension_request = request.extensions.and_then(|e| e.zip_contents());
@@ -510,6 +516,7 @@ where
             webauthn::ClientDataType::Get,
             &request.challenge,
             &origin,
+            PhantomData::<C>,
         )?;
 
         let ctap_extensions = self.auth_extension_ctap2_input(

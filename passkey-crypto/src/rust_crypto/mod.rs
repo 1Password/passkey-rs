@@ -297,7 +297,7 @@ impl SecretKeyT for RustCryptoSecretKey {
     }
 }
 
-/// [CryptoBackend] backed by RustCrypto.
+/// [Sha256Backend] backed by RustCrypto
 pub struct RustCryptoSha2;
 
 impl Sha256Backend for RustCryptoSha2 {
@@ -316,13 +316,14 @@ impl Sha256Backend for RustCryptoSha2 {
     }
 }
 
+/// [CryptoBackend] backed by RustCrypto.
 pub struct RustCryptoBackend;
 
 impl CryptoBackend for RustCryptoBackend {
     type Rng = crate::rng::rand::RandRng;
 
-
     type Sha256 = RustCryptoSha2;
+
     type SecretKey = RustCryptoSecretKey;
 
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm> {

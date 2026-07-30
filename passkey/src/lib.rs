@@ -71,7 +71,7 @@
 //!         rng::RngBackend,
 //!         rust_crypto::{RustCryptoBackend, RustCryptoRng},
 //!     },
-//!     types::{ctap2::*, crypto::sha256, webauthn::*, Bytes, Passkey},
+//!     types::{ctap2::*, webauthn::*, Bytes, Passkey},
 //! };
 //!
 //! use url::Url;
@@ -194,7 +194,7 @@
 //! #         rng::RngBackend,
 //! #         rust_crypto::{RustCryptoBackend, RustCryptoRng},
 //! #     },
-//! #     types::{ctap2::*, crypto::sha256, webauthn::*, Bytes, Passkey},
+//! #     types::{ctap2::*, webauthn::*, Bytes, Passkey},
 //! # };
 //! #
 //! # use url::Url;
