@@ -4,13 +4,15 @@ use coset::{
     iana::{self, EnumI64},
 };
 
-use crate::{CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT};
+use crate::{CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT, hash::Sha256Backend};
 use ed25519_dalek::{Signer, ed25519::SignatureEncoding};
+use hmac::{Hmac, KeyInit, Mac};
 use p256::{
     Sec1Point,
     elliptic_curve::{Generate, array::Array},
     pkcs8::EncodePublicKey,
 };
+use sha2::{Digest, Sha256};
 use signature::Verifier;
 
 pub enum RustCryptoSecretKey {
@@ -261,11 +263,29 @@ impl SecretKeyT for RustCryptoSecretKey {
     }
 }
 
+pub struct RustCryptoSha2;
+
+impl Sha256Backend for RustCryptoSha2 {
+    /// Compute the SHA-256 of the given `data`.
+    fn sha256(data: &[u8]) -> [u8; 32] {
+        // SAFETY: sha256 always gives a 32 byte array
+        Sha256::digest(data).into()
+    }
+
+    /// Compute the HMAC of the given data with the given key
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+        let mut mac = Hmac::<Sha256>::new_from_slice(key).expect("hmac can take key of any size");
+        mac.update(data);
+
+        mac.finalize().into_bytes().into()
+    }
+}
+
 pub struct RustCryptoBackend;
 
 impl CryptoBackend for RustCryptoBackend {
     type Rng = ::rand::rngs::ThreadRng;
-
+    type Sha256 = RustCryptoSha2;
     type SecretKey = RustCryptoSecretKey;
 
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm> {

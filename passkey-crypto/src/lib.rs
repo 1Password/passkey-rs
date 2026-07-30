@@ -5,6 +5,7 @@
 
 use coset::{CoseKey, iana};
 
+pub mod hash;
 pub mod rng;
 
 #[cfg(feature = "rust-crypto")]
@@ -12,6 +13,7 @@ pub mod rust_crypto;
 
 pub trait CryptoBackend {
     type Rng: rng::RngBackend;
+    type Sha256: hash::Sha256Backend;
     type SecretKey: SecretKeyT;
 
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm>;
