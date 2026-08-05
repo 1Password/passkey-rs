@@ -38,7 +38,7 @@ mod extensions;
 mod rp_id_verifier;
 
 /// Windows client for use with hardware authenticators. Uses the webauthn.dll API.
-// #[cfg(all(feature = "windows", target_os = "windows"))]
+#[cfg(all(feature = "windows", target_os = "windows"))]
 pub mod windows;
 
 pub use self::rp_id_verifier::{Fetcher, RelatedOriginResponse, RpIdVerifier};
