@@ -13,13 +13,19 @@ use p256::{
 };
 use signature::Verifier;
 
+/// Secret key backed by the RustCrypto crates.
 pub enum RustCryptoSecretKey {
+    /// Secret key that uses the P256 ECDSA algorithm.
     P256(p256::ecdsa::SigningKey),
+    /// Secret key that uses the Ed25519 EdDSA algorithm
     Ed25519(ed25519_dalek::SigningKey),
 }
 
+/// Public key backed by the RustCrypto crates.
 pub enum RustCryptoPublicKey {
+    /// Public key that uses the P256 ECDSA algorithm.
     P256(p256::ecdsa::VerifyingKey),
+    /// Public key that uses the Ed25519 EdDSA algorithm
     Ed25519(ed25519_dalek::VerifyingKey),
 }
 
@@ -271,6 +277,7 @@ impl SecretKeyT for RustCryptoSecretKey {
     }
 }
 
+/// [CryptoBackend] backed by RustCrypto.
 pub struct RustCryptoBackend;
 
 impl CryptoBackend for RustCryptoBackend {
@@ -303,4 +310,5 @@ impl CryptoBackend for RustCryptoBackend {
     }
 }
 
+/// Re-export of the [crate::rng::RngBackend] provided by this backend.
 pub type RustCryptoRng = <RustCryptoBackend as CryptoBackend>::Rng;
