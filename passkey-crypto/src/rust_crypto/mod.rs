@@ -27,7 +27,7 @@ impl PublicKeyT for RustCryptoPublicKey {
     fn verify(&self, target: &[u8], signature: &[u8]) -> Result<(), crate::Error> {
         match self {
             Self::P256(public_key) => {
-                let signature = p256::ecdsa::Signature::from_slice(signature)?;
+                let signature = p256::ecdsa::Signature::from_der(signature)?;
                 public_key.verify(target, &signature)?;
             }
             Self::Ed25519(public_key) => {
