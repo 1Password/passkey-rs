@@ -40,7 +40,7 @@ pub enum CoseKeyConversionError {
 
 pub trait PublicKeyT {
     fn verify(&self, target: &[u8], signature: &[u8]) -> Result<(), Error>;
-    fn bytes_from_cose_key(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError>;
+    fn der_from_cose_key(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError>;
     fn to_cose_key(&self) -> CoseKey;
 }
 

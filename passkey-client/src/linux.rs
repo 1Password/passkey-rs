@@ -241,7 +241,7 @@ where
         // TODO: we handle this conversion through the RustCryptoBackend.
         // We may want to change this in the future.
         let public_key = Some(
-            <<RustCryptoBackend as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::bytes_from_cose_key(&credential_id.key)
+            <<RustCryptoBackend as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(&credential_id.key)
                 .map(Into::<Bytes>::into)
                 .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
         );

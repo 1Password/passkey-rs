@@ -436,7 +436,7 @@ where
             }
         };
         let public_key = Some(
-            <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::bytes_from_cose_key(
+            <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(
                 &credential_id.key,
             )
             .map(Into::<Bytes>::into)

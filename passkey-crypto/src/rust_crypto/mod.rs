@@ -38,7 +38,7 @@ impl PublicKeyT for RustCryptoPublicKey {
         Ok(())
     }
 
-    fn bytes_from_cose_key(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError> {
+    fn der_from_cose_key(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError> {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
@@ -101,9 +101,9 @@ impl PublicKeyT for RustCryptoPublicKey {
                 let mut x = None;
                 for (key, value) in &cose_key.params {
                     if let coset::Label::Int(i) = key {
-                        let key = iana::Ec2KeyParameter::from_i64(*i)
+                        let key = iana::OkpKeyParameter::from_i64(*i)
                             .ok_or(CoseKeyConversionError::InvalidCredential)?;
-                        if key == iana::Ec2KeyParameter::X
+                        if key == iana::OkpKeyParameter::X
                             && value.as_bytes().and_then(|v| x.replace(v)).is_some()
                         {
                             log::warn!("Cose key has multiple entries for X coordinate");
@@ -113,7 +113,15 @@ impl PublicKeyT for RustCryptoPublicKey {
                 let Some(x) = x else {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 };
-                Ok(x.to_owned())
+                let public_key = ed25519_dalek::VerifyingKey::from_bytes(
+                    x.as_slice().try_into().map_err(|_| CoseKeyConversionError::InvalidCredential)?
+                ).map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+
+                public_key
+                    .to_public_key_der()
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)
+                    .map(|pk| pk.as_ref().to_vec())
+
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
