@@ -2,10 +2,14 @@
 use passkey::{
     authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
-    types::{Bytes, Passkey, crypto::sha256, ctap2::*, rand::random_vec, webauthn::*},
+    crypto::{
+        iana,
+        rng::RngBackend,
+        rust_crypto::{RustCryptoBackend, RustCryptoRng},
+    },
+    types::{Bytes, Passkey, crypto::sha256, ctap2::*, webauthn::*},
 };
 
-use coset::iana;
 use passkey_client::DefaultClientData;
 use url::Url;
 
@@ -49,7 +53,8 @@ async fn client_setup(
     // Create the CredentialStore for the Authenticator.
     // Option<Passkey> is the simplest possible implementation of CredentialStore
     let store: Option<Passkey> = None;
-    let my_authenticator = Authenticator::new(my_aaguid, store, user_validation_method);
+    let my_authenticator =
+        Authenticator::new(my_aaguid, store, user_validation_method, RustCryptoBackend);
 
     // Create the Client
     // If you are creating credentials, you need to declare the Client as mut
@@ -83,7 +88,7 @@ async fn client_setup(
 
     // Let's try and authenticate.
     // Create a challenge that would usually come from the RP.
-    let challenge_bytes_from_rp: Bytes = random_vec(32).into();
+    let challenge_bytes_from_rp: Bytes = RustCryptoRng::random_vec(32).into();
     // Now try and authenticate
     let credential_request = CredentialRequestOptions {
         public_key: PublicKeyCredentialRequestOptions {
@@ -116,7 +121,8 @@ async fn authenticator_setup(
     let user_validation_method = MyUserValidationMethod {};
     let my_aaguid = Aaguid::new_empty();
 
-    let mut my_authenticator = Authenticator::new(my_aaguid, store, user_validation_method);
+    let mut my_authenticator =
+        Authenticator::new(my_aaguid, store, user_validation_method, RustCryptoBackend);
 
     let reg_request = make_credential::Request {
         client_data_hash: client_data_hash.clone(),
@@ -173,14 +179,14 @@ fn ctap2_other_error(code: StatusCode) {
 async fn main() -> Result<(), WebauthnError> {
     let rp_url = Url::parse("https://future.1password.com").expect("Should Parse");
     let user_entity = PublicKeyCredentialUserEntity {
-        id: random_vec(32).into(),
+        id: RustCryptoRng::random_vec(32).into(),
         display_name: "Johnny Passkey".into(),
         name: "jpasskey@example.org".into(),
     };
 
     // Set up a client, create and authenticate a credential, then report results.
     let (created_cred, authed_cred) = client_setup(
-        random_vec(32).into(), // challenge_bytes_from_rp
+        RustCryptoRng::random_vec(32).into(), // challenge_bytes_from_rp
         PublicKeyCredentialParameters {
             ty: PublicKeyCredentialType::PublicKey,
             alg: iana::Algorithm::ES256,

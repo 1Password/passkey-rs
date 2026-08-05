@@ -96,6 +96,7 @@ fn windows_sanity_test() {
 
 #[test]
 fn deserialize_ignores_unknown_values() {
+    use passkey_crypto::coset;
     let raw_request = cbor!({
         0x01 => Value::Bytes(vec![15,182,44,101,156,230,202,214,145,124,211,35,25,79,66,233,132,163,144,124,208,29,114,112,109,213,99,107,75,218,37,59]),
         0x02 => {

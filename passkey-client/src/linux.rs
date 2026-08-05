@@ -21,11 +21,13 @@
 
 use std::future::Future;
 
-use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
-use passkey_authenticator::public_key_der_from_cose_key;
+use passkey_crypto::{
+    CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64,
+    rust_crypto::RustCryptoBackend,
+};
 use passkey_types::{
-    ctap2, encoding,
+    Bytes, ctap2, encoding,
     webauthn::{
         self, AuthenticatedPublicKeyCredential, AuthenticatorAssertionResponse,
         AuthenticatorAttachment, AuthenticatorAttestationResponse, ClientDataType,
@@ -239,9 +241,12 @@ where
             // In the case that the algorithm is unknown, default to 0 (Reserved)
             _ => 0,
         };
+        // TODO: we handle this conversion through the RustCryptoBackend.
+        // We may want to change this in the future.
         let public_key = Some(
-            public_key_der_from_cose_key(&credential_id.key)
-                .map_err(|e| WebauthnError::AuthenticatorError(e.into()))?,
+            <<RustCryptoBackend as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(&credential_id.key)
+                .map(Into::<Bytes>::into)
+                .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
         );
         let attestation_object = ctap2_response.as_webauthn_bytes();
 

@@ -17,8 +17,9 @@ workspace = true
 
 [features]
 default = []
+js = ["passkey-crypto/js"]
 serialize_bytes_as_base64_string = []
-testable = ["dep:p256"]
+testable = []
 typeshare = ["dep:typeshare"]
 
 [dependencies]
@@ -27,7 +28,7 @@ ciborium = "0.2"
 data-encoding = "2"
 hmac = "0.12"
 indexmap = { version = "2", features = ["serde"] }
-rand = "0.8"
+passkey-crypto = { path = "../passkey-crypto", version = "0.1"}
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
@@ -35,13 +36,3 @@ strum = { version = "0.27", features = ["derive"] }
 typeshare = { version = "1", optional = true }
 url = { version = "2", features = ["serde"] }
 zeroize = { version = "1", features = ["zeroize_derive"] }
-# TODO: investigate rolling our own IANA listings and COSE keys
-coset = { workspace = true }
-p256 = { version = "0.13", features = [
-  "arithmetic",
-  "jwk",
-  "pem",
-], optional = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }

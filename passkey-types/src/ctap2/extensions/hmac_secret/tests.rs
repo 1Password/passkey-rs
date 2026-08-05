@@ -1,7 +1,9 @@
 use ciborium::{cbor, value::Value};
-use coset::AsCborValue;
-
-use crate::rand::random_vec;
+use passkey_crypto::{
+    coset::{self, AsCborValue},
+    rng::RngBackend,
+    rust_crypto::RustCryptoRng,
+};
 
 use super::*;
 
@@ -85,9 +87,9 @@ fn from_64_byte_slice() {
 
 #[test]
 fn from_incorrectly_sized_byte_slice() {
-    let too_short = random_vec(31);
-    let between = random_vec(33);
-    let too_long = random_vec(65);
+    let too_short = RustCryptoRng::random_vec(31);
+    let between = RustCryptoRng::random_vec(33);
+    let too_long = RustCryptoRng::random_vec(65);
 
     HmacSecretSaltOrOutput::try_from(too_short.as_slice())
         .expect_err("Failed to detect salt1 is too short");
@@ -111,7 +113,7 @@ fn from_incorrectly_sized_byte_slice() {
     HmacSecretSaltOrOutput::try_new(&between, Some(&too_short))
         .expect_err("Failed to detect salt1 is long and salt2 is short");
 
-    let correct = random_vec(32);
+    let correct = RustCryptoRng::random_vec(32);
 
     HmacSecretSaltOrOutput::try_new(&correct, Some(&too_short))
         .expect_err("Failed to detect salt1 is good but salt2 is short");
@@ -127,8 +129,8 @@ fn from_incorrectly_sized_byte_slice() {
 fn from_correct_cbor() {
     let key = coset::CoseKeyBuilder::new_ec2_pub_key(
         coset::iana::EllipticCurve::P_256,
-        random_vec(32),
-        random_vec(32),
+        RustCryptoRng::random_vec(32),
+        RustCryptoRng::random_vec(32),
     )
     .build()
     .to_cbor_value()
@@ -137,14 +139,14 @@ fn from_correct_cbor() {
         0x01 => key,
         0x02 => Value::Bytes(GOOD_SALT1.to_vec()),
         // should be a HMAC other salt with the key
-        0x03 => Value::Bytes(random_vec(32))
+        0x03 => Value::Bytes(RustCryptoRng::random_vec(32))
     })
     .unwrap();
     let remote_two_salts = cbor!({
         0x01 => key,
         0x02 => Value::Bytes(GOOD_SALT1_AND_2.to_vec()),
         // should be a HMAC other salt with the key
-        0x03 => Value::Bytes(random_vec(32))
+        0x03 => Value::Bytes(RustCryptoRng::random_vec(32))
     })
     .unwrap();
 
@@ -176,8 +178,8 @@ fn from_correct_cbor() {
 fn cbor_round_trip_one_salt() {
     let key = coset::CoseKeyBuilder::new_ec2_pub_key(
         coset::iana::EllipticCurve::P_256,
-        random_vec(32),
-        random_vec(32),
+        RustCryptoRng::random_vec(32),
+        RustCryptoRng::random_vec(32),
     )
     .build()
     .to_cbor_value()
@@ -185,7 +187,7 @@ fn cbor_round_trip_one_salt() {
     let one_salt = HmacGetSecretInput {
         key_agreement: key,
         salt_enc: Bytes::from(GOOD_SALT1.as_slice()),
-        salt_auth: random_vec(32).into(),
+        salt_auth: RustCryptoRng::random_vec(32).into(),
         pin_uv_auth_protocol: None,
     };
     let mut buf = Vec::with_capacity(128);
@@ -216,8 +218,8 @@ fn cbor_round_trip_one_salt() {
 fn cbor_round_trip_both_salts() {
     let key = coset::CoseKeyBuilder::new_ec2_pub_key(
         coset::iana::EllipticCurve::P_256,
-        random_vec(32),
-        random_vec(32),
+        RustCryptoRng::random_vec(32),
+        RustCryptoRng::random_vec(32),
     )
     .build()
     .to_cbor_value()
@@ -225,7 +227,7 @@ fn cbor_round_trip_both_salts() {
     let one_salt = HmacGetSecretInput {
         key_agreement: key,
         salt_enc: Bytes::from(GOOD_SALT1_AND_2.as_slice()),
-        salt_auth: random_vec(32).into(),
+        salt_auth: RustCryptoRng::random_vec(32).into(),
         pin_uv_auth_protocol: None,
     };
     let mut buf = Vec::with_capacity(128);

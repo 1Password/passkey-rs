@@ -9,6 +9,7 @@
 //! [webauthn]: https://w3c.github.io/webauthn/#sctn-defined-extensions
 //! [AuthenticatorDisplayName]: https://w3c.github.io/webauthn/#dom-credentialpropertiesoutput-authenticatordisplayname
 
+use passkey_crypto::CryptoBackend;
 use passkey_types::ctap2::{StatusCode, get_assertion, get_info, make_credential};
 
 mod hmac_secret;
@@ -54,7 +55,7 @@ pub(super) struct GetExtensionOutputs {
     pub unsigned: Option<get_assertion::UnsignedExtensionOutputs>,
 }
 
-impl<S, U> Authenticator<S, U> {
+impl<S, U, C: CryptoBackend> Authenticator<S, U, C> {
     pub(super) fn make_extensions(
         &self,
         request: Option<make_credential::ExtensionInputs>,

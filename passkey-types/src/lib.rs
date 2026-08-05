@@ -41,11 +41,9 @@ pub use self::{
     passkey::{CredentialExtensions, Passkey, StoredHmacSecret},
     utils::{
         bytes::{Bytes, NotBase64Encoded},
-        crypto, encoding, rand,
+        crypto, encoding,
     },
 };
-
-pub use coset::CoseKey;
 
 #[cfg(feature = "testable")]
 pub use self::passkey::PasskeyBuilder;

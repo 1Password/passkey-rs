@@ -1,3 +1,4 @@
+use passkey_crypto::rust_crypto::{RustCryptoBackend, RustCryptoRng};
 use passkey_types::{Passkey, ctap2::Aaguid};
 
 use crate::{Authenticator, MockUserValidationMethod};
@@ -19,19 +20,24 @@ pub(crate) fn prf_eval_request(eval: Option<Vec<u8>>) -> AuthenticatorPrfInputs 
 
 #[test]
 fn hmac_secret_cycle_works() {
-    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
-        .hmac_secret(HmacSecretConfig::new_without_uv());
+    let auth = Authenticator::new(
+        Aaguid::new_empty(),
+        None,
+        MockUserValidationMethod::new(),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_without_uv());
 
     let ext = auth
         .make_hmac_secret(Some(true))
         .expect("There should be passkey extensions");
     assert!(ext.cred_without_uv.is_some());
 
-    let passkey = Passkey::mock("sneakernetsend.com".into())
+    let passkey = Passkey::mock("sneakernetsend.com".into(), RustCryptoBackend)
         .hmac_secret(ext)
         .build();
 
-    let request = prf_eval_request(Some(random_vec(64)));
+    let request = prf_eval_request(Some(RustCryptoRng::random_vec(64)));
 
     let res = auth
         .get_prf(
@@ -66,7 +72,7 @@ fn hmac_secret_cycle_works() {
         .get_prf(
             &passkey.credential_id,
             passkey.extensions.hmac_secret.as_ref(),
-            prf_eval_request(Some(random_vec(64))),
+            prf_eval_request(Some(RustCryptoRng::random_vec(64))),
             true,
         )
         .expect("Changing input should still succeed")
@@ -98,19 +104,24 @@ fn hmac_secret_cycle_works() {
 
 #[test]
 fn hmac_secret_cycle_works_with_one_cred() {
-    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
-        .hmac_secret(HmacSecretConfig::new_with_uv_only());
+    let auth = Authenticator::new(
+        Aaguid::new_empty(),
+        None,
+        MockUserValidationMethod::new(),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_with_uv_only());
 
     let ext = auth
         .make_hmac_secret(Some(true))
         .expect("There should be passkey extensions");
     assert!(ext.cred_without_uv.is_none());
 
-    let passkey = Passkey::mock("sneakernetsend.com".into())
+    let passkey = Passkey::mock("sneakernetsend.com".into(), RustCryptoBackend)
         .hmac_secret(ext)
         .build();
 
-    let request = prf_eval_request(Some(random_vec(64)));
+    let request = prf_eval_request(Some(RustCryptoRng::random_vec(64)));
 
     let res = auth
         .get_prf(
@@ -142,7 +153,7 @@ fn hmac_secret_cycle_works_with_one_cred() {
         .get_prf(
             &passkey.credential_id,
             passkey.extensions.hmac_secret.as_ref(),
-            prf_eval_request(Some(random_vec(64))),
+            prf_eval_request(Some(RustCryptoRng::random_vec(64))),
             true,
         )
         .expect("Changing input should still succeed")
@@ -155,19 +166,24 @@ fn hmac_secret_cycle_works_with_one_cred() {
 
 #[test]
 fn hmac_secret_cycle_works_with_one_salt() {
-    let auth = Authenticator::new(Aaguid::new_empty(), None, MockUserValidationMethod::new())
-        .hmac_secret(HmacSecretConfig::new_with_uv_only());
+    let auth = Authenticator::new(
+        Aaguid::new_empty(),
+        None,
+        MockUserValidationMethod::new(),
+        RustCryptoBackend,
+    )
+    .hmac_secret(HmacSecretConfig::new_with_uv_only());
 
     let ext = auth
         .make_hmac_secret(Some(true))
         .expect("There should be passkey extensions");
     assert!(ext.cred_without_uv.is_none());
 
-    let passkey = Passkey::mock("sneakernetsend.com".into())
+    let passkey = Passkey::mock("sneakernetsend.com".into(), RustCryptoBackend)
         .hmac_secret(ext)
         .build();
 
-    let mut request = prf_eval_request(Some(random_vec(64)));
+    let mut request = prf_eval_request(Some(RustCryptoRng::random_vec(64)));
     request.eval = request.eval.map(|e| AuthenticatorPrfValues {
         first: e.first,
         second: None,

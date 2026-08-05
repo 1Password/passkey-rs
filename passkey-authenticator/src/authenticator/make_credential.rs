@@ -1,4 +1,4 @@
-use p256::SecretKey;
+use passkey_crypto::{CryptoBackend, rng::RngBackend, rust_crypto::RustCryptoRng};
 use passkey_types::{
     Passkey,
     ctap2::{
@@ -9,10 +9,11 @@ use passkey_types::{
 
 use crate::{Authenticator, CoseKeyPair, CredentialStore, UiHint, UserValidationMethod};
 
-impl<S, U> Authenticator<S, U>
+impl<S, U, C> Authenticator<S, U, C>
 where
     S: CredentialStore + Sync,
     U: UserValidationMethod<PasskeyItem = <S as CredentialStore>::PasskeyItem> + Sync,
+    C: CryptoBackend,
 {
     /// This method is invoked by the host to request generation of a new credential in the authenticator.
     pub async fn make_credential(&mut self, input: Request) -> Result<Response, StatusCode> {
@@ -111,19 +112,19 @@ where
             .await?;
 
         // 9. Generate a new credential key pair for the algorithm specified.
-        let credential_id = passkey_types::rand::random_vec(self.credential_id_length.into());
+        let credential_id = RustCryptoRng::random_vec(self.credential_id_length.into());
 
-        let private_key = {
-            let mut rng = rand::thread_rng();
-            SecretKey::random(&mut rng)
-        };
+        let private_key = self
+            .crypto
+            .generate_key(algorithm)
+            .map_err(|_| Ctap2Error::UnsupportedAlgorithm)?;
 
         let extensions = self.make_extensions(input.extensions, flags.contains(Flags::UV))?;
 
         // Encoding of the key pair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested
         // credential.
-        let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key, algorithm);
+        let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key);
 
         let store_info = self.store.get_info().await;
 
@@ -169,7 +170,7 @@ where
         let response = Response {
             fmt: "none".into(),
             auth_data,
-            att_stmt: coset::cbor::value::Value::Map(vec![]),
+            att_stmt: ciborium::Value::Map(vec![]),
             ep_att: None,
             large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,

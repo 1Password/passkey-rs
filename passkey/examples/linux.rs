@@ -2,11 +2,12 @@
 #[cfg(all(feature = "linux", target_os = "linux"))]
 use passkey::{
     client::{DefaultClientData, WebauthnError, linux::LinuxClient},
-    types::{Bytes, rand::random_vec, webauthn::*},
+    crypto::{iana, rng::RngBackend, rust_crypto::RustCryptoRng},
+    types::{Bytes, webauthn::*},
 };
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
-use {coset::iana, url::Url};
+use url::Url;
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
 // Example of how to set up, register and authenticate with a `Client`.
@@ -53,7 +54,7 @@ async fn client_setup(
 
     // Let's try and authenticate.
     // Create a challenge that would usually come from the RP.
-    let challenge_bytes_from_rp: Bytes = random_vec(32).into();
+    let challenge_bytes_from_rp: Bytes = RustCryptoRng::random_vec(32).into();
     // Now try and authenticate
     let credential_request = CredentialRequestOptions {
         public_key: PublicKeyCredentialRequestOptions {
@@ -81,14 +82,14 @@ async fn client_setup(
 async fn main() -> Result<(), WebauthnError> {
     let rp_url = Url::parse("https://future.1password.com").expect("Should Parse");
     let user_entity = PublicKeyCredentialUserEntity {
-        id: random_vec(32).into(),
+        id: RustCryptoRng::random_vec(32).into(),
         display_name: "Johnny Passkey".into(),
         name: "jpasskey@example.org".into(),
     };
 
     // Set up a client, create and authenticate a credential, then report results.
     let (created_cred, authed_cred) = client_setup(
-        random_vec(32).into(), // challenge_bytes_from_rp
+        RustCryptoRng::random_vec(32).into(), // challenge_bytes_from_rp
         PublicKeyCredentialParameters {
             ty: PublicKeyCredentialType::PublicKey,
             alg: iana::Algorithm::ES256,

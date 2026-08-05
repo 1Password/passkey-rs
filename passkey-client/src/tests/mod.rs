@@ -3,9 +3,11 @@ use crate::rp_id_verifier::tests::TestFetcher;
 use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
-use passkey_types::{
-    Bytes, ctap2, encoding::try_from_base64url, rand::random_vec, webauthn::CollectedClientData,
+use passkey_crypto::{
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };
+use passkey_types::{Bytes, ctap2, encoding::try_from_base64url, webauthn::CollectedClientData};
 use serde::Deserialize;
 use url::{ParseError, Url};
 
@@ -18,11 +20,11 @@ fn good_credential_creation_options() -> webauthn::PublicKeyCredentialCreationOp
             name: "future.1password.com".into(),
         },
         user: webauthn::PublicKeyCredentialUserEntity {
-            id: random_vec(16).into(),
+            id: RustCryptoRng::random_vec(16).into(),
             display_name: "wendy".into(),
             name: "wendy".into(),
         },
-        challenge: random_vec(32).into(),
+        challenge: RustCryptoRng::random_vec(32).into(),
         pub_key_cred_params: vec![webauthn::PublicKeyCredentialParameters {
             ty: webauthn::PublicKeyCredentialType::PublicKey,
             alg: iana::Algorithm::ES256,
@@ -41,7 +43,7 @@ fn good_credential_request_options(
     credential_id: impl Into<Bytes>,
 ) -> webauthn::PublicKeyCredentialRequestOptions {
     webauthn::PublicKeyCredentialRequestOptions {
-        challenge: random_vec(32).into(),
+        challenge: RustCryptoRng::random_vec(32).into(),
         timeout: None,
         rp_id: Some("future.1password.com".into()),
         allow_credentials: Some(vec![webauthn::PublicKeyCredentialDescriptor {
@@ -86,6 +88,7 @@ async fn create_and_authenticate() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -119,6 +122,7 @@ async fn create_and_authenticate_with_extra_client_data() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -183,6 +187,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -221,6 +226,7 @@ async fn create_and_authenticate_without_rp_id() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -268,6 +274,7 @@ async fn create_and_authenticate_without_cred_params() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
 
@@ -426,6 +433,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         user_mock_with_uv(),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
     let origin = Url::parse("https://future.1password.com").unwrap();
@@ -453,6 +461,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         user_mock_without_uv(),
+        RustCryptoBackend,
     );
     let mut client = Client::new(auth);
     let origin = Url::parse("https://future.1password.com").unwrap();
@@ -555,6 +564,7 @@ async fn create_and_authenticate_with_related_origins() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
+        RustCryptoBackend,
     );
 
     let mut client = Client::new_with_custom_tld_provider(
@@ -589,6 +599,7 @@ async fn fail_to_create_with_unrelated_origin() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(0),
+        RustCryptoBackend,
     );
 
     let mut client = Client::new_with_custom_tld_provider(
@@ -611,7 +622,7 @@ async fn fail_to_create_with_unrelated_origin() {
     // We can call authenticate without a passkey in the store here
     // since RP validation is before we fetch anything from the store
     let auth_options = webauthn::CredentialRequestOptions {
-        public_key: good_credential_request_options(random_vec(32)),
+        public_key: good_credential_request_options(RustCryptoRng::random_vec(32)),
     };
     let res = client
         .authenticate(&origin, auth_options, DefaultClientData)

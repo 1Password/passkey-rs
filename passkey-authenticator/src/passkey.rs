@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Deref};
 
-use coset::CoseKey;
+use passkey_crypto::CoseKey;
 use passkey_types::{
     CredentialExtensions,
     webauthn::{AuthenticatorTransport, PublicKeyCredentialDescriptor, PublicKeyCredentialType},

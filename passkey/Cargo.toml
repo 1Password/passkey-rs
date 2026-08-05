@@ -18,6 +18,7 @@ workspace = true
 [features]
 default = []
 linux = ["passkey-authenticator/linux", "passkey-client/linux"]
+js = ["passkey-crypto/js"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -31,10 +32,10 @@ passkey-authenticator = { path = "../passkey-authenticator", version = "0.6" }
 passkey-client = { path = "../passkey-client", version = "0.6" }
 passkey-transports = { path = "../passkey-transports", version = "0.2" }
 passkey-types = { path = "../passkey-types", version = "0.6" }
+passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
 
 [dev-dependencies]
 async-trait = "0.1"
-coset = { workspace = true }
 passkey-authenticator = { path = "../passkey-authenticator", version = "0.6", features = [
   "testable",
   "tokio",
@@ -43,6 +44,9 @@ passkey-client = { path = "../passkey-client", version = "0.6", features = [
   "testable",
   "tokio",
 ] }
+passkey-crypto = { path = "../passkey-crypto", version = "0.1", features = [
+  "rand"
+]}
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-test = "0.4"
 url = "2"
