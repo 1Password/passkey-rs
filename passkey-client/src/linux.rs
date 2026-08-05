@@ -22,7 +22,10 @@
 use std::future::Future;
 
 use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
-use passkey_crypto::{coset::Algorithm, iana::EnumI64, CryptoBackend, PublicKeyT, SecretKeyT, rust_crypto::RustCryptoBackend};
+use passkey_crypto::{
+    CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64,
+    rust_crypto::RustCryptoBackend,
+};
 use passkey_types::{
     Bytes, ctap2, encoding,
     webauthn::{

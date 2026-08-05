@@ -4,7 +4,10 @@ use std::{
 };
 
 use ciborium::value::Value;
-use passkey_crypto::{coset::{self, AsCborValue, CborSerializable}, CoseKey};
+use passkey_crypto::{
+    CoseKey,
+    coset::{self, AsCborValue, CborSerializable},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{

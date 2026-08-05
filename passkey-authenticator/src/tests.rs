@@ -1,6 +1,5 @@
 use passkey_crypto::{
-    iana,
-    CryptoBackend, PublicKeyT, SecretKeyT,
+    CryptoBackend, PublicKeyT, SecretKeyT, iana,
     rng::RngBackend,
     rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };

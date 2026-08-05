@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use passkey_crypto::{rng::RngBackend, CryptoBackend};
+use passkey_crypto::{CryptoBackend, rng::RngBackend};
 use passkey_types::{
     crypto::hmac_sha256,
     ctap2::{

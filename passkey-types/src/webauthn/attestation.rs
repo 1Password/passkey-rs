@@ -1,6 +1,6 @@
 //! Types specific to public key credential creation
-use passkey_crypto::iana::{self, EnumI64};
 use indexmap::IndexMap;
+use passkey_crypto::iana::{self, EnumI64};
 use serde::de::Error;
 use serde::{Deserialize, Serialize, Serializer};
 use std::fmt;

@@ -114,14 +114,16 @@ impl PublicKeyT for RustCryptoPublicKey {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 };
                 let public_key = ed25519_dalek::VerifyingKey::from_bytes(
-                    x.as_slice().try_into().map_err(|_| CoseKeyConversionError::InvalidCredential)?
-                ).map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                    x.as_slice()
+                        .try_into()
+                        .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
+                )
+                .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
 
                 public_key
                     .to_public_key_der()
                     .map_err(|_| CoseKeyConversionError::InvalidCredential)
                     .map(|pk| pk.as_ref().to_vec())
-
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
