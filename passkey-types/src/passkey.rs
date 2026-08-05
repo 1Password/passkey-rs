@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{Bytes, webauthn};
-use coset::CoseKey;
+use passkey_crypto::CoseKey;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 #[cfg(feature = "testable")]

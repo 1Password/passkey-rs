@@ -1,6 +1,5 @@
 use ciborium::{cbor, value::Value};
-use coset::AsCborValue;
-use passkey_crypto::{rng::RngBackend, rust_crypto::RustCryptoRng};
+use passkey_crypto::{coset::{self, AsCborValue}, rng::RngBackend, rust_crypto::RustCryptoRng};
 
 use super::*;
 

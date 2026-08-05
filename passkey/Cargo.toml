@@ -36,7 +36,6 @@ passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
 
 [dev-dependencies]
 async-trait = "0.1"
-coset = { workspace = true }
 passkey-authenticator = { path = "../passkey-authenticator", version = "0.6", features = [
   "testable",
   "tokio",

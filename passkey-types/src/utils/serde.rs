@@ -95,7 +95,7 @@ where
 }
 
 pub mod i64_to_iana {
-    use coset::iana::EnumI64;
+    use passkey_crypto::iana::EnumI64;
 
     pub fn serialize<S, T>(value: &T, ser: S) -> Result<S::Ok, S::Error>
     where

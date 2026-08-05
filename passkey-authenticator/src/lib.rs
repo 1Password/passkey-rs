@@ -32,8 +32,7 @@ mod user_validation;
 #[cfg(all(feature = "linux", target_os = "linux"))]
 pub mod linux;
 
-use coset::CoseKey;
-use passkey_crypto::PublicKeyT;
+use passkey_crypto::{CoseKey, PublicKeyT};
 
 pub use self::{
     authenticator::{Authenticator, CredentialIdLength, extensions},

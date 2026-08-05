@@ -1,9 +1,9 @@
 //! Tests for compatibility sanity checks with Authenticator-rs
 
 use authenticator::MakeCredentialsResult;
-use coset::iana;
 use passkey_authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod};
 use passkey_crypto::{
+    iana,
     rng::RngBackend,
     rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };

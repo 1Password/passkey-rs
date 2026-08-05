@@ -16,11 +16,10 @@
 //! [Webauthn]: https://w3c.github.io/webauthn/
 mod client_data;
 pub use client_data::*;
-use passkey_crypto::{CryptoBackend, PublicKeyT, SecretKeyT};
+use passkey_crypto::{coset::Algorithm, iana::EnumI64, CryptoBackend, PublicKeyT, SecretKeyT};
 
 use std::{borrow::Cow, fmt::Display};
 
-use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::{Authenticator, CredentialStore, UserValidationMethod};
 use passkey_types::{
     Bytes, Passkey,

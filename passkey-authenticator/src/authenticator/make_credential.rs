@@ -170,7 +170,7 @@ where
         let response = Response {
             fmt: "none".into(),
             auth_data,
-            att_stmt: coset::cbor::value::Value::Map(vec![]),
+            att_stmt: ciborium::Value::Map(vec![]),
             ep_att: None,
             large_blob_key: None,
             unsigned_extension_outputs: extensions.unsigned,

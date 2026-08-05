@@ -1,5 +1,5 @@
-use coset::iana;
 use passkey_crypto::{
+    iana,
     CryptoBackend, PublicKeyT, SecretKeyT,
     rng::RngBackend,
     rust_crypto::{RustCryptoBackend, RustCryptoRng},

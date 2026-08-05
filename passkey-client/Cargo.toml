@@ -27,7 +27,6 @@ linux = ["dep:tokio", "passkey-authenticator/linux", "tokio/rt"]
 
 [dependencies]
 ciborium = "0.2"
-coset = { workspace = true }
 idna = "1"
 itertools = "0.14"
 mockall = { version = "0.11", optional = true }

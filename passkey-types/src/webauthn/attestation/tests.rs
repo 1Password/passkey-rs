@@ -490,7 +490,7 @@ fn wells_fargo() {
 fn pub_key_cred_params_serialization() {
     use super::PublicKeyCredentialParameters;
     use crate::webauthn::PublicKeyCredentialType;
-    use coset::iana::Algorithm;
+    use passkey_crypto::iana::Algorithm;
 
     // Test that serialization produces numeric alg values (not stringified)
     let params = PublicKeyCredentialParameters {

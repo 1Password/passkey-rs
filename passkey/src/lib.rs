@@ -67,13 +67,13 @@
 //!     authenticator::{Authenticator, UiHint, UserValidationMethod, UserCheck},
 //!     client::{Client, DefaultClientData, WebauthnError},
 //!     crypto::{
+//!         iana,
 //!         rng::RngBackend,
 //!         rust_crypto::{RustCryptoBackend, RustCryptoRng},
 //!     },
 //!     types::{ctap2::*, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! };
 //!
-//! use coset::iana;
 //! use url::Url;
 //! #
 //! # // MyUserValidationMethod is a stub impl of the UserValidationMethod trait, used later.
@@ -190,13 +190,13 @@
 //! #     authenticator::{Authenticator, UiHint, UserValidationMethod, UserCheck},
 //! #     client::{Client, WebauthnError},
 //! #     crypto::{
+//! #         iana,
 //! #         rng::RngBackend,
 //! #         rust_crypto::{RustCryptoBackend, RustCryptoRng},
 //! #     },
 //! #     types::{ctap2::*, crypto::sha256, webauthn::*, Bytes, Passkey},
 //! # };
 //! #
-//! # use coset::iana;
 //! # use url::Url;
 //! #
 //! # // MyUserValidationMethod is a stub impl of the UserValidationMethod trait, used later.

@@ -3,13 +3,13 @@ use passkey::{
     authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::{Client, WebauthnError},
     crypto::{
+        iana,
         rng::RngBackend,
         rust_crypto::{RustCryptoBackend, RustCryptoRng},
     },
     types::{Bytes, Passkey, crypto::sha256, ctap2::*, webauthn::*},
 };
 
-use coset::iana;
 use passkey_client::DefaultClientData;
 use url::Url;
 

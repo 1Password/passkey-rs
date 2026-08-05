@@ -1,5 +1,4 @@
-use coset::iana;
-use passkey_crypto::{CryptoBackend, rng::RngBackend};
+use passkey_crypto::{iana, CryptoBackend, rng::RngBackend};
 use passkey_types::{
     ctap2::{Aaguid, Ctap2Error, Flags},
     webauthn,

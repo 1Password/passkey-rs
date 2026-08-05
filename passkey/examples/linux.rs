@@ -2,12 +2,12 @@
 #[cfg(all(feature = "linux", target_os = "linux"))]
 use passkey::{
     client::{DefaultClientData, WebauthnError, linux::LinuxClient},
-    crypto::{rng::RngBackend, rust_crypto::RustCryptoRng},
+    crypto::{iana, rng::RngBackend, rust_crypto::RustCryptoRng},
     types::{Bytes, webauthn::*},
 };
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
-use {coset::iana, url::Url};
+use url::Url;
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
 // Example of how to set up, register and authenticate with a `Client`.

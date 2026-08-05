@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use coset::iana;
 use passkey_crypto::{
+    iana,
     rng::RngBackend,
     rust_crypto::{RustCryptoBackend, RustCryptoRng},
 };

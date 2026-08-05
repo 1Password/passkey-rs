@@ -3,7 +3,8 @@
 // TODO: remove this
 #![allow(missing_docs)]
 
-use coset::{CoseKey, iana};
+// TODO: investigate rolling our own IANA listings and COSE keys
+pub use coset::{self, CoseKey, iana};
 
 pub mod rng;
 

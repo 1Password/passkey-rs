@@ -20,12 +20,11 @@ default = []
 js = ["passkey-crypto/js"]
 testable = ["dep:mockall", "passkey-types/testable"]
 tokio = ["dep:tokio"]
-linux = ["dep:ciborium", "dep:tokio", "dep:passkey-transports", "tokio/macros", "passkey-transports/linux"]
+linux = ["dep:tokio", "dep:passkey-transports", "tokio/macros", "passkey-transports/linux"]
 
 [dependencies]
 async-trait = "0.1"
-ciborium = { version = "0.2", optional = true }
-coset = { workspace = true }
+ciborium = { version = "0.2" }
 log = "0.4"
 mockall = { version = "0.11", optional = true }
 passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
