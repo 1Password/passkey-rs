@@ -5,8 +5,7 @@ use passkey_types::{
     Passkey,
     ctap2::{
         Ctap2Error, StatusCode,
-        get_assertion::Options,
-        make_credential::{PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity},
+        make_credential::{Options, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity},
     },
     webauthn::PublicKeyCredentialDescriptor,
 };

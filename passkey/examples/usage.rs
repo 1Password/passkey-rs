@@ -143,7 +143,7 @@ async fn authenticator_setup(
         client_data_hash,
         allow_list: None,
         extensions: None,
-        options: make_credential::Options::default(),
+        options: get_assertion::Options::default(),
         pin_auth: None,
         pin_protocol: None,
     };
@@ -215,9 +215,7 @@ async fn main() -> Result<(), WebauthnError> {
         Ok(authresponse) => {
             ctap2_auth_success(authresponse);
         }
-        Err(StatusCode::Ctap2(Ctap2Code::Known(Ctap2Error::NoCredentials))) => {
-            ctap2_credential_not_found()
-        }
+        Err(StatusCode::Known(Ctap2Error::NoCredentials)) => ctap2_credential_not_found(),
         Err(status_code) => ctap2_other_error(status_code),
     };
 

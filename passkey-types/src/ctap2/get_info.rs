@@ -21,7 +21,6 @@ serde_workaround! {
         /// List of supported versions.
         /// Supported versions are:
         /// * "FIDO_2_0" for CTAP2 / FIDO2 / Web Authentication authenticators
-        /// * "U2F_V2" for CTAP1/U2F authenticators.
         #[serde(rename = 0x01)]
         pub versions: Vec<Version>,
 
@@ -529,8 +528,6 @@ impl Default for Options {
 #[expect(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Version {
-    /// Universal 2nd Factor version 1.2
-    U2F_V2,
     /// Client To Authenticator Protocol version 2.0
     FIDO_2_0,
     /// Client To Authenticator Protocol version 2.1

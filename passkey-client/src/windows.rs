@@ -1,3 +1,5 @@
+//! Windows client for use with hardware authenticators. Uses the webauthn.dll API.
+
 use std::time::Duration;
 
 use coset::{Algorithm, iana::EnumI64};

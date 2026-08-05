@@ -17,3 +17,7 @@
 //! [documentation]: https://img.shields.io/docsrs/passkey-transports/latest?logo=docs.rs&style=flat
 
 pub mod hid;
+
+/// Linux-only HIDRAW transport for talking to USB CTAP2 authenticators.
+#[cfg(all(feature = "linux", target_os = "linux"))]
+pub mod hidraw;

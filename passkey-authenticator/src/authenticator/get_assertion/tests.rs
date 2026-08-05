@@ -35,11 +35,7 @@ fn good_request() -> Request {
         extensions: None,
         pin_auth: None,
         pin_protocol: None,
-        options: Options {
-            up: true,
-            uv: true,
-            rk: false,
-        },
+        options: Options { up: true, uv: true },
     }
 }
 

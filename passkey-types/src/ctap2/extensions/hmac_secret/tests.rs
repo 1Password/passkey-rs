@@ -171,6 +171,7 @@ fn from_correct_cbor() {
     assert_eq!(salts.as_slice(), &GOOD_SALT1_AND_2);
 }
 
+#[cfg(not(feature = "serialize_bytes_as_base64_string"))]
 #[test]
 fn cbor_round_trip_one_salt() {
     let key = coset::CoseKeyBuilder::new_ec2_pub_key(
@@ -210,6 +211,7 @@ fn cbor_round_trip_one_salt() {
         one_salt.pin_uv_auth_protocol
     );
 }
+#[cfg(not(feature = "serialize_bytes_as_base64_string"))]
 #[test]
 fn cbor_round_trip_both_salts() {
     let key = coset::CoseKeyBuilder::new_ec2_pub_key(

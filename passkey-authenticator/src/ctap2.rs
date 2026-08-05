@@ -15,6 +15,9 @@ mod sealed {
     pub trait Sealed {}
 
     impl<S: CredentialStore, U: UserValidationMethod> Sealed for Authenticator<S, U> {}
+
+    #[cfg(all(feature = "linux", target_os = "linux"))]
+    impl Sealed for crate::linux::LinuxAuthenticator {}
 }
 
 /// Methods defined as being required for a [CTAP 2.0] compliant authenticator to implement.

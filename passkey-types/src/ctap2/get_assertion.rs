@@ -3,12 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Bytes,
-    ctap2::AuthenticatorData,
+    ctap2::{AuthenticatorData, make_credential::PublicKeyCredentialUserEntity},
     utils::serde::{ignore_unknown, ignore_unknown_opt_vec},
-    webauthn::{PublicKeyCredentialDescriptor, PublicKeyCredentialUserEntity},
+    webauthn::PublicKeyCredentialDescriptor,
 };
-
-pub use crate::ctap2::make_credential::Options;
 
 #[cfg(doc)]
 use {
@@ -66,6 +64,32 @@ serde_workaround! {
         #[serde(rename = 0x07; default, skip_serializing_if = Option::is_none)]
         pub pin_protocol: Option<u8>,
     }
+}
+
+/// The options that control how an authenticator will behave during authenticatorMakeCredential.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Options {
+    /// Instructs the authenticator to require a gesture that verifies the user to complete the request. Examples of such gestures are fingerprint scan or a PIN.
+    #[serde(default = "default_true")]
+    pub up: bool,
+    /// User Verification:
+    ///
+    /// If the "uv" option is absent, let the "uv" option be treated as being present with the value false.
+    #[serde(default)]
+    pub uv: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            up: true,
+            uv: false,
+        }
+    }
+}
+
+const fn default_true() -> bool {
+    true
 }
 
 /// All supported Authenticator extensions inputs during credential assertion
@@ -129,10 +153,6 @@ serde_workaround! {
         /// [`PublicKeyCredentialUserEntity`] structure containing the user account information.
         /// User identifiable information (name, DisplayName, icon) MUST not be returned if user
         /// verification is not done by the authenticator.
-        ///
-        /// ## U2F Devices:
-        /// For U2F devices, this parameter is not returned as this user information is not present
-        /// for U2F credentials.
         ///
         /// ## FIDO Devices - server resident credentials:
         /// For server resident credentials on FIDO devices, this parameter is optional as server

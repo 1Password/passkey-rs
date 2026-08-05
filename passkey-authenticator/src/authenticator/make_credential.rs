@@ -24,7 +24,7 @@ where
         //    on this authenticator and bound to the specified rpId, wait for user presence, then
         //    terminate this procedure and return error code CTAP2_ERR_CREDENTIAL_EXCLUDED. User
         //    presence check is required for CTAP2 authenticators before the RP gets told that the
-        //    token is already registered to behave similarly to CTAP1/U2F authenticators.
+        //    token is already registered.
 
         if input
             .exclude_list

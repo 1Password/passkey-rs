@@ -66,6 +66,31 @@ impl From<CredentialIdLength> for usize {
     }
 }
 
+trait ValidationOptions {
+    fn uv(&self) -> bool;
+    fn up(&self) -> bool;
+}
+
+impl ValidationOptions for passkey_types::ctap2::make_credential::Options {
+    fn uv(&self) -> bool {
+        self.uv
+    }
+
+    fn up(&self) -> bool {
+        self.up
+    }
+}
+
+impl ValidationOptions for passkey_types::ctap2::get_assertion::Options {
+    fn uv(&self) -> bool {
+        self.uv
+    }
+
+    fn up(&self) -> bool {
+        self.up
+    }
+}
+
 /// A virtual authenticator with all the necessary state and information.
 pub struct Authenticator<S, U> {
     /// The authenticator's AAGUID
@@ -202,22 +227,22 @@ where
     async fn check_user(
         &self,
         hint: UiHint<'_, <U as UserValidationMethod>::PasskeyItem>,
-        options: &passkey_types::ctap2::make_credential::Options,
+        options: &impl ValidationOptions,
     ) -> Result<Flags, Ctap2Error> {
-        if options.uv && self.user_validation.is_verification_enabled() != Some(true) {
+        if options.uv() && self.user_validation.is_verification_enabled() != Some(true) {
             return Err(Ctap2Error::UnsupportedOption);
         };
 
         let check_result = self
             .user_validation
-            .check_user(hint, options.up, options.uv)
+            .check_user(hint, options.up(), options.uv())
             .await?;
 
-        if options.up && !check_result.presence {
+        if options.up() && !check_result.presence {
             return Err(Ctap2Error::OperationDenied);
         }
 
-        if options.uv && !check_result.verification {
+        if options.uv() && !check_result.verification {
             return Err(Ctap2Error::OperationDenied);
         }
 

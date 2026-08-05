@@ -1,6 +1,6 @@
 use ciborium::{Value, cbor};
 
-use crate::{ctap2::get_assertion::Options, webauthn};
+use crate::{ctap2::make_credential::Options, webauthn};
 
 #[test]
 fn windows_sanity_test() {

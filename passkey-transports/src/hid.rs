@@ -4,9 +4,6 @@ use std::collections::HashMap;
 /// The CTAPHID protocol implements the following commands.
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
-    /// This command sends an encapsulated CTAP1/U2F message to the device. The semantics of the
-    /// data message is defined in the U2F Raw Message Format encoding specification. See [passkey-rs::u2f].
-    Msg = 0x03,
     /// This command sends an encapsulated CTAP CBOR encoded message. The semantics of the data
     /// message is defined in the CTAP Message encoding specification. Please note that keep-alive
     /// messages MAY be sent from the device to the client before the response message is returned.
@@ -95,7 +92,6 @@ impl TryFrom<u8> for Command {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Ok(match value {
-            0x03 => Self::Msg,
             0x10 => Self::Cbor,
             0x06 => Self::Init,
             0x01 => Self::Ping,
@@ -121,7 +117,7 @@ impl Command {
     }
 }
 /// a CTAP2 HID packet can be at most 64 bytes, bigger messages are broken up using Continuation Packets
-const MAX_PACKET_SIZE: usize = 64;
+pub(crate) const MAX_PACKET_SIZE: usize = 64;
 
 /// Initialization Packet header
 ///
@@ -275,14 +271,6 @@ impl PacketHeader {
             }
         }
     }
-
-    /// Get the length of the header size
-    const fn len(&self) -> usize {
-        match self {
-            PacketHeader::Initialization(_) => InitHeader::HEADER_SIZE,
-            PacketHeader::Continuation(_) => ContHeader::HEADER_SIZE,
-        }
-    }
 }
 
 /// A complete CTAP2 message, which is built from one or many packets.
@@ -303,6 +291,13 @@ pub struct Message {
     /// Payload bytes.
     pub payload: Vec<u8>,
 }
+
+/// A `Message` encoded as a sequence of packets.
+pub(crate) struct Packets(pub Vec<[u8; MAX_PACKET_SIZE]>);
+
+/// A `Message` encoded as a sequence of packets that can be sent over HIDRAW; each packet has an extra leading zero byte.
+#[cfg(all(feature = "linux", target_os = "linux"))]
+pub(crate) struct HidrawPackets(pub Vec<[u8; MAX_PACKET_SIZE + 1]>);
 
 /// Error when trying to extend a message from a newly recieved Continuation packet.
 #[derive(Debug)]
@@ -343,21 +338,49 @@ impl Message {
 
     /// Send a message to the client by breaking it up into CTAP2 HID packets and sending them in sequence.
     pub fn send<W: std::io::Write>(self, writer: &mut W) -> Result<(), std::io::Error> {
-        let packets = self.to_packets();
-        let mut buf = [0; MAX_PACKET_SIZE];
-        let num_packets = packets.len() - 1;
-        for (i, (header, data)) in packets.into_iter().enumerate() {
-            // if last packet zero bytes that will not be written to
-            if i == num_packets {
-                let data_len = header.len() + data.len();
-                buf[data_len..].iter_mut().for_each(|b| *b = 0);
-            }
-            header.encode(data, &mut buf);
-
+        for buf in self.encode_packets().0 {
             let _ = writer.write(&buf)?;
             writer.flush()?;
         }
         Ok(())
+    }
+
+    /// Encode this message as a sequence of fully-padded 64-byte CTAPHID packets.
+    ///
+    /// Each returned packet is exactly [`MAX_PACKET_SIZE`] bytes and ready to be written to
+    /// the transport. Use this when you need to drive the wire encoding yourself (for example
+    /// from an async writer that cannot use [`Message::send`]).
+    pub(crate) fn encode_packets(&self) -> Packets {
+        let packets = self.to_packets();
+        Packets(
+            packets
+                .into_iter()
+                .map(|(header, data)| {
+                    let mut buf = [0u8; MAX_PACKET_SIZE];
+                    header.encode(data, &mut buf);
+                    buf
+                })
+                .collect(),
+        )
+    }
+
+    /// Similar to [`Self::encode_packets`] but adds a zero byte to the beginning of each packet
+    /// to indicate the report ID. This is useful for Linux HIDRAW - even though CTAPHID doesn't
+    /// use numbered reports, the HIDRAW API still requires that a zero byte is prepended.
+    #[cfg(all(feature = "linux", target_os = "linux"))]
+    pub(crate) fn encode_packets_with_leading_zero_byte(&self) -> HidrawPackets {
+        let packets = self.to_packets();
+        HidrawPackets(
+            packets
+                .into_iter()
+                .map(|(header, data)| {
+                    let mut buf = [0u8; MAX_PACKET_SIZE + 1];
+                    let [_, payload @ ..] = &mut buf;
+                    header.encode(data, payload);
+                    buf
+                })
+                .collect(),
+        )
     }
 
     /// Break up a [Message] into packets which are a tuple of the packet's header and its associated

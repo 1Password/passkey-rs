@@ -542,13 +542,8 @@ fn map_rk_maps_criteria_to_rk_bool() {
             transports: None,
             ..Default::default()
         };
-        let client = Client::new(Authenticator::new(
-            ctap2::Aaguid::new_empty(),
-            MemoryStore::new(),
-            MockUserValidationMethod::verified_user(0),
-        ));
 
-        let result = client.map_rk(&Some(criteria), &auth_info);
+        let result = map_rk(Some(&criteria), &auth_info);
 
         assert_eq!(result, test_case.expected_rk, "{test_case:?}");
     }

@@ -116,7 +116,12 @@ pub struct PublicKeyCredentialRpEntity {
 }
 
 /// This is a copy of [`webauthn::PublicKeyCredentialUserEntity`] with differing optional fields.
+///
+/// Field names match the CTAP2 wire format (`displayName`, `icon`) rather than the WebAuthn JSON
+/// names, so this type can be used to decode `authenticatorGetAssertion` responses where the
+/// authenticator may legally omit anything beyond `id`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PublicKeyCredentialUserEntity {
     /// The ID of the user
     pub id: Bytes,
@@ -126,8 +131,9 @@ pub struct PublicKeyCredentialUserEntity {
     /// Optional display name
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
-    /// Optional URL pointing to a user icon
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Optional URL pointing to a user icon.
+    /// CTAP2 calls this field `icon`, not `iconUrl`.
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "icon")]
     pub icon_url: Option<String>,
 }
 
@@ -185,14 +191,17 @@ impl TryFrom<webauthn::PublicKeyCredentialRpEntity> for PublicKeyCredentialRpEnt
     }
 }
 
-/// The options that control how an authenticator will behave.
+/// The options that control how an authenticator will behave during authenticatorMakeCredential.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Options {
     /// Specifies whether this credential is to be discoverable or not.
     #[serde(default)]
     pub rk: bool,
     /// Instructs the authenticator to require a gesture that verifies the user to complete the request. Examples of such gestures are fingerprint scan or a PIN.
-    #[serde(default = "default_true")]
+    /// This is marked with `skip_serializing` because CTAP 2.0 does not specify a `up` field in
+    /// `Options`, while CTAP 2.1 allows the `up` field to be present but requires that its value
+    /// be set to true if it is present.
+    #[serde(default = "default_true", skip_serializing_if = "is_false")]
     pub up: bool,
     /// User Verification:
     ///
@@ -213,6 +222,10 @@ impl Default for Options {
 
 const fn default_true() -> bool {
     true
+}
+
+const fn is_false(e: &bool) -> bool {
+    !*e
 }
 
 /// All supported Authenticator extensions inputs during credential creation

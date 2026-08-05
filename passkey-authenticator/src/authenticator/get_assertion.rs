@@ -4,8 +4,8 @@ use passkey_types::{
     ctap2::{
         AuthenticatorData, Ctap2Error, Flags, StatusCode,
         get_assertion::{Request, Response},
+        make_credential::PublicKeyCredentialUserEntity,
     },
-    webauthn::PublicKeyCredentialUserEntity,
 };
 
 use crate::{
@@ -153,8 +153,9 @@ where
                 id,
                 // TODO: make a Authenticator version of this struct similar to make_credential::PublicKeyCredentialRpEntity
                 // since these fields are optional at the authenticator boundary, but required at the client boundary.
-                display_name: "".into(),
-                name: "".into(),
+                display_name: None,
+                name: None,
+                icon_url: None,
             }),
             number_of_credentials: None,
             user_selected: None,

@@ -254,7 +254,7 @@
 //!     client_data_hash,
 //!     allow_list: None,
 //!     extensions: None,
-//!     options: make_credential::Options::default(),
+//!     options: get_assertion::Options::default(),
 //!     pin_auth: None,
 //!     pin_protocol: None,
 //! };
