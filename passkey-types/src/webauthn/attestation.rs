@@ -90,9 +90,9 @@ pub struct PublicKeyCredentialCreationOptions {
     ///
     /// [Relying Party]: https://w3c.github.io/webauthn/#relying-party
     /// [COSEAlgorithmIdentifier]: https://w3c.github.io/webauthn/#typedefdef-cosealgorithmidentifier
-    /// [-8]: coset::iana::Algorithm::EdDSA
-    /// [-7]: coset::iana::Algorithm::ES256
-    /// [-257]: coset::iana::Algorithm::RS256
+    /// [-8]: passkey_crypto::iana::Algorithm::EdDSA
+    /// [-7]: passkey_crypto::iana::Algorithm::ES256
+    /// [-257]: passkey_crypto::iana::Algorithm::RS256
     #[serde(deserialize_with = "ignore_unknown_vec")]
     pub pub_key_cred_params: Vec<PublicKeyCredentialParameters>,
 

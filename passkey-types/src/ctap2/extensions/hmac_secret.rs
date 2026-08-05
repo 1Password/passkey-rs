@@ -7,7 +7,7 @@ serde_workaround! {
     /// Object holding the initial salts for creating the secret.
     #[derive(Debug, Clone, PartialEq)]
     pub struct HmacGetSecretInput {
-        /// Should be of form [`coset::CoseKey`] but that doesn't implement [`Serialize`] or [`Deserialize`].
+        /// Should be of form [`passkey_crypto::CoseKey`] but that doesn't implement [`Serialize`] or [`Deserialize`].
         #[serde(rename=0x01)]
         pub key_agreement: ciborium::value::Value,
 
