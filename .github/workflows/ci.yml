@@ -100,8 +100,20 @@ jobs:
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
-      - name: Check semver
+      - name: Check semver with `linux` feature
         uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+        with:
+          package: passkey,passkey-authenticator,passkey-client,passkey-transports
+          feature-group: default-features
+          features: linux
+
+      - name: Check semver with `windows` feature
+        uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+        with:
+          package: passkey,passkey-client
+          feature-group: default-features
+          features: windows
+          rust-target: x86_64-pc-windows-gnu
 
   docs:
     name: Documentation
