@@ -1,13 +1,15 @@
 //! Sample App for Passkeys
+#[cfg(all(feature = "windows", target_os = "windows"))]
 use passkey::{
-    client::{WebauthnError, windows::WindowsClient},
+    client::{WebauthnError, windows::WindowsClient, DefaultClientData},
     types::{Bytes, rand::random_vec, webauthn::*},
+    crypto::iana,
 };
 
-use coset::iana;
-use passkey_client::DefaultClientData;
+#[cfg(all(feature = "windows", target_os = "windows"))]
 use url::Url;
 
+#[cfg(all(feature = "windows", target_os = "windows"))]
 // Example of how to set up, register and authenticate with a `Client`.
 async fn client_setup(
     challenge_bytes_from_rp: Bytes,
@@ -72,6 +74,7 @@ async fn client_setup(
     Ok((my_webauthn_credential, authenticated_cred))
 }
 
+#[cfg(all(feature = "windows", target_os = "windows"))]
 #[tokio::main]
 async fn main() -> Result<(), WebauthnError> {
     let rp_url = Url::parse("https://future.1password.com").expect("Should Parse");
@@ -97,4 +100,9 @@ async fn main() -> Result<(), WebauthnError> {
     println!("Webauthn credential auth'ed:\n\n{authed_cred:?}\n\n");
 
     Ok(())
+}
+
+#[cfg(any(not(feature = "windows"), not(target_os = "windows")))]
+fn main() {
+    println!("must enable windows feature and compile for windows");
 }

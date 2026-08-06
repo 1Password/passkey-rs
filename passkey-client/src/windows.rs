@@ -5,7 +5,7 @@ use std::time::Duration;
 use coset::{Algorithm, iana::EnumI64};
 use passkey_authenticator::public_key_der_from_cose_key;
 use passkey_types::{
-    ctap2::{AuthenticatorData, Ctap2Error, U2FError},
+    ctap2::{AuthenticatorData, Ctap2Error},
     encoding,
     webauthn::{
         self, AttestationConveyancePreference, AuthenticationExtensionsClientOutputs,
@@ -208,7 +208,7 @@ fn win_api_error_to_webauthn_error<T>(res: Result<T, windows::core::Error>) -> W
             WebauthnError::AuthenticatorError(Ctap2Error::OperationDenied.into())
         }
         // Any other HRESULT.
-        "UnknownError" => WebauthnError::AuthenticatorError(U2FError::Other.into()),
+        "UnknownError" => WebauthnError::AuthenticatorError(Ctap2Error::Other.into()),
         // Unreachable because the Err branch should never return "Success".
         "Success" => unreachable!(),
         // Unreachable because the Windows API guarantees these are the only possible

@@ -37,12 +37,19 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           components: clippy
+          target: x86_64-pc-windows-gnu
 
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run Clippy
-        run: rustup run ${{ matrix.rust }} cargo clippy --all --all-targets --all-features -- -D warnings
+        run: rustup run ${{ matrix.rust }} cargo clippy --all --all-targets -- -D warnings
+
+      - name: Run Clippy with `linux` feature
+        run: rustup run ${{ matrix.rust }} cargo clippy --all --features linux -- -D warnings
+
+      - name: Run Clippy with `windows` feature
+        run: rustup run ${{ matrix.rust }} cargo clippy --all --target x86_64-pc-windows-gnu --features windows -- -D warnings
 
   fmt:
     name: Rustfmt
@@ -70,6 +77,7 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           components: rustfmt
+          target: x86_64-pc-windows-gnu
 
       - name: Run Rustfmt
         run: rustup run ${{ matrix.rust }} cargo fmt --all -- --check
@@ -123,9 +131,16 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
+          target: x86_64-pc-windows-gnu
 
       - name: Run rustdoc
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --all-features
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps
+
+      - name: Run rustdoc with `linux` feature
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --features linux
+
+      - name: Run rustdoc with `windows` feature
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows 
 
   test:
     name: Test
@@ -152,12 +167,19 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
+          target: x86_64-pc-windows-gnu
 
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run tests
-        run: rustup run ${{ matrix.rust }} cargo test --all-features
+        run: rustup run ${{ matrix.rust }} cargo test
+
+      - name: Run tests with `linux` feature
+        run: rustup run ${{ matrix.rust }} cargo test --features linux
+
+      - name: Run tests with `windows` feature
+        run: rustup run ${{ matrix.rust }} cargo test --target x86_64-pc-windows-gnu --features windows
 
   typeshare:
     name: Typeshare
