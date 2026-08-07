@@ -39,6 +39,8 @@ mod rp_id_verifier;
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
 pub mod linux;
+#[cfg(all(feature = "windows", target_os = "windows"))]
+pub mod windows;
 
 pub use self::rp_id_verifier::{Fetcher, RelatedOriginResponse, RpIdVerifier};
 
