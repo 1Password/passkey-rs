@@ -3,11 +3,10 @@
 use passkey::{
     client::{WebauthnError, windows::WindowsClient, DefaultClientData},
     types::{Bytes, rand::random_vec, webauthn::*},
-    crypto::iana,
 };
 
 #[cfg(all(feature = "windows", target_os = "windows"))]
-use url::Url;
+use {coset::iana, url::Url};
 
 #[cfg(all(feature = "windows", target_os = "windows"))]
 // Example of how to set up, register and authenticate with a `Client`.
