@@ -1,5 +1,7 @@
 //! Tests for compatibility sanity checks with Authenticator-rs
 
+#![cfg(not(target_os = "windows"))]
+
 use authenticator::MakeCredentialsResult;
 use coset::iana;
 use passkey_authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod};
