@@ -1,7 +1,7 @@
 //! Sample App for Passkeys
 #[cfg(all(feature = "windows", target_os = "windows"))]
 use passkey::{
-    client::{WebauthnError, windows::WindowsClient, DefaultClientData},
+    client::{DefaultClientData, WebauthnError, windows::WindowsClient},
     types::{Bytes, rand::random_vec, webauthn::*},
 };
 

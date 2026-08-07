@@ -16,9 +16,35 @@ use passkey_types::{
 use serde::Serialize;
 
 use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
-use windows::Win32::{Foundation::HWND, Networking::WindowsWebServices::{
-    WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetCancellationId, WebAuthNGetErrorName, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION, WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB, WEBAUTHN_ENTERPRISE_ATTESTATION_NONE, WEBAUTHN_ENTERPRISE_ATTESTATION_VENDOR_FACILITATED, WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED
-}, UI::WindowsAndMessaging::GetForegroundWindow};
+use windows::Win32::{
+    Foundation::HWND,
+    Networking::WindowsWebServices::{
+        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT,
+        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT,
+        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY,
+        WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM,
+        WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS,
+        WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION,
+        WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS,
+        WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION, WEBAUTHN_CLIENT_DATA,
+        WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER,
+        WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS,
+        WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST,
+        WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE,
+        WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL,
+        WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB,
+        WEBAUTHN_ENTERPRISE_ATTESTATION_NONE, WEBAUTHN_ENTERPRISE_ATTESTATION_VENDOR_FACILITATED,
+        WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION,
+        WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION,
+        WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED, WebAuthNAuthenticatorGetAssertion,
+        WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion,
+        WebAuthNFreeCredentialAttestation, WebAuthNGetCancellationId, WebAuthNGetErrorName,
+    },
+    UI::WindowsAndMessaging::GetForegroundWindow,
+};
 use windows_strings::{HSTRING, PCWSTR};
 
 fn win_api_ctap_transport_mask_to_transports(flags: u32) -> Vec<AuthenticatorTransport> {
@@ -107,10 +133,7 @@ fn win_resident_key_bools(sel: Option<&webauthn::AuthenticatorSelectionCriteria>
         Some(ResidentKeyRequirement::Preferred) => (false, true),
         Some(ResidentKeyRequirement::Discouraged) => (false, false),
         // Fall back to `requireResidentKey` when `residentKey` is absent.
-        None => (
-            sel.map(|s| s.require_resident_key).unwrap_or(false),
-            false,
-        ),
+        None => (sel.map(|s| s.require_resident_key).unwrap_or(false), false),
     }
 }
 
@@ -139,8 +162,7 @@ impl WinCredentialList {
             .zip(descriptors.iter())
             .map(|(id_buf, d)| WEBAUTHN_CREDENTIAL_EX {
                 dwVersion: WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION,
-                cbId: u32::try_from(id_buf.len())
-                    .expect("credential IDs are at most 1023 bytes"),
+                cbId: u32::try_from(id_buf.len()).expect("credential IDs are at most 1023 bytes"),
                 pbId: id_buf.as_mut_ptr(),
                 pwszCredentialType: WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY,
                 dwTransports: d
@@ -186,7 +208,9 @@ fn win_api_error_to_webauthn_error<T>(res: Result<T, windows::core::Error>) -> W
     // "Success", "InvalidStateError", "ConstraintError", "NotSupportedError", "NotAllowedError",
     // or "UnknownError".
     let err_string = unsafe {
-        WebAuthNGetErrorName(res.into()).to_string().expect("string returned by Windows WebAuthn API should be valid UTF-16")
+        WebAuthNGetErrorName(res.into())
+            .to_string()
+            .expect("string returned by Windows WebAuthn API should be valid UTF-16")
     };
 
     // Translate the Windows error messages into WebauthnError analogues (or the closest
@@ -207,9 +231,7 @@ fn win_api_error_to_webauthn_error<T>(res: Result<T, windows::core::Error>) -> W
         "NotSupportedError" => WebauthnError::NotSupportedError,
         // Device not found / user cancelled / timeout. Map to OperationDenied as the
         // generic "operation not permitted" case.
-        "NotAllowedError" => {
-            WebauthnError::AuthenticatorError(Ctap2Error::OperationDenied.into())
-        }
+        "NotAllowedError" => WebauthnError::AuthenticatorError(Ctap2Error::OperationDenied.into()),
         // Any other HRESULT.
         "UnknownError" => WebauthnError::AuthenticatorError(Ctap2Error::Other.into()),
         // Unreachable because the Err branch should never return "Success".
@@ -218,7 +240,6 @@ fn win_api_error_to_webauthn_error<T>(res: Result<T, windows::core::Error>) -> W
         // values for the error.
         _ => unreachable!(),
     }
-
 }
 
 /// A WebAuthn client that uses Windows' webauthn.dll to interface with authenticators.
@@ -261,11 +282,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         let mut request = request.public_key;
 
         // Extension input processing: for now, we just do credProps.
-        let cred_props_requested = request
-            .extensions
-            .as_ref()
-            .and_then(|ext| ext.cred_props)
-            == Some(true);
+        let cred_props_requested =
+            request.extensions.as_ref().and_then(|ext| ext.cred_props) == Some(true);
 
         let rp_id = self
             .rp_id_verifier
@@ -314,16 +332,20 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             pwszHashAlgId: WEBAUTHN_HASH_ALGORITHM_SHA_256,
         };
 
-        let mut credential_params_vec = request.pub_key_cred_params.iter().map(|e| {
-            // TODO: should algorithms that aren't explicitly listed in `webauthn.h` be
-            // filtered out?
-            WEBAUTHN_COSE_CREDENTIAL_PARAMETER {
-                dwVersion: WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION,
-                pwszCredentialType: WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY,
-                lAlg: i32::try_from(e.alg.to_i64())
-                    .expect("IANA-registered COSE algorithm identifiers all fit in i32"),
-            }
-        }).collect::<Vec<_>>();
+        let mut credential_params_vec = request
+            .pub_key_cred_params
+            .iter()
+            .map(|e| {
+                // TODO: should algorithms that aren't explicitly listed in `webauthn.h` be
+                // filtered out?
+                WEBAUTHN_COSE_CREDENTIAL_PARAMETER {
+                    dwVersion: WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION,
+                    pwszCredentialType: WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY,
+                    lAlg: i32::try_from(e.alg.to_i64())
+                        .expect("IANA-registered COSE algorithm identifiers all fit in i32"),
+                }
+            })
+            .collect::<Vec<_>>();
 
         let credential_params = WEBAUTHN_COSE_CREDENTIAL_PARAMETERS {
             cCredentialParameters: u32::try_from(credential_params_vec.len())
@@ -335,12 +357,10 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         // in the Rust request are left at their default values.
         let sel = request.authenticator_selection.as_ref();
         let (require_rk, prefer_rk) = win_resident_key_bools(sel);
-        let uv = win_uv(
-            sel.map(|s| s.user_verification)
-                .unwrap_or_default(),
+        let uv = win_uv(sel.map(|s| s.user_verification).unwrap_or_default());
+        let mut exclude_list = WinCredentialList::from_descriptors(
+            request.exclude_credentials.as_deref().unwrap_or(&[]),
         );
-        let mut exclude_list =
-            WinCredentialList::from_descriptors(request.exclude_credentials.as_deref().unwrap_or(&[]));
 
         let make_credential_options = WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS {
             dwVersion: WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION,
@@ -382,7 +402,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 let credential_id_bytes: Vec<u8> = unsafe {
                     std::slice::from_raw_parts(
                         (*attestation).pbCredentialId.cast_const(),
-                        (*attestation).cbCredentialId
+                        (*attestation)
+                            .cbCredentialId
                             .try_into()
                             .expect("usize is always >= 32 bits on Windows"),
                     )
@@ -392,7 +413,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 let authenticator_data_bytes: Vec<u8> = unsafe {
                     std::slice::from_raw_parts(
                         (*attestation).pbAuthenticatorData.cast_const(),
-                        (*attestation).cbAuthenticatorData
+                        (*attestation)
+                            .cbAuthenticatorData
                             .try_into()
                             .expect("usize is always >= 32 bits on Windows"),
                     )
@@ -402,7 +424,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 let attestation_object_bytes: Vec<u8> = unsafe {
                     std::slice::from_raw_parts(
                         (*attestation).pbAttestationObject.cast_const(),
-                        (*attestation).cbAttestationObject
+                        (*attestation)
+                            .cbAttestationObject
                             .try_into()
                             .expect("usize is always >= 32 bits on Windows"),
                     )
@@ -421,7 +444,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 // the matching `Ok` branch above and has not been freed yet, so passing it to
                 // `WebAuthNFreeCredentialAttestation` is the documented way to release it. The
                 // pointer is not used again after this call.
-                unsafe { WebAuthNFreeCredentialAttestation(Some(attestation.cast_const())); }
+                unsafe {
+                    WebAuthNFreeCredentialAttestation(Some(attestation.cast_const()));
+                }
 
                 let parsed_auth_data = AuthenticatorData::from_slice(&authenticator_data_bytes)
                     .map_err(|_| WebauthnError::ValidationError)?;
@@ -471,7 +496,7 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                     },
                 })
             }
-            Err(_) => Err(win_api_error_to_webauthn_error(make_credential_result))
+            Err(_) => Err(win_api_error_to_webauthn_error(make_credential_result)),
         }
     }
 
@@ -522,8 +547,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         );
 
         // Translate the Rust request into the Windows options struct.
-        let mut allow_list =
-            WinCredentialList::from_descriptors(request.allow_credentials.as_deref().unwrap_or(&[]));
+        let mut allow_list = WinCredentialList::from_descriptors(
+            request.allow_credentials.as_deref().unwrap_or(&[]),
+        );
         let get_assertion_options = WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS {
             dwVersion: WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION,
             dwTimeoutMilliseconds: timeout,
@@ -574,7 +600,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 let credential_id_bytes: Vec<u8> = unsafe {
                     std::slice::from_raw_parts(
                         (*assertion).Credential.pbId.cast_const(),
-                        (*assertion).Credential.cbId
+                        (*assertion)
+                            .Credential
+                            .cbId
                             .try_into()
                             .expect("usize is always >= 32 bits on Windows"),
                     )
@@ -584,7 +612,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 let authenticator_data_bytes: Vec<u8> = unsafe {
                     std::slice::from_raw_parts(
                         (*assertion).pbAuthenticatorData.cast_const(),
-                        (*assertion).cbAuthenticatorData
+                        (*assertion)
+                            .cbAuthenticatorData
                             .try_into()
                             .expect("usize is always >= 32 bits on Windows"),
                     )
@@ -594,7 +623,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 let signature_bytes: Vec<u8> = unsafe {
                     std::slice::from_raw_parts(
                         (*assertion).pbSignature.cast_const(),
-                        (*assertion).cbSignature
+                        (*assertion)
+                            .cbSignature
                             .try_into()
                             .expect("usize is always >= 32 bits on Windows"),
                     )
@@ -624,7 +654,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 // SAFETY: `assertion` was produced by `WebAuthNAuthenticatorGetAssertion` above
                 // and has not been freed yet, so passing it to `WebAuthNFreeAssertion` is the
                 // documented way to release it. The pointer is not used again after this call.
-                unsafe { WebAuthNFreeAssertion(assertion.cast_const()); }
+                unsafe {
+                    WebAuthNFreeAssertion(assertion.cast_const());
+                }
 
                 Ok(webauthn::AuthenticatedPublicKeyCredential {
                     id: encoding::base64url(&credential_id_bytes),
@@ -643,7 +675,7 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                     client_extension_results: AuthenticationExtensionsClientOutputs::default(),
                 })
             }
-            Err(_) => Err(win_api_error_to_webauthn_error(get_assertion_result))
+            Err(_) => Err(win_api_error_to_webauthn_error(get_assertion_result)),
         }
     }
 }
