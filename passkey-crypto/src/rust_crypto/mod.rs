@@ -48,7 +48,13 @@ impl PublicKeyT for RustCryptoPublicKey {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
-        if !matches!(alg, iana::Algorithm::ES256 | iana::Algorithm::ESP256 | iana::Algorithm::EdDSA | iana::Algorithm::Ed25519) {
+        if !matches!(
+            alg,
+            iana::Algorithm::ES256
+                | iana::Algorithm::ESP256
+                | iana::Algorithm::EdDSA
+                | iana::Algorithm::Ed25519
+        ) {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         }
         match alg {
@@ -175,7 +181,13 @@ impl SecretKeyT for RustCryptoSecretKey {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
-        if !matches!(alg, iana::Algorithm::ES256 | iana::Algorithm::ESP256 | iana::Algorithm::EdDSA | iana::Algorithm::Ed25519) {
+        if !matches!(
+            alg,
+            iana::Algorithm::ES256
+                | iana::Algorithm::ESP256
+                | iana::Algorithm::EdDSA
+                | iana::Algorithm::Ed25519
+        ) {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         }
         let bytes = cose_key

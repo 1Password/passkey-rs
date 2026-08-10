@@ -23,9 +23,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 
 use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
-use passkey_crypto::{
-    CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64,
-};
+use passkey_crypto::{CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64};
 use passkey_types::{
     Bytes, ctap2, encoding,
     webauthn::{
@@ -248,9 +246,11 @@ where
             _ => 0,
         };
         let public_key = Some(
-            <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(&credential_id.key)
-                .map(Into::<Bytes>::into)
-                .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
+            <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(
+                &credential_id.key,
+            )
+            .map(Into::<Bytes>::into)
+            .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
         );
         let attestation_object = ctap2_response.as_webauthn_bytes();
 

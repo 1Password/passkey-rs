@@ -1,6 +1,4 @@
-use passkey_crypto::{
-    CryptoBackend, SecretKeyT, iana, rng::RngBackend
-};
+use passkey_crypto::{CryptoBackend, SecretKeyT, iana, rng::RngBackend};
 
 use crate::{Passkey, StoredHmacSecret};
 
