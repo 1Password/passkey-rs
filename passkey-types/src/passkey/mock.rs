@@ -1,5 +1,5 @@
 use passkey_crypto::{
-    CryptoBackend, SecretKeyT, iana, rng::RngBackend, rust_crypto::RustCryptoRng,
+    CryptoBackend, SecretKeyT, iana, rng::RngBackend
 };
 
 use crate::{Passkey, StoredHmacSecret};
@@ -21,7 +21,7 @@ impl PasskeyBuilder {
         Self {
             inner: Passkey {
                 key: private,
-                credential_id: RustCryptoRng::random_vec(16).into(),
+                credential_id: C::Rng::random_vec(16).into(),
                 rp_id,
                 user_handle: None,
                 username: None,
@@ -33,14 +33,14 @@ impl PasskeyBuilder {
     }
 
     /// Regenerate the credential ID with a different size than the default 16 bytes
-    pub fn credential_id(mut self, len: usize) -> Self {
-        self.inner.credential_id = RustCryptoRng::random_vec(len).into();
+    pub fn credential_id<C: CryptoBackend>(mut self, len: usize) -> Self {
+        self.inner.credential_id = C::Rng::random_vec(len).into();
         self
     }
 
     /// Generate the user handle with an optional custom size. The default is 16 bytes.
-    pub fn user_handle(mut self, len: Option<usize>) -> Self {
-        self.inner.user_handle = Some(RustCryptoRng::random_vec(len.unwrap_or(16)).into());
+    pub fn user_handle<C: CryptoBackend>(mut self, len: Option<usize>) -> Self {
+        self.inner.user_handle = Some(C::Rng::random_vec(len.unwrap_or(16)).into());
         self
     }
 
