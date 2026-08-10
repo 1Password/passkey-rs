@@ -2,7 +2,7 @@
 #[cfg(all(feature = "linux", target_os = "linux"))]
 use passkey::{
     client::{DefaultClientData, WebauthnError, linux::LinuxClient},
-    crypto::{iana, rng::RngBackend, rust_crypto::RustCryptoRng},
+    crypto::{iana, rng::RngBackend, rust_crypto::{RustCryptoRng, RustCryptoBackend}},
     types::{Bytes, webauthn::*},
 };
 
@@ -18,7 +18,8 @@ async fn client_setup(
     user_entity: PublicKeyCredentialUserEntity,
 ) -> Result<(CreatedPublicKeyCredential, AuthenticatedPublicKeyCredential), WebauthnError> {
     // Create the Client
-    let mut my_client = LinuxClient::open_all()
+
+    let mut my_client: LinuxClient<RustCryptoBackend, _, _> = LinuxClient::open_all()
         .await
         .unwrap()
         .user_verification_when_preferred(false);

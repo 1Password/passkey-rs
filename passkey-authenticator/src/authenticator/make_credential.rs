@@ -1,4 +1,4 @@
-use passkey_crypto::{CryptoBackend, rng::RngBackend, rust_crypto::RustCryptoRng};
+use passkey_crypto::{CryptoBackend, rng::RngBackend};
 use passkey_types::{
     Passkey,
     ctap2::{
@@ -112,7 +112,7 @@ where
             .await?;
 
         // 9. Generate a new credential key pair for the algorithm specified.
-        let credential_id = RustCryptoRng::random_vec(self.credential_id_length.into());
+        let credential_id = <C as CryptoBackend>::Rng::random_vec(self.credential_id_length.into());
 
         let private_key = self
             .crypto

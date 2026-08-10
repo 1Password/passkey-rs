@@ -20,11 +20,11 @@
 //! ```
 
 use std::future::Future;
+use std::marker::PhantomData;
 
 use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
 use passkey_crypto::{
     CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64,
-    rust_crypto::RustCryptoBackend,
 };
 use passkey_types::{
     Bytes, ctap2, encoding,
@@ -44,17 +44,19 @@ use crate::{
 };
 
 /// A WebAuthn client backed by zero or more USB security keys serving as authenticators.
-pub struct LinuxClient<P, F>
+pub struct LinuxClient<C, P, F>
 where
+    C: CryptoBackend,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
     F: Fetcher + Sync,
 {
     devices: Vec<LinuxAuthenticator>,
     rp_id_verifier: RpIdVerifier<P, F>,
     uv_when_preferred: bool,
+    _crypto: PhantomData<C>,
 }
 
-impl LinuxClient<public_suffix::PublicSuffixList, ()> {
+impl<C: CryptoBackend> LinuxClient<C, public_suffix::PublicSuffixList, ()> {
     /// Build a `LinuxClient` over the supplied authenticators using the default public-suffix list
     /// TLD provider.
     pub fn new(authenticators: Vec<LinuxAuthenticator>) -> Self {
@@ -62,6 +64,7 @@ impl LinuxClient<public_suffix::PublicSuffixList, ()> {
             devices: authenticators,
             rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
             uv_when_preferred: true,
+            _crypto: PhantomData,
         }
     }
 
@@ -79,8 +82,9 @@ impl LinuxClient<public_suffix::PublicSuffixList, ()> {
     }
 }
 
-impl<P, F> LinuxClient<P, F>
+impl<C, P, F> LinuxClient<C, P, F>
 where
+    C: CryptoBackend,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
     F: Fetcher + Sync,
 {
@@ -94,12 +98,14 @@ where
             devices: authenticators,
             rp_id_verifier: RpIdVerifier::new(custom_provider, fetcher),
             uv_when_preferred: true,
+            _crypto: PhantomData,
         }
     }
 }
 
-impl<P, F> LinuxClient<P, F>
+impl<C, P, F> LinuxClient<C, P, F>
 where
+    C: CryptoBackend,
     P: public_suffix::EffectiveTLDProvider + Sync + 'static,
     F: Fetcher + Sync,
 {
@@ -241,10 +247,8 @@ where
             // In the case that the algorithm is unknown, default to 0 (Reserved)
             _ => 0,
         };
-        // TODO: we handle this conversion through the RustCryptoBackend.
-        // We may want to change this in the future.
         let public_key = Some(
-            <<RustCryptoBackend as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(&credential_id.key)
+            <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(&credential_id.key)
                 .map(Into::<Bytes>::into)
                 .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
         );
