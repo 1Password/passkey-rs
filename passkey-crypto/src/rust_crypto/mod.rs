@@ -153,11 +153,11 @@ impl PublicKeyT for RustCryptoPublicKey {
                 #[allow(deprecated)]
                 let y = encoded_public_key.y().unwrap().as_slice().to_vec();
                 CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y)
-                    .algorithm(iana::Algorithm::ESP256)
+                    .algorithm(iana::Algorithm::ES256)
                     .build()
             }
             Self::Ed25519(public_key) => CoseKeyBuilder::new_okp_key()
-                .algorithm(iana::Algorithm::Ed25519)
+                .algorithm(iana::Algorithm::EdDSA)
                 .param(
                     iana::OkpKeyParameter::Crv.to_i64(),
                     Value::from(iana::EllipticCurve::Ed25519.to_i64()),
@@ -267,11 +267,11 @@ impl SecretKeyT for RustCryptoSecretKey {
                     y,
                     secret_key.to_bytes().to_vec(),
                 )
-                .algorithm(iana::Algorithm::ESP256)
+                .algorithm(iana::Algorithm::ES256)
                 .build()
             }
             Self::Ed25519(secret_key) => CoseKeyBuilder::new_okp_key()
-                .algorithm(iana::Algorithm::Ed25519)
+                .algorithm(iana::Algorithm::EdDSA)
                 .param(
                     iana::OkpKeyParameter::Crv.to_i64(),
                     Value::from(iana::EllipticCurve::Ed25519.to_i64()),
