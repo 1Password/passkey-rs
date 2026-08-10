@@ -48,11 +48,11 @@ impl PublicKeyT for RustCryptoPublicKey {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
-        if !matches!(alg, iana::Algorithm::ES256 | iana::Algorithm::Ed25519) {
+        if !matches!(alg, iana::Algorithm::ES256 | iana::Algorithm::ESP256 | iana::Algorithm::EdDSA | iana::Algorithm::Ed25519) {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         }
         match alg {
-            iana::Algorithm::ES256 => {
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
                 if !matches!(
                     cose_key.kty,
                     coset::RegisteredLabel::Assigned(iana::KeyType::EC2)
@@ -97,7 +97,7 @@ impl PublicKeyT for RustCryptoPublicKey {
                     .map_err(|_| CoseKeyConversionError::InvalidCredential)
                     .map(|pk| pk.as_ref().to_vec())
             }
-            iana::Algorithm::Ed25519 => {
+            iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
                 if !matches!(
                     cose_key.kty,
                     coset::RegisteredLabel::Assigned(iana::KeyType::OKP)
@@ -147,7 +147,7 @@ impl PublicKeyT for RustCryptoPublicKey {
                 #[allow(deprecated)]
                 let y = encoded_public_key.y().unwrap().as_slice().to_vec();
                 CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y)
-                    .algorithm(iana::Algorithm::ES256)
+                    .algorithm(iana::Algorithm::ESP256)
                     .build()
             }
             Self::Ed25519(public_key) => CoseKeyBuilder::new_okp_key()
@@ -175,7 +175,7 @@ impl SecretKeyT for RustCryptoSecretKey {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
-        if !matches!(alg, iana::Algorithm::ES256 | iana::Algorithm::Ed25519) {
+        if !matches!(alg, iana::Algorithm::ES256 | iana::Algorithm::ESP256 | iana::Algorithm::EdDSA | iana::Algorithm::Ed25519) {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         }
         let bytes = cose_key
@@ -192,7 +192,7 @@ impl SecretKeyT for RustCryptoSecretKey {
             })
             .ok_or(CoseKeyConversionError::InvalidCredential)?;
         match alg {
-            iana::Algorithm::ES256 => {
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
                 if !matches!(
                     cose_key.kty,
                     coset::RegisteredLabel::Assigned(iana::KeyType::EC2)
@@ -204,7 +204,7 @@ impl SecretKeyT for RustCryptoSecretKey {
                         .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
                 ))
             }
-            iana::Algorithm::Ed25519 => {
+            iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
                 if !matches!(
                     cose_key.kty,
                     coset::RegisteredLabel::Assigned(iana::KeyType::OKP)
@@ -255,7 +255,7 @@ impl SecretKeyT for RustCryptoSecretKey {
                     y,
                     secret_key.to_bytes().to_vec(),
                 )
-                .algorithm(iana::Algorithm::ES256)
+                .algorithm(iana::Algorithm::ESP256)
                 .build()
             }
             Self::Ed25519(secret_key) => CoseKeyBuilder::new_okp_key()
@@ -288,7 +288,7 @@ impl CryptoBackend for RustCryptoBackend {
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm> {
         vec![
             iana::Algorithm::ES256,
-            iana::Algorithm::PS256,
+            iana::Algorithm::ESP256,
             iana::Algorithm::EdDSA,
             iana::Algorithm::Ed25519,
         ]
@@ -296,7 +296,7 @@ impl CryptoBackend for RustCryptoBackend {
 
     fn generate_key(&self, algorithm: iana::Algorithm) -> Result<Self::SecretKey, crate::Error> {
         match algorithm {
-            iana::Algorithm::ES256 | iana::Algorithm::PS256 => Ok(RustCryptoSecretKey::P256(
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => Ok(RustCryptoSecretKey::P256(
                 p256::ecdsa::SigningKey::generate(),
             )),
             iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
