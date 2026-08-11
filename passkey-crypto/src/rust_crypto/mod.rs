@@ -14,29 +14,33 @@ use p256::{
 use signature::Verifier;
 
 /// Secret key backed by the RustCrypto crates.
-pub enum RustCryptoSecretKey {
-    /// Secret key that uses the P256 ECDSA algorithm.
+pub struct RustCryptoSecretKey(RustCryptoSecretKeyInner);
+
+enum RustCryptoSecretKeyInner {
+    // Secret key that uses the P256 ECDSA algorithm.
     P256(p256::ecdsa::SigningKey),
-    /// Secret key that uses the Ed25519 EdDSA algorithm
+    // Secret key that uses the Ed25519 EdDSA algorithm
     Ed25519(ed25519_dalek::SigningKey),
 }
 
 /// Public key backed by the RustCrypto crates.
-pub enum RustCryptoPublicKey {
-    /// Public key that uses the P256 ECDSA algorithm.
+pub struct RustCryptoPublicKey(RustCryptoPublicKeyInner);
+
+enum RustCryptoPublicKeyInner {
+    // Public key that uses the P256 ECDSA algorithm.
     P256(p256::ecdsa::VerifyingKey),
-    /// Public key that uses the Ed25519 EdDSA algorithm
+    // Public key that uses the Ed25519 EdDSA algorithm
     Ed25519(ed25519_dalek::VerifyingKey),
 }
 
 impl PublicKeyT for RustCryptoPublicKey {
     fn verify(&self, target: &[u8], signature: &[u8]) -> Result<(), crate::Error> {
-        match self {
-            Self::P256(public_key) => {
+        match self.0 {
+            RustCryptoPublicKeyInner::P256(public_key) => {
                 let signature = p256::ecdsa::Signature::from_der(signature)?;
                 public_key.verify(target, &signature)?;
             }
-            Self::Ed25519(public_key) => {
+            RustCryptoPublicKeyInner::Ed25519(public_key) => {
                 let signature = ed25519_dalek::ed25519::Signature::from_slice(signature)?;
                 public_key.verify(target, &signature)?;
             }
@@ -133,8 +137,8 @@ impl PublicKeyT for RustCryptoPublicKey {
     }
 
     fn to_cose_key(&self) -> CoseKey {
-        match self {
-            Self::P256(public_key) => {
+        match self.0 {
+            RustCryptoPublicKeyInner::P256(public_key) => {
                 let encoded_public_key = public_key.to_sec1_point(false);
 
                 // SAFETY: These unwraps are safe because the public_key above is not compressed (false
@@ -147,7 +151,7 @@ impl PublicKeyT for RustCryptoPublicKey {
                     .algorithm(iana::Algorithm::ES256)
                     .build()
             }
-            Self::Ed25519(public_key) => CoseKeyBuilder::new_okp_key()
+            RustCryptoPublicKeyInner::Ed25519(public_key) => CoseKeyBuilder::new_okp_key()
                 .algorithm(iana::Algorithm::EdDSA)
                 .param(
                     iana::OkpKeyParameter::Crv.to_i64(),
@@ -193,10 +197,10 @@ impl SecretKeyT for RustCryptoSecretKey {
                         }
                     })
                     .ok_or(CoseKeyConversionError::InvalidCredential)?;
-                Ok(Self::P256(
+                Ok(Self(RustCryptoSecretKeyInner::P256(
                     p256::ecdsa::SigningKey::from_slice(bytes)
                         .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
-                ))
+                )))
             }
             iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
                 if !matches!(
@@ -206,50 +210,56 @@ impl SecretKeyT for RustCryptoSecretKey {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
                 let bytes = cose_key
-                .params
-                .iter()
-                .find_map(|(k, v)| {
-                    let coset::Label::Int(i) = k else {
-                        return None;
-                    };
+                    .params
+                    .iter()
+                    .find_map(|(k, v)| {
+                        let coset::Label::Int(i) = k else {
+                            return None;
+                        };
 
-                    iana::OkpKeyParameter::from_i64(*i)
-                        .filter(|p| *p == iana::OkpKeyParameter::D)
-                        .and_then(|_| v.as_bytes())
-                })
-                .ok_or(CoseKeyConversionError::InvalidCredential)?;
+                        iana::OkpKeyParameter::from_i64(*i)
+                            .filter(|p| *p == iana::OkpKeyParameter::D)
+                            .and_then(|_| v.as_bytes())
+                    })
+                    .ok_or(CoseKeyConversionError::InvalidCredential)?;
 
                 let bytes: [u8; 32] = bytes
                     .as_slice()
                     .try_into()
                     .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
 
-                Ok(Self::Ed25519(ed25519_dalek::SigningKey::from_bytes(&bytes)))
+                Ok(Self(RustCryptoSecretKeyInner::Ed25519(
+                    ed25519_dalek::SigningKey::from_bytes(&bytes),
+                )))
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
     }
 
     fn sign(&mut self, target: &[u8]) -> Vec<u8> {
-        match self {
-            Self::P256(secret_key) => {
+        match &self.0 {
+            RustCryptoSecretKeyInner::P256(secret_key) => {
                 let signature: p256::ecdsa::Signature = secret_key.sign(target);
                 signature.to_der().to_vec()
             }
-            Self::Ed25519(secret_key) => secret_key.sign(target).to_vec(),
+            RustCryptoSecretKeyInner::Ed25519(secret_key) => secret_key.sign(target).to_vec(),
         }
     }
 
     fn public_key(&self) -> Self::PublicKey {
-        match self {
-            Self::P256(secret_key) => RustCryptoPublicKey::P256(*secret_key.verifying_key()),
-            Self::Ed25519(secret_key) => RustCryptoPublicKey::Ed25519(secret_key.verifying_key()),
+        match &self.0 {
+            RustCryptoSecretKeyInner::P256(secret_key) => {
+                RustCryptoPublicKey(RustCryptoPublicKeyInner::P256(*secret_key.verifying_key()))
+            }
+            RustCryptoSecretKeyInner::Ed25519(secret_key) => RustCryptoPublicKey(
+                RustCryptoPublicKeyInner::Ed25519(secret_key.verifying_key()),
+            ),
         }
     }
 
     fn to_cose_key(&self) -> CoseKey {
-        match self {
-            Self::P256(secret_key) => {
+        match &self.0 {
+            RustCryptoSecretKeyInner::P256(secret_key) => {
                 let public_key = secret_key.verifying_key().to_sec1_point(false);
                 // SAFETY: These unwraps are safe because the public_key above is not compressed (false
                 // parameter) therefore x and y are guaranteed to contain values.
@@ -266,7 +276,7 @@ impl SecretKeyT for RustCryptoSecretKey {
                 .algorithm(iana::Algorithm::ES256)
                 .build()
             }
-            Self::Ed25519(secret_key) => CoseKeyBuilder::new_okp_key()
+            RustCryptoSecretKeyInner::Ed25519(secret_key) => CoseKeyBuilder::new_okp_key()
                 .algorithm(iana::Algorithm::EdDSA)
                 .param(
                     iana::OkpKeyParameter::Crv.to_i64(),
@@ -304,14 +314,14 @@ impl CryptoBackend for RustCryptoBackend {
 
     fn generate_key(&self, algorithm: iana::Algorithm) -> Result<Self::SecretKey, crate::Error> {
         match algorithm {
-            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => Ok(RustCryptoSecretKey::P256(
-                p256::ecdsa::SigningKey::generate(),
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => Ok(RustCryptoSecretKey(
+                RustCryptoSecretKeyInner::P256(p256::ecdsa::SigningKey::generate()),
             )),
             iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
                 let mut rng = ::rand::rng();
-                Ok(RustCryptoSecretKey::Ed25519(
+                Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::Ed25519(
                     ed25519_dalek::SigningKey::generate(&mut rng),
-                ))
+                )))
             }
             _ => Err("Algorithm is unsupported".to_string().into()),
         }
