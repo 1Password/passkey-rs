@@ -34,6 +34,9 @@ rand = "0.8"
 tokio = { version = "1", features = ["sync", "macros"], optional = true }
 
 [dev-dependencies]
+authenticator = { version = "0.5", default-features = false, features = [
+  "crypto_dummy",
+] }
 ciborium = "0.2"
 generic-array = { version = "=0.14.7", default-features = false }
 mockall = { version = "0.11" }
@@ -44,12 +47,8 @@ serde_cbor = "0.11"
 signature = { version = "2", features = ["rand_core"] }
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 
-# `authenticator` 0.5 has a type mismatch in its Windows backend that prevents
-# Windows targets from compiling, so we gate it (and the corresponding test)
-# out.
-# There is an open PR to fix this:
-# https://github.com/mozilla/authenticator-rs/pull/366
-[target.'cfg(not(target_os = "windows"))'.dev-dependencies]
-authenticator = { version = "0.5", default-features = false, features = [
-  "crypto_dummy",
-] }
+# We never use this directly, but due to an issue with dependency resolution,
+# `authenticator` doesn't build if `winapi/std` isn't enabled.
+# See https://github.com/mozilla/authenticator-rs/pull/366.
+[target.'cfg(target_os = "windows")'.dev-dependencies]
+winapi = { version = "^0.3", features = ["std"] }
