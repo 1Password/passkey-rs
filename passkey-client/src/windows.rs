@@ -18,7 +18,7 @@ use serde::Serialize;
 use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
 use windows_sys::Win32::{
     Networking::WindowsWebServices::{
-        WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetApiVersionNumber, WebAuthNGetCancellationId, WebAuthNGetErrorName, WEBAUTHN_API_VERSION_1, WEBAUTHN_ASSERTION, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3, WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_ATTESTATION, WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB, WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED
+        WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetApiVersionNumber, WebAuthNGetCancellationId, WebAuthNGetErrorName, WEBAUTHN_API_VERSION_1, WEBAUTHN_ASSERTION, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3, WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_ATTESTATION, WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB, WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED
     },
     UI::WindowsAndMessaging::GetForegroundWindow,
 };
@@ -68,6 +68,8 @@ fn get_cancellation_id() -> Result<GUID, WebauthnError> {
         Ok(id)
 }
 
+// WEBAUTHN_API_VERSION_1 exposes only USB, NFC, BLE, and INTERNAL transports.
+// HYBRID was added in WEBAUTHN_API_VERSION_6, so we do not handle it here.
 fn win_api_ctap_transport_mask_to_transports(flags: u32) -> Vec<AuthenticatorTransport> {
     let mut transports = Vec::new();
     if flags & WEBAUTHN_CTAP_TRANSPORT_USB != 0 {
@@ -82,9 +84,6 @@ fn win_api_ctap_transport_mask_to_transports(flags: u32) -> Vec<AuthenticatorTra
     if flags & WEBAUTHN_CTAP_TRANSPORT_INTERNAL != 0 {
         transports.push(AuthenticatorTransport::Internal);
     }
-    if flags & WEBAUTHN_CTAP_TRANSPORT_HYBRID != 0 {
-        transports.push(AuthenticatorTransport::Hybrid);
-    }
     transports
 }
 
@@ -96,7 +95,8 @@ fn transports_to_win_api_ctap_mask(transports: &[AuthenticatorTransport]) -> u32
             AuthenticatorTransport::Nfc => WEBAUTHN_CTAP_TRANSPORT_NFC,
             AuthenticatorTransport::Ble => WEBAUTHN_CTAP_TRANSPORT_BLE,
             AuthenticatorTransport::Internal => WEBAUTHN_CTAP_TRANSPORT_INTERNAL,
-            AuthenticatorTransport::Hybrid => WEBAUTHN_CTAP_TRANSPORT_HYBRID,
+            // HYBRID isn't available under WEBAUTHN_API_VERSION_1; skip it in the mask.
+            AuthenticatorTransport::Hybrid => 0,
         };
     }
     mask
@@ -382,7 +382,11 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             dwUserVerificationRequirement: uv,
             dwAttestationConveyancePreference: win_attestation_conveyance(request.attestation),
             pExcludeCredentialList: exclude_list.as_ptr(),
-            ..Default::default()
+            // Zero-initialize the remaining fields because windows-sys < 0.61 doesn't implement
+            // `Default` for this struct.
+            // SAFETY: the struct is `#[repr(C)]` and every field is a plain scalar or pointer, so
+            // an all-zero bit pattern is a valid initial value.
+            ..unsafe { std::mem::zeroed() }
         };
 
         // TODO: Test and re-evaluate this in the future.
@@ -597,7 +601,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             dwAuthenticatorAttachment: WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY,
             dwUserVerificationRequirement: win_uv(request.user_verification),
             pAllowCredentialList: allow_list.as_ptr(),
-            ..Default::default()
+            // SAFETY: see the matching safety comment on `make_credential_options`.
+            ..unsafe { std::mem::zeroed() }
         };
 
         // TODO: Test and re-evaluate this in the future.
