@@ -18,7 +18,30 @@ use serde::Serialize;
 use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
 use windows_sys::Win32::{
     Networking::WindowsWebServices::{
-        WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetApiVersionNumber, WebAuthNGetCancellationId, WebAuthNGetErrorName, WEBAUTHN_API_VERSION_1, WEBAUTHN_ASSERTION, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3, WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_ATTESTATION, WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB, WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED
+        WEBAUTHN_API_VERSION_1, WEBAUTHN_ASSERTION,
+        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT,
+        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT,
+        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY,
+        WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM,
+        WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS,
+        WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4,
+        WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS,
+        WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3, WEBAUTHN_CLIENT_DATA,
+        WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER,
+        WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS,
+        WEBAUTHN_CREDENTIAL_ATTESTATION, WEBAUTHN_CREDENTIAL_EX,
+        WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST,
+        WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE,
+        WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB,
+        WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION,
+        WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION,
+        WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED, WebAuthNAuthenticatorGetAssertion,
+        WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion,
+        WebAuthNFreeCredentialAttestation, WebAuthNGetApiVersionNumber, WebAuthNGetCancellationId,
+        WebAuthNGetErrorName,
     },
     UI::WindowsAndMessaging::GetForegroundWindow,
 };
@@ -26,12 +49,12 @@ use windows_sys::core::{GUID, HRESULT, PCWSTR};
 
 // Check that a high enough WebAuthn API version is supported.
 fn check_webauthn_version() -> Result<(), WebauthnError> {
-        // SAFETY: this method is always safe to call and has no invariants.
-        let supported = unsafe { WebAuthNGetApiVersionNumber() } >= WEBAUTHN_API_VERSION_1;
-        if !supported {
-            return Err(WebauthnError::NotSupportedError);
-        }
-        Ok(())
+    // SAFETY: this method is always safe to call and has no invariants.
+    let supported = unsafe { WebAuthNGetApiVersionNumber() } >= WEBAUTHN_API_VERSION_1;
+    if !supported {
+        return Err(WebauthnError::NotSupportedError);
+    }
+    Ok(())
 }
 
 /// Encode `s` as a null-terminated UTF-16 buffer suitable for use as a Windows
@@ -58,14 +81,14 @@ unsafe fn pcwstr_to_string(p: PCWSTR) -> String {
 }
 
 fn get_cancellation_id() -> Result<GUID, WebauthnError> {
-        // SAFETY: `GUID` is a plain 16-byte struct that is safe to zero-initialize.
-        let mut id: GUID = unsafe { std::mem::zeroed() };
-        // SAFETY: `id` is a properly aligned writable `GUID`; the API populates it on success.
-        let hr = unsafe { WebAuthNGetCancellationId(&mut id) };
-        if hr < 0 {
-            return Err(WebauthnError::AuthenticatorError(Ctap2Error::Other.into()));
-        }
-        Ok(id)
+    // SAFETY: `GUID` is a plain 16-byte struct that is safe to zero-initialize.
+    let mut id: GUID = unsafe { std::mem::zeroed() };
+    // SAFETY: `id` is a properly aligned writable `GUID`; the API populates it on success.
+    let hr = unsafe { WebAuthNGetCancellationId(&mut id) };
+    if hr < 0 {
+        return Err(WebauthnError::AuthenticatorError(Ctap2Error::Other.into()));
+    }
+    Ok(id)
 }
 
 // WEBAUTHN_API_VERSION_1 exposes only USB, NFC, BLE, and INTERNAL transports.
@@ -477,28 +500,33 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             WebAuthNFreeCredentialAttestation(attestation.cast_const());
         }
 
-        let parsed_auth_data = AuthenticatorData::from_slice(&authenticator_data_bytes)
-            .map_err(|_| WebauthnError::ValidationError {
-                context: "failed to parse authenticator data returned by webauthn.dll",
+        let parsed_auth_data =
+            AuthenticatorData::from_slice(&authenticator_data_bytes).map_err(|_| {
+                WebauthnError::ValidationError {
+                    context: "failed to parse authenticator data returned by webauthn.dll",
+                }
             })?;
         let attested = parsed_auth_data.attested_credential_data.as_ref().ok_or(
             WebauthnError::ValidationError {
                 context: "authenticator data from webauthn.dll is missing attested credential data",
             },
         )?;
-        let public_key_algorithm = match attested.key.alg.as_ref().ok_or(
-            WebauthnError::ValidationError {
-                context: "COSE key from webauthn.dll is missing algorithm identifier",
-            },
-        )? {
-            Algorithm::PrivateUse(val) => *val,
-            Algorithm::Assigned(alg) => alg.to_i64(),
-            Algorithm::Text(_) => {
-                return Err(WebauthnError::ValidationError {
-                    context: "COSE key from webauthn.dll has non-integer algorithm identifier",
-                });
-            }
-        };
+        let public_key_algorithm =
+            match attested
+                .key
+                .alg
+                .as_ref()
+                .ok_or(WebauthnError::ValidationError {
+                    context: "COSE key from webauthn.dll is missing algorithm identifier",
+                })? {
+                Algorithm::PrivateUse(val) => *val,
+                Algorithm::Assigned(alg) => alg.to_i64(),
+                Algorithm::Text(_) => {
+                    return Err(WebauthnError::ValidationError {
+                        context: "COSE key from webauthn.dll has non-integer algorithm identifier",
+                    });
+                }
+            };
         let public_key = public_key_der_from_cose_key(&attested.key).ok();
 
         // This should only return one transport, since the mask is guaranteed by the API to only
@@ -511,9 +539,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             _ => AuthenticatorAttachment::CrossPlatform,
         };
 
-        let cred_props = cred_props_requested.then_some(CredentialPropertiesOutput {
-            discoverable: None,
-        });
+        let cred_props =
+            cred_props_requested.then_some(CredentialPropertiesOutput { discoverable: None });
 
         Ok(webauthn::CreatedPublicKeyCredential {
             id: encoding::base64url(&credential_id_bytes),

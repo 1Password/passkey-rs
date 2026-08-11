@@ -79,7 +79,7 @@ pub enum WebauthnError {
     /// The input failed validation
     ValidationError {
         /// Context for the validation error
-        context: &'static str
+        context: &'static str,
     },
     /// The given RpId has possibly rolled out related origins
     RequiresRelatedOriginsSupport,

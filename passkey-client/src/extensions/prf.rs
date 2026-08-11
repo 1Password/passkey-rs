@@ -61,13 +61,11 @@ fn convert_eval_to_ctap(
         let salt2 = eval.second.as_ref().map(make_salt);
         (salt1, salt2)
     } else {
-        let salt1 = eval
-            .first
-            .as_slice()
-            .try_into()
-            .map_err(|_| WebauthnError::ValidationError {
+        let salt1 = eval.first.as_slice().try_into().map_err(|_| {
+            WebauthnError::ValidationError {
                 context: "PRF eval.first does not have the expected raw HMAC-secret salt length",
-            })?;
+            }
+        })?;
         let salt2 = eval
             .second
             .as_ref()
