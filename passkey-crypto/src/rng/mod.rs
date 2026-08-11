@@ -4,8 +4,9 @@
 //! Currently the implemented backends are:
 //! * `rand`: Using `::rand::thread_rng`
 
+/// Implementation of RngBackend using the [::rand] crate.
 #[cfg(feature = "rand")]
-mod rand;
+pub mod rand;
 
 use std::ops::RangeInclusive;
 

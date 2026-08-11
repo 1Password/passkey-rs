@@ -1,9 +1,12 @@
-use ::rand::{Rng, rngs::ThreadRng};
+use ::rand::Rng;
 use rand::RngExt;
 
 use super::RngBackend;
 
-impl RngBackend for ThreadRng {
+/// RngBackend using [::rand::rngs::ThreadRng].
+pub struct RandRng;
+
+impl RngBackend for RandRng {
     fn random_vec(len: usize) -> Vec<u8> {
         let mut data = vec![0u8; len];
         let mut rng = ::rand::rng();

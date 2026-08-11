@@ -289,7 +289,7 @@ impl SecretKeyT for RustCryptoSecretKey {
 pub struct RustCryptoBackend;
 
 impl CryptoBackend for RustCryptoBackend {
-    type Rng = ::rand::rngs::ThreadRng;
+    type Rng = crate::rng::rand::RandRng;
 
     type SecretKey = RustCryptoSecretKey;
 
