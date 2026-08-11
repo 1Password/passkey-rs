@@ -19,8 +19,7 @@
 //! let created = client.register(origin, request, DefaultClientData).await?;
 //! ```
 
-use std::future::Future;
-use std::marker::PhantomData;
+use std::{future::Future, marker::PhantomData};
 
 use passkey_authenticator::linux::{LinuxAuthenticator, OpenError};
 use passkey_crypto::{CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64};
@@ -139,6 +138,7 @@ where
             ClientDataType::Create,
             &opts.challenge,
             &origin,
+            PhantomData::<C>,
         )?;
 
         let pub_key_cred_params = if opts.pub_key_cred_params.is_empty() {
@@ -287,8 +287,13 @@ where
             .await?;
         let rp_id = rp_id.to_owned();
 
-        let (client_data_json, client_data_hash) =
-            build_client_data(&client_data, ClientDataType::Get, &opts.challenge, &origin)?;
+        let (client_data_json, client_data_hash) = build_client_data(
+            &client_data,
+            ClientDataType::Get,
+            &opts.challenge,
+            &origin,
+            PhantomData::<C>,
+        )?;
 
         let uv = ctap_uv_option(opts.user_verification, self.uv_when_preferred);
 
