@@ -17,7 +17,6 @@ workspace = true
 
 [features]
 android-asset-validation = ["dep:nom"]
-js = ["passkey-crypto/js"]
 testable = ["dep:mockall"]
 tokio = ["dep:tokio"]
 typeshare = ["passkey-types/typeshare", "dep:typeshare"]
