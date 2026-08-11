@@ -16,8 +16,7 @@ use passkey_types::{
 use serde::Serialize;
 
 use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
-use windows::Win32::{
-    Foundation::HWND,
+use windows_sys::Win32::{
     Networking::WindowsWebServices::{
         WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT,
         WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT,
@@ -39,13 +38,48 @@ use windows::Win32::{
         WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION,
         WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED,
         WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED,
-        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED, WebAuthNAuthenticatorGetAssertion,
+        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED, WEBAUTHN_ASSERTION,
+        WEBAUTHN_CREDENTIAL_ATTESTATION, WebAuthNAuthenticatorGetAssertion,
         WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion,
         WebAuthNFreeCredentialAttestation, WebAuthNGetCancellationId, WebAuthNGetErrorName,
     },
     UI::WindowsAndMessaging::GetForegroundWindow,
 };
-use windows_strings::{HSTRING, PCWSTR};
+use windows_sys::core::{GUID, HRESULT, PCWSTR};
+
+/// Encode `s` as a null-terminated UTF-16 buffer suitable for use as a Windows
+/// `PCWSTR`.
+fn to_utf16_null_terminated(s: &str) -> Vec<u16> {
+    s.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+/// Read a null-terminated wide string that Windows returned into an owned `String`.
+///
+/// # Safety
+/// `p` must point to a null-terminated UTF-16 string that stays valid for the
+/// duration of the call.
+unsafe fn pcwstr_to_string(p: PCWSTR) -> String {
+    let mut len = 0usize;
+    // SAFETY: caller guarantees the buffer is null-terminated, so we will
+    // encounter a 0 before walking off the end of the string.
+    while unsafe { *p.add(len) } != 0 {
+        len += 1;
+    }
+    // SAFETY: due to the previous computation, `p` is valid for `len` u16s.
+    let slice = unsafe { std::slice::from_raw_parts(p, len) };
+    String::from_utf16_lossy(slice)
+}
+
+fn get_cancellation_id() -> Result<GUID, WebauthnError> {
+        // SAFETY: `GUID` is a plain 16-byte struct that is safe to zero-initialize.
+        let mut id: GUID = unsafe { std::mem::zeroed() };
+        // SAFETY: `id` is a properly aligned writable `GUID`; the API populates it on success.
+        let hr = unsafe { WebAuthNGetCancellationId(&mut id) };
+        if hr < 0 {
+            return Err(WebauthnError::ValidationError);
+        }
+        Ok(id)
+}
 
 fn win_api_ctap_transport_mask_to_transports(flags: u32) -> Vec<AuthenticatorTransport> {
     let mut transports = Vec::new();
@@ -201,17 +235,13 @@ impl WinCredentialList {
     }
 }
 
-fn win_api_error_to_webauthn_error<T>(res: Result<T, windows::core::Error>) -> WebauthnError {
-    // SAFETY: `WebAuthNGetErrorName` returns a static, null-terminated UTF-16 string owned by
-    // webauthn.dll for the lifetime of the process. `to_string` copies out of it, so no lifetime
-    // constraints escape this call. The returned value is guaranteed by the API to be one of:
-    // "Success", "InvalidStateError", "ConstraintError", "NotSupportedError", "NotAllowedError",
-    // or "UnknownError".
-    let err_string = unsafe {
-        WebAuthNGetErrorName(res.into())
-            .to_string()
-            .expect("string returned by Windows WebAuthn API should be valid UTF-16")
-    };
+fn win_api_error_to_webauthn_error(hr: HRESULT) -> WebauthnError {
+    // SAFETY: `WebAuthNGetErrorName` returns a static, NUL-terminated UTF-16 string owned by
+    // webauthn.dll for the lifetime of the process. `pcwstr_to_string` copies out of it, so no
+    // lifetime constraints escape this call. The returned value is guaranteed by the API to be
+    // one of: "Success", "InvalidStateError", "ConstraintError", "NotSupportedError",
+    // "NotAllowedError", or "UnknownError".
+    let err_string = unsafe { pcwstr_to_string(WebAuthNGetErrorName(hr)) };
 
     // Translate the Windows error messages into WebauthnError analogues (or the closest
     // error that exists).
@@ -234,17 +264,20 @@ fn win_api_error_to_webauthn_error<T>(res: Result<T, windows::core::Error>) -> W
         "NotAllowedError" => WebauthnError::AuthenticatorError(Ctap2Error::OperationDenied.into()),
         // Any other HRESULT.
         "UnknownError" => WebauthnError::AuthenticatorError(Ctap2Error::Other.into()),
-        // Unreachable because the Err branch should never return "Success".
-        "Success" => unreachable!(),
-        // Unreachable because the Windows API guarantees these are the only possible
-        // values for the error.
-        _ => unreachable!(),
+        // Successful result.
+        "Success" => WebauthnError::AuthenticatorError(Ctap2Error::Ok.into()),
+        // Technically unreachable because the Windows API guarantees these are the only possible
+        // values for the error. We return Ctap2Error::Other for future compatibility.
+        _ => WebauthnError::AuthenticatorError(Ctap2Error::Other.into()),
     }
 }
 
 /// A WebAuthn client that uses Windows' webauthn.dll to interface with authenticators.
+///
+/// The foreground window that the WebAuthn system modal is tied to is queried on every request
+/// rather than captured at construction time, so the client works correctly even if the user's
+/// active window changes between calls.
 pub struct WindowsClient<P, F> {
-    hwnd: HWND,
     rp_id_verifier: RpIdVerifier<P, F>,
 }
 
@@ -255,16 +288,9 @@ impl Default for WindowsClient<public_suffix::PublicSuffixList, ()> {
 }
 
 impl WindowsClient<public_suffix::PublicSuffixList, ()> {
-    /// Create a new `WindowsClient` using the current foreground window as the parent window.
+    /// Create a new `WindowsClient`.
     pub fn new() -> Self {
         Self {
-            // SAFETY: `GetForegroundWindow` is always safe to call. It has no preconditions and
-            // returns `HWND(NULL)` if there is no foreground window. The webauthn.dll requests
-            // return an error if a NULL HWND is passed.
-            // TODO: should we make new() return an Option and fail creation here if the window is
-            // null? Alternatively, we could choose not to store the hwnd and obtain it anew for
-            // each webauthn request.
-            hwnd: unsafe { GetForegroundWindow() },
             rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
         }
     }
@@ -290,16 +316,25 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             .assert_domain(&origin, request.rp.id.as_deref())
             .await?;
 
-        let rp_id_hstring = HSTRING::from(rp_id);
-        let rp_name_hstring = HSTRING::from(request.rp.name);
-        let user_name_hstring = HSTRING::from(request.user.name);
-        let user_display_name_hstring = HSTRING::from(request.user.display_name);
+        let rp_id_wide = to_utf16_null_terminated(rp_id);
+        let rp_name_wide = to_utf16_null_terminated(&request.rp.name);
+        let user_name_wide = to_utf16_null_terminated(&request.user.name);
+        let user_display_name_wide = to_utf16_null_terminated(&request.user.display_name);
+
+        let timeout = request.timeout.unwrap_or(
+            Duration::from_secs(120)
+                .as_millis()
+                .try_into()
+                .expect("120_000 (120s in ms) fits in u32"),
+        );
+
+        let cancellation_id = get_cancellation_id()?;
 
         let rp_info = WEBAUTHN_RP_ENTITY_INFORMATION {
             dwVersion: WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION,
-            pwszId: PCWSTR::from_raw(rp_id_hstring.as_ptr()),
-            pwszName: PCWSTR::from_raw(rp_name_hstring.as_ptr()),
-            pwszIcon: PCWSTR::null(),
+            pwszId: rp_id_wide.as_ptr(),
+            pwszName: rp_name_wide.as_ptr(),
+            pwszIcon: std::ptr::null(),
         };
 
         let user_info = WEBAUTHN_USER_ENTITY_INFORMATION {
@@ -307,9 +342,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             cbId: u32::try_from(request.user.id.len())
                 .expect("WebAuthn spec caps user id at 64 bytes"),
             pbId: request.user.id.as_mut_ptr(),
-            pwszName: PCWSTR::from_raw(user_name_hstring.as_ptr()),
-            pwszIcon: PCWSTR::null(),
-            pwszDisplayName: PCWSTR::from_raw(user_display_name_hstring.as_ptr()),
+            pwszName: user_name_wide.as_ptr(),
+            pwszIcon: std::ptr::null(),
+            pwszDisplayName: user_display_name_wide.as_ptr(),
         };
 
         let collected_client_data = webauthn::CollectedClientData::<E> {
@@ -375,129 +410,152 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             ..Default::default()
         };
 
-        // SAFETY: all the pointers passed to `WebAuthNAuthenticatorMakeCredential` reference
-        // stack-allocated structs and their owning buffers (`rp_info`, `user_info`,
-        // `credential_params`, `client_data`, `make_credential_options`, and everything they
-        // transitively reference) that live until after the call returns. The API is documented
-        // to only read from them for the duration of the call.
-        let make_credential_result = unsafe {
+        // TODO: Test and re-evaluate this in the future.
+        // To test: Comment out the `thread::spawn` and see if Windows
+        // closes the dialog after 2 minutes.
+        // Windows will rarely respect the timeout provided, so we cancel it after our own timeout.
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(timeout.into()));
+            // SAFETY: `cancellation_id` was populated by `get_cancellation_id` above and is valid;
+            // `WebAuthNCancelCurrentOperation` only reads from the pointer.
+            unsafe { WebAuthNCancelCurrentOperation(&cancellation_id) };
+        });
+
+        let mut attestation: *mut WEBAUTHN_CREDENTIAL_ATTESTATION = std::ptr::null_mut();
+        // SAFETY: `GetForegroundWindow` is always safe to call; it has no preconditions and
+        // returns a null HWND if no foreground window exists (which webauthn.dll rejects with a
+        // regular error). All other input pointers passed to
+        // `WebAuthNAuthenticatorMakeCredential` reference stack-allocated structs and their
+        // owning buffers (`rp_info`, `user_info`, `credential_params`, `client_data`,
+        // `make_credential_options`, and everything they transitively reference) that live until
+        // after the call returns. The API is documented to only read from them for the duration
+        // of the call. The output pointer `attestation` is a properly aligned `*mut *mut _`
+        // writable location.
+        let hr = unsafe {
             WebAuthNAuthenticatorMakeCredential(
-                self.hwnd,
+                GetForegroundWindow(),
                 &rp_info,
                 &user_info,
                 &credential_params,
                 &client_data,
-                Some(std::ptr::from_ref(&make_credential_options)),
+                &make_credential_options,
+                &mut attestation,
             )
         };
-        match make_credential_result {
-            Ok(attestation) => {
-                // Copy every field we care about out of the Windows-owned struct upfront so we can
-                // free it before any of the fallible parsing below runs.
-                //
-                // SAFETY: on `Ok`, Windows guarantees `attestation` is a valid, non-null pointer
-                // to a `WEBAUTHN_CREDENTIAL_ATTESTATION` whose `pb*` byte buffers are of length
-                // `cb*` bytes, and live until we hand the struct back via
-                // `WebAuthNFreeCredentialAttestation`.
-                let credential_id_bytes: Vec<u8> = unsafe {
-                    std::slice::from_raw_parts(
-                        (*attestation).pbCredentialId.cast_const(),
-                        (*attestation)
-                            .cbCredentialId
-                            .try_into()
-                            .expect("usize is always >= 32 bits on Windows"),
-                    )
-                    .to_vec()
-                };
-                // SAFETY: see the safety comment on `credential_id_bytes` above.
-                let authenticator_data_bytes: Vec<u8> = unsafe {
-                    std::slice::from_raw_parts(
-                        (*attestation).pbAuthenticatorData.cast_const(),
-                        (*attestation)
-                            .cbAuthenticatorData
-                            .try_into()
-                            .expect("usize is always >= 32 bits on Windows"),
-                    )
-                    .to_vec()
-                };
-                // SAFETY: see the safety comment on `credential_id_bytes` above.
-                let attestation_object_bytes: Vec<u8> = unsafe {
-                    std::slice::from_raw_parts(
-                        (*attestation).pbAttestationObject.cast_const(),
-                        (*attestation)
-                            .cbAttestationObject
-                            .try_into()
-                            .expect("usize is always >= 32 bits on Windows"),
-                    )
-                    .to_vec()
-                };
-                // SAFETY: `attestation` is a valid pointer for the reasons above; both fields are
-                // plain scalars owned by the Windows-allocated struct.
-                let transport_mask = unsafe { (*attestation).dwUsedTransport };
-                // SAFETY: same as above.
-                let is_resident_key = unsafe { (*attestation).bResidentKey.as_bool() };
-
-                // We now own copies of everything we need. Free the attestation allocation before
-                // running the parsing steps below, which can early-return via `?`.
-                //
-                // SAFETY: `attestation` was produced by `WebAuthNAuthenticatorMakeCredential` in
-                // the matching `Ok` branch above and has not been freed yet, so passing it to
-                // `WebAuthNFreeCredentialAttestation` is the documented way to release it. The
-                // pointer is not used again after this call.
-                unsafe {
-                    WebAuthNFreeCredentialAttestation(Some(attestation.cast_const()));
-                }
-
-                let parsed_auth_data = AuthenticatorData::from_slice(&authenticator_data_bytes)
-                    .map_err(|_| WebauthnError::ValidationError)?;
-                let attested = parsed_auth_data
-                    .attested_credential_data
-                    .as_ref()
-                    .ok_or(WebauthnError::ValidationError)?;
-                let public_key_algorithm = match attested
-                    .key
-                    .alg
-                    .as_ref()
-                    .ok_or(WebauthnError::ValidationError)?
-                {
-                    Algorithm::PrivateUse(val) => *val,
-                    Algorithm::Assigned(alg) => alg.to_i64(),
-                    Algorithm::Text(_) => return Err(WebauthnError::ValidationError),
-                };
-                let public_key = public_key_der_from_cose_key(&attested.key).ok();
-
-                // The client can derive `credProps` by inspecting the `bResidentKey` field on the
-                // attestation.
-                let cred_props = cred_props_requested.then_some(CredentialPropertiesOutput {
-                    discoverable: Some(is_resident_key),
-                });
-
-                Ok(webauthn::CreatedPublicKeyCredential {
-                    id: encoding::base64url(&credential_id_bytes),
-                    raw_id: credential_id_bytes.into(),
-                    ty: webauthn::PublicKeyCredentialType::PublicKey,
-                    response: webauthn::AuthenticatorAttestationResponse {
-                        client_data_json: Vec::from(client_data_json).into(),
-                        authenticator_data: authenticator_data_bytes.into(),
-                        public_key,
-                        public_key_algorithm,
-                        attestation_object: attestation_object_bytes.into(),
-                        // This should technically only return one transport, since the mask is
-                        // guaranteed by the API to only have one bit set.
-                        transports: Some(win_api_ctap_transport_mask_to_transports(transport_mask)),
-                    },
-                    // Windows WebAuthn API doesn't provide authenticator attachment.
-                    authenticator_attachment: None,
-                    // TODO: Only `credProps` is populated for now. Eventually we aim to mirror
-                    // `Client::registration_extension_outputs` in lib.rs.
-                    client_extension_results: AuthenticationExtensionsClientOutputs {
-                        cred_props,
-                        prf: None,
-                    },
-                })
-            }
-            Err(_) => Err(win_api_error_to_webauthn_error(make_credential_result)),
+        if hr < 0 {
+            return Err(win_api_error_to_webauthn_error(hr));
         }
+
+        // Copy every field we care about out of the Windows-owned struct upfront so we can free
+        // it before any of the fallible parsing below runs.
+        //
+        // SAFETY: on success, Windows guarantees `attestation` is a valid, non-null pointer to a
+        // `WEBAUTHN_CREDENTIAL_ATTESTATION` whose `pb*` byte buffers are of length `cb*` bytes,
+        // and live until we hand the struct back via `WebAuthNFreeCredentialAttestation`.
+        let credential_id_bytes: Vec<u8> = unsafe {
+            std::slice::from_raw_parts(
+                (*attestation).pbCredentialId.cast_const(),
+                (*attestation)
+                    .cbCredentialId
+                    .try_into()
+                    .expect("usize is always >= 32 bits on Windows"),
+            )
+            .to_vec()
+        };
+        // SAFETY: see the safety comment on `credential_id_bytes` above.
+        let authenticator_data_bytes: Vec<u8> = unsafe {
+            std::slice::from_raw_parts(
+                (*attestation).pbAuthenticatorData.cast_const(),
+                (*attestation)
+                    .cbAuthenticatorData
+                    .try_into()
+                    .expect("usize is always >= 32 bits on Windows"),
+            )
+            .to_vec()
+        };
+        // SAFETY: see the safety comment on `credential_id_bytes` above.
+        let attestation_object_bytes: Vec<u8> = unsafe {
+            std::slice::from_raw_parts(
+                (*attestation).pbAttestationObject.cast_const(),
+                (*attestation)
+                    .cbAttestationObject
+                    .try_into()
+                    .expect("usize is always >= 32 bits on Windows"),
+            )
+            .to_vec()
+        };
+        // SAFETY: `attestation` is a valid pointer for the reasons above; the `dwUsedTransport`
+        // field is a plain scalar owned by the Windows-allocated struct.
+        let transport_mask = unsafe { (*attestation).dwUsedTransport };
+        // SAFETY: same as above. `bResidentKey` is a `BOOL` (i32), where non-zero means true.
+        let is_resident_key = unsafe { (*attestation).bResidentKey } != 0;
+
+        // We now own copies of everything we need. Free the attestation allocation before running
+        // the parsing steps below, which can early-return via `?`.
+        //
+        // SAFETY: `attestation` was produced by `WebAuthNAuthenticatorMakeCredential` above and
+        // has not been freed yet, so passing it to `WebAuthNFreeCredentialAttestation` is the
+        // documented way to release it. The pointer is not used again after this call.
+        unsafe {
+            WebAuthNFreeCredentialAttestation(attestation.cast_const());
+        }
+
+        let parsed_auth_data = AuthenticatorData::from_slice(&authenticator_data_bytes)
+            .map_err(|_| WebauthnError::ValidationError)?;
+        let attested = parsed_auth_data
+            .attested_credential_data
+            .as_ref()
+            .ok_or(WebauthnError::ValidationError)?;
+        let public_key_algorithm = match attested
+            .key
+            .alg
+            .as_ref()
+            .ok_or(WebauthnError::ValidationError)?
+        {
+            Algorithm::PrivateUse(val) => *val,
+            Algorithm::Assigned(alg) => alg.to_i64(),
+            Algorithm::Text(_) => return Err(WebauthnError::ValidationError),
+        };
+        let public_key = public_key_der_from_cose_key(&attested.key).ok();
+
+        // This should only return one transport, since the mask is guaranteed by the API to only
+        // have one bit set.
+        let transports = win_api_ctap_transport_mask_to_transports(transport_mask);
+        // Derive attachment from the transport: an internal authenticator transport indicates a
+        // platform authenticator.
+        let attachment = match transports.first() {
+            Some(AuthenticatorTransport::Internal) => AuthenticatorAttachment::Platform,
+            _ => AuthenticatorAttachment::CrossPlatform,
+        };
+
+        // The client can derive `credProps` by inspecting the `bResidentKey` field on the
+        // attestation.
+        let cred_props = cred_props_requested.then_some(CredentialPropertiesOutput {
+            discoverable: Some(is_resident_key),
+        });
+
+        Ok(webauthn::CreatedPublicKeyCredential {
+            id: encoding::base64url(&credential_id_bytes),
+            raw_id: credential_id_bytes.into(),
+            ty: webauthn::PublicKeyCredentialType::PublicKey,
+            response: webauthn::AuthenticatorAttestationResponse {
+                client_data_json: Vec::from(client_data_json).into(),
+                authenticator_data: authenticator_data_bytes.into(),
+                public_key,
+                public_key_algorithm,
+                attestation_object: attestation_object_bytes.into(),
+                // This should technically only return one transport, since the mask is guaranteed
+                // by the API to only have one bit set.
+                transports: Some(win_api_ctap_transport_mask_to_transports(transport_mask)),
+            },
+            authenticator_attachment: Some(attachment),
+            // TODO: Only `credProps` is populated for now. Eventually we aim to mirror
+            // `Client::registration_extension_outputs` in lib.rs.
+            client_extension_results: AuthenticationExtensionsClientOutputs {
+                cred_props,
+                prf: None,
+            },
+        })
     }
 
     /// Get assertion for a credential.
@@ -537,7 +595,7 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             pwszHashAlgId: WEBAUTHN_HASH_ALGORITHM_SHA_256,
         };
 
-        let rp_id_wide = HSTRING::from(rp_id);
+        let rp_id_wide = to_utf16_null_terminated(rp_id);
 
         let timeout = request.timeout.unwrap_or(
             Duration::from_secs(120)
@@ -545,6 +603,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                 .try_into()
                 .expect("120_000 (120s in ms) fits in u32"),
         );
+
+        let cancellation_id = get_cancellation_id()?;
 
         // Translate the Rust request into the Windows options struct.
         let mut allow_list = WinCredentialList::from_descriptors(
@@ -560,122 +620,120 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             ..Default::default()
         };
 
-        let cancellation_id = {
-            // SAFETY: `cancelation_id` is valid to write to and uses the correct type.
-            let res = unsafe { WebAuthNGetCancellationId() };
-            res.map_err(|_| WebauthnError::ValidationError)?
-        };
-
         // TODO: Test and re-evaluate this in the future.
         // To test: Comment out the `thread::spawn` and see if Windows
         // closes the dialog after 2 minutes.
         // Windows will rarely respect the timeout provided, so we cancel it after our own timeout.
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(timeout.into()));
-            // SAFETY: `cancelation_id` is valid and can be used.
-            unsafe { WebAuthNCancelCurrentOperation(&cancellation_id) }
+            // SAFETY: `cancellation_id` was populated by `get_cancellation_id` above and is valid;
+            // `WebAuthNCancelCurrentOperation` only reads from the pointer.
+            unsafe { WebAuthNCancelCurrentOperation(&cancellation_id) };
         });
 
-        // SAFETY: all pointers passed to `WebAuthNAuthenticatorGetAssertion` reference locals
-        // (`rp_id_wide`, `webauthn_client_data`, `get_assertion_options`, and the buffers they
-        // point into) that live until after the call returns. The API is documented to only
-        // read from them for the duration of the call.
-        let get_assertion_result = unsafe {
+        let mut assertion: *mut WEBAUTHN_ASSERTION = std::ptr::null_mut();
+        // SAFETY: `GetForegroundWindow` is always safe to call; it has no preconditions and
+        // returns a null HWND if no foreground window exists (which webauthn.dll rejects with a
+        // regular error). All other input pointers passed to `WebAuthNAuthenticatorGetAssertion`
+        // reference locals (`rp_id_wide`, `webauthn_client_data`, `get_assertion_options`, and
+        // the buffers they point into) that live until after the call returns. The API is
+        // documented to only read from them for the duration of the call. The output pointer
+        // `assertion` is a properly aligned `*mut *mut _` writable location.
+        let hr = unsafe {
             WebAuthNAuthenticatorGetAssertion(
-                self.hwnd,
-                PCWSTR::from_raw(rp_id_wide.as_ptr()),
+                GetForegroundWindow(),
+                rp_id_wide.as_ptr(),
                 &webauthn_client_data,
-                Some(std::ptr::from_ref(&get_assertion_options)),
+                &get_assertion_options,
+                &mut assertion,
             )
         };
-
-        match get_assertion_result {
-            Ok(assertion) => {
-                // Copy every field we care about out of the Windows-owned struct upfront so we can
-                // free it before building the response.
-                //
-                // SAFETY: on `Ok`, Windows guarantees `assertion` is a valid, non-null pointer to a
-                // `WEBAUTHN_ASSERTION` whose `pb*` byte buffers are of length `cb*` bytes, and live
-                // until we hand the struct back via `WebAuthNFreeAssertion`.
-                let credential_id_bytes: Vec<u8> = unsafe {
-                    std::slice::from_raw_parts(
-                        (*assertion).Credential.pbId.cast_const(),
-                        (*assertion)
-                            .Credential
-                            .cbId
-                            .try_into()
-                            .expect("usize is always >= 32 bits on Windows"),
-                    )
-                    .to_vec()
-                };
-                // SAFETY: see the safety comment on `credential_id_bytes` above.
-                let authenticator_data_bytes: Vec<u8> = unsafe {
-                    std::slice::from_raw_parts(
-                        (*assertion).pbAuthenticatorData.cast_const(),
-                        (*assertion)
-                            .cbAuthenticatorData
-                            .try_into()
-                            .expect("usize is always >= 32 bits on Windows"),
-                    )
-                    .to_vec()
-                };
-                // SAFETY: see the safety comment on `credential_id_bytes` above.
-                let signature_bytes: Vec<u8> = unsafe {
-                    std::slice::from_raw_parts(
-                        (*assertion).pbSignature.cast_const(),
-                        (*assertion)
-                            .cbSignature
-                            .try_into()
-                            .expect("usize is always >= 32 bits on Windows"),
-                    )
-                    .to_vec()
-                };
-                // If `cbUserId` is zero, then `pbUserId` points to an empty string, so return
-                // `None` for the `user_handle`.
-                //
-                // SAFETY: `assertion` is valid for the reasons above; `cbUserId` is a plain
-                // scalar owned by the Windows-allocated struct.
-                let user_id_len = unsafe { (*assertion).cbUserId };
-                let user_handle_bytes: Option<Vec<u8>> = (user_id_len > 0).then(||
-                    // SAFETY: `pbUserId` points to `cbUserId` valid bytes for the lifetime of the
-                    // Windows-owned assertion.
-                    unsafe {
-                        std::slice::from_raw_parts(
-                            (*assertion).pbUserId.cast_const(),
-                            user_id_len
-                                .try_into()
-                                .expect("usize is always >= 32 bits on Windows"),
-                        )
-                        .to_vec()
-                    });
-
-                // We now own copies of everything we need. Free the assertion allocation.
-                //
-                // SAFETY: `assertion` was produced by `WebAuthNAuthenticatorGetAssertion` above
-                // and has not been freed yet, so passing it to `WebAuthNFreeAssertion` is the
-                // documented way to release it. The pointer is not used again after this call.
-                unsafe {
-                    WebAuthNFreeAssertion(assertion.cast_const());
-                }
-
-                Ok(webauthn::AuthenticatedPublicKeyCredential {
-                    id: encoding::base64url(&credential_id_bytes),
-                    raw_id: credential_id_bytes.into(),
-                    ty: webauthn::PublicKeyCredentialType::PublicKey,
-                    response: webauthn::AuthenticatorAssertionResponse {
-                        client_data_json: Vec::from(client_data_json).into(),
-                        authenticator_data: authenticator_data_bytes.into(),
-                        signature: signature_bytes.into(),
-                        user_handle: user_handle_bytes.map(Into::into),
-                        attestation_object: None,
-                    },
-                    // Windows WebAuthn API doesn't provide authenticator attachment.
-                    authenticator_attachment: None,
-                    // TODO: same extension processing logic as `register`
-                    client_extension_results: AuthenticationExtensionsClientOutputs::default(),
-                })
-            }
-            Err(_) => Err(win_api_error_to_webauthn_error(get_assertion_result)),
+        if hr < 0 {
+            return Err(win_api_error_to_webauthn_error(hr));
         }
+
+        // Copy every field we care about out of the Windows-owned struct upfront so we can free
+        // it before building the response.
+        //
+        // SAFETY: on success, Windows guarantees `assertion` is a valid, non-null pointer to a
+        // `WEBAUTHN_ASSERTION` whose `pb*` byte buffers are of length `cb*` bytes, and live until
+        // we hand the struct back via `WebAuthNFreeAssertion`.
+        let credential_id_bytes: Vec<u8> = unsafe {
+            std::slice::from_raw_parts(
+                (*assertion).Credential.pbId.cast_const(),
+                (*assertion)
+                    .Credential
+                    .cbId
+                    .try_into()
+                    .expect("usize is always >= 32 bits on Windows"),
+            )
+            .to_vec()
+        };
+        // SAFETY: see the safety comment on `credential_id_bytes` above.
+        let authenticator_data_bytes: Vec<u8> = unsafe {
+            std::slice::from_raw_parts(
+                (*assertion).pbAuthenticatorData.cast_const(),
+                (*assertion)
+                    .cbAuthenticatorData
+                    .try_into()
+                    .expect("usize is always >= 32 bits on Windows"),
+            )
+            .to_vec()
+        };
+        // SAFETY: see the safety comment on `credential_id_bytes` above.
+        let signature_bytes: Vec<u8> = unsafe {
+            std::slice::from_raw_parts(
+                (*assertion).pbSignature.cast_const(),
+                (*assertion)
+                    .cbSignature
+                    .try_into()
+                    .expect("usize is always >= 32 bits on Windows"),
+            )
+            .to_vec()
+        };
+        // If `cbUserId` is zero, then `pbUserId` points to an empty string, so return `None` for
+        // the `user_handle`.
+        //
+        // SAFETY: `assertion` is valid for the reasons above; `cbUserId` is a plain scalar owned
+        // by the Windows-allocated struct.
+        let user_id_len = unsafe { (*assertion).cbUserId };
+        let user_handle_bytes: Option<Vec<u8>> = (user_id_len > 0).then(||
+            // SAFETY: `pbUserId` points to `cbUserId` valid bytes for the lifetime of the
+            // Windows-owned assertion.
+            unsafe {
+                std::slice::from_raw_parts(
+                    (*assertion).pbUserId.cast_const(),
+                    user_id_len
+                        .try_into()
+                        .expect("usize is always >= 32 bits on Windows"),
+                )
+                .to_vec()
+            });
+
+        // We now own copies of everything we need. Free the assertion allocation.
+        //
+        // SAFETY: `assertion` was produced by `WebAuthNAuthenticatorGetAssertion` above and has
+        // not been freed yet, so passing it to `WebAuthNFreeAssertion` is the documented way to
+        // release it. The pointer is not used again after this call.
+        unsafe {
+            WebAuthNFreeAssertion(assertion.cast_const());
+        }
+
+        Ok(webauthn::AuthenticatedPublicKeyCredential {
+            id: encoding::base64url(&credential_id_bytes),
+            raw_id: credential_id_bytes.into(),
+            ty: webauthn::PublicKeyCredentialType::PublicKey,
+            response: webauthn::AuthenticatorAssertionResponse {
+                client_data_json: Vec::from(client_data_json).into(),
+                authenticator_data: authenticator_data_bytes.into(),
+                signature: signature_bytes.into(),
+                user_handle: user_handle_bytes.map(Into::into),
+                attestation_object: None,
+            },
+            // Windows WebAuthn API doesn't provide authenticator attachment.
+            authenticator_attachment: None,
+            // TODO: same extension processing logic as `register`
+            client_extension_results: AuthenticationExtensionsClientOutputs::default(),
+        })
     }
 }
