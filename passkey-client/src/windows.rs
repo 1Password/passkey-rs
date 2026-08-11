@@ -63,7 +63,7 @@ fn get_cancellation_id() -> Result<GUID, WebauthnError> {
         // SAFETY: `id` is a properly aligned writable `GUID`; the API populates it on success.
         let hr = unsafe { WebAuthNGetCancellationId(&mut id) };
         if hr < 0 {
-            return Err(WebauthnError::ValidationError);
+            return Err(WebauthnError::AuthenticatorError(Ctap2Error::Other.into()));
         }
         Ok(id)
 }
@@ -474,20 +474,26 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         }
 
         let parsed_auth_data = AuthenticatorData::from_slice(&authenticator_data_bytes)
-            .map_err(|_| WebauthnError::ValidationError)?;
-        let attested = parsed_auth_data
-            .attested_credential_data
-            .as_ref()
-            .ok_or(WebauthnError::ValidationError)?;
-        let public_key_algorithm = match attested
-            .key
-            .alg
-            .as_ref()
-            .ok_or(WebauthnError::ValidationError)?
-        {
+            .map_err(|_| WebauthnError::ValidationError {
+                context: "failed to parse authenticator data returned by webauthn.dll",
+            })?;
+        let attested = parsed_auth_data.attested_credential_data.as_ref().ok_or(
+            WebauthnError::ValidationError {
+                context: "authenticator data from webauthn.dll is missing attested credential data",
+            },
+        )?;
+        let public_key_algorithm = match attested.key.alg.as_ref().ok_or(
+            WebauthnError::ValidationError {
+                context: "COSE key from webauthn.dll is missing algorithm identifier",
+            },
+        )? {
             Algorithm::PrivateUse(val) => *val,
             Algorithm::Assigned(alg) => alg.to_i64(),
-            Algorithm::Text(_) => return Err(WebauthnError::ValidationError),
+            Algorithm::Text(_) => {
+                return Err(WebauthnError::ValidationError {
+                    context: "COSE key from webauthn.dll has non-integer algorithm identifier",
+                });
+            }
         };
         let public_key = public_key_der_from_cose_key(&attested.key).ok();
 

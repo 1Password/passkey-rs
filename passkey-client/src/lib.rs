@@ -77,7 +77,10 @@ pub enum WebauthnError {
     /// The string did not match the expected pattern.
     SyntaxError,
     /// The input failed validation
-    ValidationError,
+    ValidationError {
+        /// Context for the validation error
+        context: &'static str
+    },
     /// The given RpId has possibly rolled out related origins
     RequiresRelatedOriginsSupport,
     /// An error when fetching remote resources
