@@ -65,7 +65,7 @@ serde_workaround! {
         /// The array is ordered from most preferred to least preferred
         /// and MUST NOT include duplicate entries nor be empty if present.
         /// [`PublicKeyCredentialParameters`]' algorithm identifiers are values that
-        /// SHOULD be registered in the IANA COSE Algorithms registry [`coset::iana::Algorithm`].
+        /// SHOULD be registered in the IANA COSE Algorithms registry [`passkey_crypto::iana::Algorithm`].
         #[serde(
             rename = 0x0A;
             default,

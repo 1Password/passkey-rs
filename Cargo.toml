@@ -3,6 +3,7 @@ members = [
   "passkey",
   "passkey-authenticator",
   "passkey-client",
+  "passkey-crypto",
   "passkey-transports",
   "passkey-types",
   "public-suffix",
