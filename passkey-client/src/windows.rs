@@ -18,34 +18,21 @@ use serde::Serialize;
 use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
 use windows_sys::Win32::{
     Networking::WindowsWebServices::{
-        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT,
-        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT,
-        WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY,
-        WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM,
-        WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS,
-        WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION,
-        WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS,
-        WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION, WEBAUTHN_CLIENT_DATA,
-        WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER,
-        WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS,
-        WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST,
-        WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE,
-        WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL,
-        WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB,
-        WEBAUTHN_ENTERPRISE_ATTESTATION_NONE, WEBAUTHN_ENTERPRISE_ATTESTATION_VENDOR_FACILITATED,
-        WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION,
-        WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION,
-        WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION,
-        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED,
-        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED,
-        WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED, WEBAUTHN_ASSERTION,
-        WEBAUTHN_CREDENTIAL_ATTESTATION, WebAuthNAuthenticatorGetAssertion,
-        WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion,
-        WebAuthNFreeCredentialAttestation, WebAuthNGetCancellationId, WebAuthNGetErrorName,
+        WebAuthNAuthenticatorGetAssertion, WebAuthNAuthenticatorMakeCredential, WebAuthNCancelCurrentOperation, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation, WebAuthNGetApiVersionNumber, WebAuthNGetCancellationId, WebAuthNGetErrorName, WEBAUTHN_API_VERSION_1, WEBAUTHN_ASSERTION, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT, WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_NONE, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS, WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS, WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3, WEBAUTHN_CLIENT_DATA, WEBAUTHN_CLIENT_DATA_CURRENT_VERSION, WEBAUTHN_COSE_CREDENTIAL_PARAMETER, WEBAUTHN_COSE_CREDENTIAL_PARAMETERS, WEBAUTHN_COSE_CREDENTIAL_PARAMETER_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_ATTESTATION, WEBAUTHN_CREDENTIAL_EX, WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION, WEBAUTHN_CREDENTIAL_LIST, WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY, WEBAUTHN_CTAP_TRANSPORT_BLE, WEBAUTHN_CTAP_TRANSPORT_HYBRID, WEBAUTHN_CTAP_TRANSPORT_INTERNAL, WEBAUTHN_CTAP_TRANSPORT_NFC, WEBAUTHN_CTAP_TRANSPORT_USB, WEBAUTHN_HASH_ALGORITHM_SHA_256, WEBAUTHN_RP_ENTITY_INFORMATION, WEBAUTHN_RP_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_ENTITY_INFORMATION, WEBAUTHN_USER_ENTITY_INFORMATION_CURRENT_VERSION, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_DISCOURAGED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED, WEBAUTHN_USER_VERIFICATION_REQUIREMENT_REQUIRED
     },
     UI::WindowsAndMessaging::GetForegroundWindow,
 };
 use windows_sys::core::{GUID, HRESULT, PCWSTR};
+
+// Check that a high enough WebAuthn API version is supported.
+fn check_webauthn_version() -> Result<(), WebauthnError> {
+        // SAFETY: this method is always safe to call and has no invariants.
+        let supported = unsafe { WebAuthNGetApiVersionNumber() } >= WEBAUTHN_API_VERSION_1;
+        if !supported {
+            return Err(WebauthnError::NotSupportedError);
+        }
+        Ok(())
+}
 
 /// Encode `s` as a null-terminated UTF-16 buffer suitable for use as a Windows
 /// `PCWSTR`.
@@ -141,33 +128,20 @@ fn win_attestation_conveyance(a: AttestationConveyancePreference) -> u32 {
         AttestationConveyancePreference::Indirect => {
             WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_INDIRECT
         }
-        // Enterprise still requests a direct attestation conveyance preference. The
-        // enterprise-specific bit is passed separately via `dwEnterpriseAttestation`.
         AttestationConveyancePreference::Direct | AttestationConveyancePreference::Enterprise => {
             WEBAUTHN_ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT
         }
     }
 }
 
-fn win_enterprise_attestation(a: AttestationConveyancePreference) -> u32 {
-    match a {
-        AttestationConveyancePreference::Enterprise => {
-            WEBAUTHN_ENTERPRISE_ATTESTATION_VENDOR_FACILITATED
-        }
-        _ => WEBAUTHN_ENTERPRISE_ATTESTATION_NONE,
-    }
-}
-
-/// Resolve WebAuthn resident-key requirements into the two BOOLs the Windows
-/// options struct exposes. `bPreferResidentKey` overrides `bRequireResidentKey`
-/// when both are set, so `Preferred` uses only the "prefer" bit.
-fn win_resident_key_bools(sel: Option<&webauthn::AuthenticatorSelectionCriteria>) -> (bool, bool) {
+fn win_require_resident_key(sel: Option<&webauthn::AuthenticatorSelectionCriteria>) -> bool {
     match sel.and_then(|s| s.resident_key) {
-        Some(ResidentKeyRequirement::Required) => (true, false),
-        Some(ResidentKeyRequirement::Preferred) => (false, true),
-        Some(ResidentKeyRequirement::Discouraged) => (false, false),
+        Some(ResidentKeyRequirement::Required) => true,
+        Some(ResidentKeyRequirement::Preferred) | Some(ResidentKeyRequirement::Discouraged) => {
+            false
+        }
         // Fall back to `requireResidentKey` when `residentKey` is absent.
-        None => (sel.map(|s| s.require_resident_key).unwrap_or(false), false),
+        None => sel.map(|s| s.require_resident_key).unwrap_or(false),
     }
 }
 
@@ -302,6 +276,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         request: webauthn::CredentialCreationOptions,
         client_data: D,
     ) -> Result<webauthn::CreatedPublicKeyCredential, WebauthnError> {
+        check_webauthn_version()?;
+
         let origin = origin.into();
 
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
@@ -391,21 +367,20 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         // Translate the Rust request into the Windows options struct. Any parameters not provided
         // in the Rust request are left at their default values.
         let sel = request.authenticator_selection.as_ref();
-        let (require_rk, prefer_rk) = win_resident_key_bools(sel);
+        let require_rk = win_require_resident_key(sel);
         let uv = win_uv(sel.map(|s| s.user_verification).unwrap_or_default());
         let mut exclude_list = WinCredentialList::from_descriptors(
             request.exclude_credentials.as_deref().unwrap_or(&[]),
         );
 
+        // V3 is the highest sub-version of this struct available under WEBAUTHN_API_VERSION_1.
         let make_credential_options = WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS {
-            dwVersion: WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_CURRENT_VERSION,
+            dwVersion: WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3,
             dwTimeoutMilliseconds: request.timeout.unwrap_or(0),
             dwAuthenticatorAttachment: win_attachment(sel.and_then(|s| s.authenticator_attachment)),
             bRequireResidentKey: require_rk.into(),
-            bPreferResidentKey: prefer_rk.into(),
             dwUserVerificationRequirement: uv,
             dwAttestationConveyancePreference: win_attestation_conveyance(request.attestation),
-            dwEnterpriseAttestation: win_enterprise_attestation(request.attestation),
             pExcludeCredentialList: exclude_list.as_ptr(),
             ..Default::default()
         };
@@ -487,8 +462,6 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         // SAFETY: `attestation` is a valid pointer for the reasons above; the `dwUsedTransport`
         // field is a plain scalar owned by the Windows-allocated struct.
         let transport_mask = unsafe { (*attestation).dwUsedTransport };
-        // SAFETY: same as above. `bResidentKey` is a `BOOL` (i32), where non-zero means true.
-        let is_resident_key = unsafe { (*attestation).bResidentKey } != 0;
 
         // We now own copies of everything we need. Free the attestation allocation before running
         // the parsing steps below, which can early-return via `?`.
@@ -528,10 +501,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
             _ => AuthenticatorAttachment::CrossPlatform,
         };
 
-        // The client can derive `credProps` by inspecting the `bResidentKey` field on the
-        // attestation.
         let cred_props = cred_props_requested.then_some(CredentialPropertiesOutput {
-            discoverable: Some(is_resident_key),
+            discoverable: None,
         });
 
         Ok(webauthn::CreatedPublicKeyCredential {
@@ -565,6 +536,8 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         request: webauthn::CredentialRequestOptions,
         client_data: D,
     ) -> Result<webauthn::AuthenticatedPublicKeyCredential, WebauthnError> {
+        check_webauthn_version()?;
+
         let origin = origin.into();
 
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
@@ -610,8 +583,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
         let mut allow_list = WinCredentialList::from_descriptors(
             request.allow_credentials.as_deref().unwrap_or(&[]),
         );
+        // V4 is the highest sub-version of this struct available under WEBAUTHN_API_VERSION_1.
         let get_assertion_options = WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS {
-            dwVersion: WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION,
+            dwVersion: WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4,
             dwTimeoutMilliseconds: timeout,
             // Attachment isn't specified in the getAssertion request.
             dwAuthenticatorAttachment: WEBAUTHN_AUTHENTICATOR_ATTACHMENT_ANY,
