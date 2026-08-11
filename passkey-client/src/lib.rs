@@ -439,7 +439,7 @@ where
             <<C as CryptoBackend>::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(
                 &credential_id.key,
             )
-            .map(Into::<Bytes>::into)
+            .map(Bytes::from)
             .map_err(|e| WebauthnError::AuthenticatorError(ctap2::Ctap2Error::from(e).into()))?,
         );
 

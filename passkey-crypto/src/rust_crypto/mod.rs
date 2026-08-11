@@ -48,15 +48,6 @@ impl PublicKeyT for RustCryptoPublicKey {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
-        if !matches!(
-            alg,
-            iana::Algorithm::ES256
-                | iana::Algorithm::ESP256
-                | iana::Algorithm::EdDSA
-                | iana::Algorithm::Ed25519
-        ) {
-            return Err(CoseKeyConversionError::UnsupportedAlgorithm);
-        }
         match alg {
             iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
                 if !matches!(
@@ -181,28 +172,6 @@ impl SecretKeyT for RustCryptoSecretKey {
         let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
             return Err(CoseKeyConversionError::UnsupportedAlgorithm);
         };
-        if !matches!(
-            alg,
-            iana::Algorithm::ES256
-                | iana::Algorithm::ESP256
-                | iana::Algorithm::EdDSA
-                | iana::Algorithm::Ed25519
-        ) {
-            return Err(CoseKeyConversionError::UnsupportedAlgorithm);
-        }
-        let bytes = cose_key
-            .params
-            .iter()
-            .find_map(|(k, v)| {
-                if let coset::Label::Int(i) = k {
-                    iana::Ec2KeyParameter::from_i64(*i)
-                        .filter(|p| p == &iana::Ec2KeyParameter::D)
-                        .and_then(|_| v.as_bytes())
-                } else {
-                    None
-                }
-            })
-            .ok_or(CoseKeyConversionError::InvalidCredential)?;
         match alg {
             iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
                 if !matches!(
@@ -211,6 +180,19 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
+                let bytes = cose_key
+                    .params
+                    .iter()
+                    .find_map(|(k, v)| {
+                        if let coset::Label::Int(i) = k {
+                            iana::Ec2KeyParameter::from_i64(*i)
+                                .filter(|p| p == &iana::Ec2KeyParameter::D)
+                                .and_then(|_| v.as_bytes())
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or(CoseKeyConversionError::InvalidCredential)?;
                 Ok(Self::P256(
                     p256::ecdsa::SigningKey::from_slice(bytes)
                         .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
@@ -223,12 +205,26 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                Ok(Self::Ed25519(ed25519_dalek::SigningKey::from_bytes(
-                    bytes
-                        .as_slice()
-                        .try_into()
-                        .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
-                )))
+                let bytes = cose_key
+                .params
+                .iter()
+                .find_map(|(k, v)| {
+                    let coset::Label::Int(i) = k else {
+                        return None;
+                    };
+
+                    iana::OkpKeyParameter::from_i64(*i)
+                        .filter(|p| *p == iana::OkpKeyParameter::D)
+                        .and_then(|_| v.as_bytes())
+                })
+                .ok_or(CoseKeyConversionError::InvalidCredential)?;
+
+                let bytes: [u8; 32] = bytes
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+
+                Ok(Self::Ed25519(ed25519_dalek::SigningKey::from_bytes(&bytes)))
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
