@@ -1,0 +1,445 @@
+use coset::{
+    CoseKey, CoseKeyBuilder,
+    cbor::Value,
+    iana::{self, EnumI64},
+};
+
+use crate::{CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT, hash::Sha256Backend};
+use aws_lc_rs::{
+    digest,
+    encoding::{AsBigEndian, AsDer},
+    hmac,
+    rand::SystemRandom,
+    signature::{
+        ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_ASN1_SIGNING, ED25519, EcdsaKeyPair,
+        Ed25519KeyPair, KeyPair, ParsedPublicKey, UnparsedPublicKey,
+    },
+};
+
+/// Length of an uncompressed SEC1 encoded P-256 public key (0x04 || X || Y).
+const P256_UNCOMPRESSED_LEN: usize = 65;
+/// Length of a P-256 field element (X or Y coordinate, or the D scalar).
+const P256_FIELD_LEN: usize = 32;
+/// Length of an Ed25519 seed / public key.
+const ED25519_KEY_LEN: usize = 32;
+
+/// Secret key backed by aws-lc-rs.
+pub struct AwsLcRsSecretKey(AwsLcRsSecretKeyInner);
+
+enum AwsLcRsSecretKeyInner {
+    // Secret key that uses the P-256 ECDSA algorithm.
+    P256 {
+        key_pair: EcdsaKeyPair,
+        // Raw D scalar preserved for COSE encoding.
+        d: [u8; P256_FIELD_LEN],
+    },
+    // Secret key that uses the Ed25519 EdDSA algorithm.
+    Ed25519 {
+        key_pair: Ed25519KeyPair,
+        // Raw seed preserved for COSE encoding.
+        seed: [u8; ED25519_KEY_LEN],
+    },
+}
+
+/// Public key backed by aws-lc-rs.
+pub struct AwsLcRsPublicKey(AwsLcRsPublicKeyInner);
+
+enum AwsLcRsPublicKeyInner {
+    // Uncompressed SEC1 encoding: 0x04 || X || Y (65 bytes).
+    P256([u8; P256_UNCOMPRESSED_LEN]),
+    // Raw 32-byte Ed25519 public key.
+    Ed25519([u8; ED25519_KEY_LEN]),
+}
+
+impl PublicKeyT for AwsLcRsPublicKey {
+    fn verify(&self, target: &[u8], signature: &[u8]) -> Result<(), crate::Error> {
+        match &self.0 {
+            AwsLcRsPublicKeyInner::P256(bytes) => {
+                UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, bytes.as_slice())
+                    .verify(target, signature)?;
+            }
+            AwsLcRsPublicKeyInner::Ed25519(bytes) => {
+                UnparsedPublicKey::new(&ED25519, bytes.as_slice()).verify(target, signature)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn der_from_cose_key(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError> {
+        let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
+            return Err(CoseKeyConversionError::UnsupportedAlgorithm);
+        };
+        match alg {
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
+                if !matches!(
+                    cose_key.kty,
+                    coset::RegisteredLabel::Assigned(iana::KeyType::EC2)
+                ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let (x, y) = extract_p256_xy(cose_key)?;
+                let uncompressed = p256_uncompressed(&x, &y);
+                let parsed = ParsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, uncompressed.as_slice())
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                let der = parsed
+                    .as_der()
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                Ok(der.as_ref().to_vec())
+            }
+            iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
+                if !matches!(
+                    cose_key.kty,
+                    coset::RegisteredLabel::Assigned(iana::KeyType::OKP)
+                ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let x = extract_okp_x(cose_key)?;
+                let parsed = ParsedPublicKey::new(&ED25519, x.as_slice())
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                let der = parsed
+                    .as_der()
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                Ok(der.as_ref().to_vec())
+            }
+            _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
+        }
+    }
+
+    fn to_cose_key(&self) -> CoseKey {
+        match &self.0 {
+            AwsLcRsPublicKeyInner::P256(bytes) => {
+                let (x, y) = split_p256_uncompressed(bytes);
+                CoseKeyBuilder::new_ec2_pub_key(
+                    iana::EllipticCurve::P_256,
+                    x.to_vec(),
+                    y.to_vec(),
+                )
+                .algorithm(iana::Algorithm::ES256)
+                .build()
+            }
+            AwsLcRsPublicKeyInner::Ed25519(bytes) => CoseKeyBuilder::new_okp_key()
+                .algorithm(iana::Algorithm::EdDSA)
+                .param(
+                    iana::OkpKeyParameter::Crv.to_i64(),
+                    Value::from(iana::EllipticCurve::Ed25519.to_i64()),
+                )
+                .param(
+                    iana::OkpKeyParameter::X.to_i64(),
+                    Value::from(bytes.as_slice()),
+                )
+                .build(),
+        }
+    }
+}
+
+impl SecretKeyT for AwsLcRsSecretKey {
+    type PublicKey = AwsLcRsPublicKey;
+
+    fn from_cose_key(cose_key: &CoseKey) -> Result<Self, CoseKeyConversionError>
+    where
+        Self: Sized,
+    {
+        let Some(coset::RegisteredLabelWithPrivate::Assigned(alg)) = cose_key.alg else {
+            return Err(CoseKeyConversionError::UnsupportedAlgorithm);
+        };
+        match alg {
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
+                if !matches!(
+                    cose_key.kty,
+                    coset::RegisteredLabel::Assigned(iana::KeyType::EC2)
+                ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let (x, y) = extract_p256_xy(cose_key)?;
+                let d = extract_p256_d(cose_key)?;
+                let uncompressed = p256_uncompressed(&x, &y);
+                let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
+                    &ECDSA_P256_SHA256_ASN1_SIGNING,
+                    &d,
+                    &uncompressed,
+                )
+                .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                Ok(Self(AwsLcRsSecretKeyInner::P256 { key_pair, d }))
+            }
+            iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
+                if !matches!(
+                    cose_key.kty,
+                    coset::RegisteredLabel::Assigned(iana::KeyType::OKP)
+                ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let seed = extract_okp_d(cose_key)?;
+                let key_pair = Ed25519KeyPair::from_seed_unchecked(&seed)
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                Ok(Self(AwsLcRsSecretKeyInner::Ed25519 { key_pair, seed }))
+            }
+            _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
+        }
+    }
+
+    fn sign(&mut self, target: &[u8]) -> Vec<u8> {
+        match &self.0 {
+            AwsLcRsSecretKeyInner::P256 { key_pair, .. } => {
+                let rng = SystemRandom::new();
+                let signature = key_pair
+                    .sign(&rng, target)
+                    .expect("aws-lc-rs ECDSA P-256 signing failed");
+                signature.as_ref().to_vec()
+            }
+            AwsLcRsSecretKeyInner::Ed25519 { key_pair, .. } => {
+                key_pair.sign(target).as_ref().to_vec()
+            }
+        }
+    }
+
+    fn public_key(&self) -> Self::PublicKey {
+        match &self.0 {
+            AwsLcRsSecretKeyInner::P256 { key_pair, .. } => {
+                let mut bytes = [0u8; P256_UNCOMPRESSED_LEN];
+                bytes.copy_from_slice(key_pair.public_key().as_ref());
+                AwsLcRsPublicKey(AwsLcRsPublicKeyInner::P256(bytes))
+            }
+            AwsLcRsSecretKeyInner::Ed25519 { key_pair, .. } => {
+                let mut bytes = [0u8; ED25519_KEY_LEN];
+                bytes.copy_from_slice(key_pair.public_key().as_ref());
+                AwsLcRsPublicKey(AwsLcRsPublicKeyInner::Ed25519(bytes))
+            }
+        }
+    }
+
+    fn to_cose_key(&self) -> CoseKey {
+        match &self.0 {
+            AwsLcRsSecretKeyInner::P256 { key_pair, d } => {
+                let (x, y) = split_p256_uncompressed(
+                    key_pair
+                        .public_key()
+                        .as_ref()
+                        .try_into()
+                        .expect("aws-lc-rs P-256 public key is 65 bytes"),
+                );
+                CoseKeyBuilder::new_ec2_priv_key(
+                    iana::EllipticCurve::P_256,
+                    x.to_vec(),
+                    y.to_vec(),
+                    d.to_vec(),
+                )
+                .algorithm(iana::Algorithm::ES256)
+                .build()
+            }
+            AwsLcRsSecretKeyInner::Ed25519 { key_pair, seed } => CoseKeyBuilder::new_okp_key()
+                .algorithm(iana::Algorithm::EdDSA)
+                .param(
+                    iana::OkpKeyParameter::Crv.to_i64(),
+                    Value::from(iana::EllipticCurve::Ed25519.to_i64()),
+                )
+                .param(
+                    iana::OkpKeyParameter::X.to_i64(),
+                    Value::from(key_pair.public_key().as_ref()),
+                )
+                .param(
+                    iana::OkpKeyParameter::D.to_i64(),
+                    Value::from(seed.as_slice()),
+                )
+                .build(),
+        }
+    }
+}
+
+/// [Sha256Backend] backed by aws-lc-rs.
+pub struct AwsLcRsSha2;
+
+impl Sha256Backend for AwsLcRsSha2 {
+    fn sha256(data: &[u8]) -> [u8; 32] {
+        let out = digest::digest(&digest::SHA256, data);
+        out.as_ref()
+            .try_into()
+            .expect("SHA-256 output is 32 bytes")
+    }
+
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+        let key = hmac::Key::new(hmac::HMAC_SHA256, key);
+        let tag = hmac::sign(&key, data);
+        tag.as_ref()
+            .try_into()
+            .expect("HMAC-SHA-256 tag is 32 bytes")
+    }
+}
+
+/// [CryptoBackend] backed by aws-lc-rs.
+pub struct AwsLcRsBackend;
+
+impl CryptoBackend for AwsLcRsBackend {
+    type Rng = crate::rng::rand::RandRng;
+
+    type Sha256 = AwsLcRsSha2;
+
+    type SecretKey = AwsLcRsSecretKey;
+
+    fn enumerate_algorithms(&self) -> Vec<iana::Algorithm> {
+        vec![
+            iana::Algorithm::ES256,
+            iana::Algorithm::ESP256,
+            iana::Algorithm::EdDSA,
+            iana::Algorithm::Ed25519,
+        ]
+    }
+
+    fn generate_key(&self, algorithm: iana::Algorithm) -> Result<Self::SecretKey, crate::Error> {
+        match algorithm {
+            iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
+                let key_pair = EcdsaKeyPair::generate(&ECDSA_P256_SHA256_ASN1_SIGNING)?;
+                let d_bin = key_pair.private_key().as_be_bytes()?;
+                let d_slice = d_bin.as_ref();
+                if d_slice.len() != P256_FIELD_LEN {
+                    return Err("aws-lc-rs produced unexpected P-256 scalar length"
+                        .to_string()
+                        .into());
+                }
+                let mut d = [0u8; P256_FIELD_LEN];
+                d.copy_from_slice(d_slice);
+                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::P256 {
+                    key_pair,
+                    d,
+                }))
+            }
+            iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
+                let key_pair = Ed25519KeyPair::generate()?;
+                let seed_bin = key_pair.seed()?.as_be_bytes()?;
+                let seed_slice = seed_bin.as_ref();
+                if seed_slice.len() != ED25519_KEY_LEN {
+                    return Err("aws-lc-rs produced unexpected Ed25519 seed length"
+                        .to_string()
+                        .into());
+                }
+                let mut seed = [0u8; ED25519_KEY_LEN];
+                seed.copy_from_slice(seed_slice);
+                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::Ed25519 {
+                    key_pair,
+                    seed,
+                }))
+            }
+            _ => Err("Algorithm is unsupported".to_string().into()),
+        }
+    }
+}
+
+/// Re-export of the [crate::rng::RngBackend] provided by this backend.
+pub type AwsLcRsRng = <AwsLcRsBackend as CryptoBackend>::Rng;
+
+fn extract_p256_xy(
+    cose_key: &CoseKey,
+) -> Result<([u8; P256_FIELD_LEN], [u8; P256_FIELD_LEN]), CoseKeyConversionError> {
+    let (mut x, mut y) = (None, None);
+    for (key, value) in &cose_key.params {
+        if let coset::Label::Int(i) = key {
+            let key = iana::Ec2KeyParameter::from_i64(*i)
+                .ok_or(CoseKeyConversionError::InvalidCredential)?;
+            match key {
+                iana::Ec2KeyParameter::X => {
+                    if value.as_bytes().and_then(|v| x.replace(v)).is_some() {
+                        log::warn!("Cose key has multiple entries for X coordinate");
+                    }
+                }
+                iana::Ec2KeyParameter::Y => {
+                    if value.as_bytes().and_then(|v| y.replace(v)).is_some() {
+                        log::warn!("Cose key has multiple entries for Y coordinate");
+                    }
+                }
+                _ => (),
+            }
+        }
+    }
+    let (Some(x), Some(y)) = (x, y) else {
+        return Err(CoseKeyConversionError::InvalidCredential);
+    };
+    let x: [u8; P256_FIELD_LEN] = x
+        .as_slice()
+        .try_into()
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+    let y: [u8; P256_FIELD_LEN] = y
+        .as_slice()
+        .try_into()
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+    Ok((x, y))
+}
+
+fn extract_p256_d(cose_key: &CoseKey) -> Result<[u8; P256_FIELD_LEN], CoseKeyConversionError> {
+    let bytes = cose_key
+        .params
+        .iter()
+        .find_map(|(k, v)| {
+            if let coset::Label::Int(i) = k {
+                iana::Ec2KeyParameter::from_i64(*i)
+                    .filter(|p| p == &iana::Ec2KeyParameter::D)
+                    .and_then(|_| v.as_bytes())
+            } else {
+                None
+            }
+        })
+        .ok_or(CoseKeyConversionError::InvalidCredential)?;
+    bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+}
+
+fn extract_okp_x(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
+    let mut x = None;
+    for (key, value) in &cose_key.params {
+        if let coset::Label::Int(i) = key {
+            let key = iana::OkpKeyParameter::from_i64(*i)
+                .ok_or(CoseKeyConversionError::InvalidCredential)?;
+            if key == iana::OkpKeyParameter::X
+                && value.as_bytes().and_then(|v| x.replace(v)).is_some()
+            {
+                log::warn!("Cose key has multiple entries for X coordinate");
+            }
+        }
+    }
+    x.ok_or(CoseKeyConversionError::InvalidCredential)?
+        .as_slice()
+        .try_into()
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+}
+
+fn extract_okp_d(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
+    let bytes = cose_key
+        .params
+        .iter()
+        .find_map(|(k, v)| {
+            let coset::Label::Int(i) = k else {
+                return None;
+            };
+            iana::OkpKeyParameter::from_i64(*i)
+                .filter(|p| *p == iana::OkpKeyParameter::D)
+                .and_then(|_| v.as_bytes())
+        })
+        .ok_or(CoseKeyConversionError::InvalidCredential)?;
+    bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+}
+
+fn p256_uncompressed(
+    x: &[u8; P256_FIELD_LEN],
+    y: &[u8; P256_FIELD_LEN],
+) -> [u8; P256_UNCOMPRESSED_LEN] {
+    let mut out = [0u8; P256_UNCOMPRESSED_LEN];
+    out[0] = 0x04;
+    out[1..1 + P256_FIELD_LEN].copy_from_slice(x);
+    out[1 + P256_FIELD_LEN..].copy_from_slice(y);
+    out
+}
+
+fn split_p256_uncompressed(
+    bytes: &[u8; P256_UNCOMPRESSED_LEN],
+) -> (&[u8; P256_FIELD_LEN], &[u8; P256_FIELD_LEN]) {
+    let x = (&bytes[1..1 + P256_FIELD_LEN])
+        .try_into()
+        .expect("slice length matches array");
+    let y = (&bytes[1 + P256_FIELD_LEN..])
+        .try_into()
+        .expect("slice length matches array");
+    (x, y)
+}
