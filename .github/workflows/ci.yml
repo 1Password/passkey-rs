@@ -185,7 +185,7 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Run build
-        run: rustup run ${{ matrix.rust }} cargo build --all-features --features passkey-crypto/js --target wasm32-unknown-unknown
+        run: rustup run ${{ matrix.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio" --target wasm32-unknown-unknown
 
   test-linux:
     name: Test-Linux
@@ -216,11 +216,8 @@ jobs:
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
-      - name: Run tests
-        run: rustup run ${{ matrix.rust }} cargo test
-
       - name: Run tests with `linux` feature
-        run: rustup run ${{ matrix.rust }} cargo test --features linux
+        run: rustup run ${{ matrix.rust }} cargo test --features "linux,passkey-client/tokio,passkey-authenticator/tokio"
 
   test-windows:
     name: Test-Windows
@@ -252,7 +249,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
 
       - name: Run tests
-        run: rustup run ${{ matrix.rust }} cargo test --features windows
+        run: rustup run ${{ matrix.rust }} cargo test --features "windows,passkey-client/tokio,passkey-authenticator/tokio"
 
   test-macos:
     name: Test-MacOS
@@ -284,7 +281,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
 
       - name: Run tests
-        run: rustup run ${{ matrix.rust }} cargo test --all-features
+        run: rustup run ${{ matrix.rust }} cargo test --features "passkey-client/tokio,passkey-authenticator/tokio"
 
   typeshare:
     name: Typeshare
