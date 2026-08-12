@@ -158,7 +158,7 @@ jobs:
         run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --features linux
 
       - name: Run rustdoc with `windows` feature
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows 
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows
 
   build-wasm:
     name: Build-WASM
@@ -193,8 +193,8 @@ jobs:
       - name: Run build
         run: rustup run ${{ matrix.rust }} cargo build --all-features --features passkey-crypto/js --target wasm32-unknown-unknown
 
-  test:
-    name: Test
+  test-linux:
+    name: Test-Linux
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -229,12 +229,15 @@ jobs:
         run: rustup run ${{ matrix.rust }} cargo test --features linux
 
   test-windows:
-    name: Test (Windows)
-    runs-on: windows-2022
+    name: Test-Windows
+    runs-on: ${{ matrix.runs-on }}
     permissions:
       contents: read
     strategy:
       matrix:
+        runs-on:
+          - windows-11-arm
+          - windows-2025
         rust:
           - 1.87.0
     steps:
@@ -254,8 +257,40 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
 
-      - name: Run tests with `windows` feature
+      - name: Run tests
         run: rustup run ${{ matrix.rust }} cargo test --features windows
+
+  test-macos:
+    name: Test-MacOS
+    runs-on: ${{ matrix.runs-on }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        runs-on:
+          - macos-26-intel
+          - macos-26
+        rust:
+          - 1.87.0
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out repo
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+
+      - name: Run tests
+        run: rustup run ${{ matrix.rust }} cargo test --all-features
 
   typeshare:
     name: Typeshare
