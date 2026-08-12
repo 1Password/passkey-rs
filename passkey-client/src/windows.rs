@@ -1,10 +1,10 @@
 //! Windows client for use with hardware authenticators. Uses the webauthn.dll API.
 
-use std::time::Duration;
+use std::{marker::PhantomData, time::Duration};
 
-use coset::{Algorithm, iana::EnumI64};
-use passkey_authenticator::public_key_der_from_cose_key;
+use passkey_crypto::{CryptoBackend, PublicKeyT, SecretKeyT, coset::Algorithm, iana::EnumI64};
 use passkey_types::{
+    Bytes,
     ctap2::{AuthenticatorData, Ctap2Error},
     encoding,
     webauthn::{
@@ -15,7 +15,7 @@ use passkey_types::{
 };
 use serde::Serialize;
 
-use crate::{ClientData, Origin, RpIdVerifier, WebauthnError};
+use crate::{ClientData, Fetcher, Origin, RpIdVerifier, WebauthnError};
 use windows_sys::Win32::{
     Networking::WindowsWebServices::{
         WEBAUTHN_API_VERSION_1, WEBAUTHN_ASSERTION,
@@ -274,21 +274,28 @@ fn win_api_error_to_webauthn_error(hr: HRESULT) -> WebauthnError {
 /// The foreground window that the WebAuthn system modal is tied to is queried on every request
 /// rather than captured at construction time, so the client works correctly even if the user's
 /// active window changes between calls.
-pub struct WindowsClient<P, F> {
+pub struct WindowsClient<C, P, F>
+where
+    C: CryptoBackend,
+    P: public_suffix::EffectiveTLDProvider + Sync + 'static,
+    F: Fetcher + Sync,
+{
     rp_id_verifier: RpIdVerifier<P, F>,
+    crypto: PhantomData<C>,
 }
 
-impl Default for WindowsClient<public_suffix::PublicSuffixList, ()> {
+impl<C: CryptoBackend> Default for WindowsClient<C, public_suffix::PublicSuffixList, ()> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl WindowsClient<public_suffix::PublicSuffixList, ()> {
+impl<C: CryptoBackend> WindowsClient<C, public_suffix::PublicSuffixList, ()> {
     /// Create a new `WindowsClient`.
     pub fn new() -> Self {
         Self {
             rp_id_verifier: RpIdVerifier::new(public_suffix::DEFAULT_PROVIDER, None),
+            crypto: PhantomData,
         }
     }
 
@@ -527,7 +534,9 @@ impl WindowsClient<public_suffix::PublicSuffixList, ()> {
                     });
                 }
             };
-        let public_key = public_key_der_from_cose_key(&attested.key).ok();
+        let public_key = <C::SecretKey as SecretKeyT>::PublicKey::der_from_cose_key(&attested.key)
+            .ok()
+            .map(Bytes::from);
 
         // This should only return one transport, since the mask is guaranteed by the API to only
         // have one bit set.

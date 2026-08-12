@@ -1,8 +1,8 @@
 use ciborium::cbor;
 use coset::CoseKeyBuilder;
+use passkey_crypto::{rng::RngBackend, rust_crypto::RustCryptoRng};
 
 use super::*;
-use crate::utils::rand::random_vec;
 
 #[test]
 fn deserialize_authenticator_data_with_at_and_ed() {
@@ -164,12 +164,12 @@ fn round_trip_deserialization() {
     let expected = AuthenticatorData::new("future.1password.com", Some(0))
         .set_attested_credential_data(AttestedCredentialData {
             aaguid: Aaguid::new_empty(),
-            credential_id: random_vec(16),
+            credential_id: RustCryptoRng::random_vec(16),
             key: CoseKeyBuilder::new_ec2_pub_key(
                 coset::iana::EllipticCurve::P_256,
                 // seeing as these are random, it is not a valid key, so don't use this.
-                random_vec(32),
-                random_vec(32),
+                RustCryptoRng::random_vec(32),
+                RustCryptoRng::random_vec(32),
             )
             .algorithm(coset::iana::Algorithm::ES256)
             .build(),

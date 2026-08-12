@@ -10,6 +10,16 @@
 
 - Fix RP ID validation to require dot boundary ([#92](https://github.com/1Password/passkey-rs/pull/92))
 
+### passkey-crypto v0.1.0
+
+A new crate! This crate houses the swappable cryptographic backends for different libraries should you
+wish/need to use a different set of libraries than the default RustCrypto libraries. As always PRs are
+accepted to add new backends should you wish to not use plenty of newtypes to get around the orphan
+rules.
+
+- New `RngBackend` trait which replaces the pre-existing `passkey-types::rand::random_vec` function.
+  Use this new method as `passkey-crypto::rng::Rng::random_vec`.
+
 ### passkey-transports
 
 - ⚠ BREAKING: Remove `hid::Command::Msg` variant as that is U2F only and U2F support is now being removed.
@@ -20,6 +30,7 @@
 - ⚠ BREAKING: Remove U2F support ([#105](https://github.com/1Password/passkey-rs/pull/105))
 - ⚠ BREAKING: Migrate `U2FError` variant into `Ctap2Error`, rename `Ctap2Code` to `StatusCode`,
   and finaly remove the old `StatusCode`. ([#105](https://github.com/1Password/passkey-rs/pull/105))
+- ⚠ BREAKING: The `passkey-types::rand` module no longer exists and is instead replaced by `passkey-crypto::rng`.
 
 ## Passkey v0.5.0
 

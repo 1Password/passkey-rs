@@ -61,7 +61,7 @@ serde_workaround! {
         /// A sequence of CBOR maps consisting of pairs of PublicKeyCredentialType (a string) and
         /// cryptographic algorithm (a positive or negative integer), where algorithm identifiers
         /// are values that SHOULD be registered in the IANA COSE Algorithms registry
-        /// [`coset::iana::Algorithm`]. This sequence is ordered from most preferred (by the RP) to least
+        /// [`passkey_crypto::iana::Algorithm`]. This sequence is ordered from most preferred (by the RP) to least
         /// preferred.
         #[serde(rename = 0x04, deserialize_with = ignore_unknown_vec)]
         pub pub_key_cred_params: Vec<webauthn::PublicKeyCredentialParameters>,

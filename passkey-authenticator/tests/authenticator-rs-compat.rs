@@ -1,12 +1,16 @@
 //! Tests for compatibility sanity checks with Authenticator-rs
 
 use authenticator::MakeCredentialsResult;
-use coset::iana;
 use passkey_authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod};
+use passkey_crypto::{
+    iana,
+    rng::RngBackend,
+    rust_crypto::{RustCryptoBackend, RustCryptoRng},
+};
 use passkey_types::{
     Passkey,
     ctap2::{Ctap2Error, make_credential},
-    rand, webauthn,
+    webauthn,
 };
 
 struct MockUV;
@@ -38,16 +42,16 @@ impl UserValidationMethod for MockUV {
 
 #[tokio::test]
 async fn ensure_attestation_object_compatibility() {
-    let mut auth = Authenticator::new([0; 16].into(), None::<Passkey>, MockUV);
+    let mut auth = Authenticator::new([0; 16].into(), None::<Passkey>, MockUV, RustCryptoBackend);
     let cred_response = auth
         .make_credential(make_credential::Request {
-            client_data_hash: rand::random_vec(32).into(),
+            client_data_hash: RustCryptoRng::random_vec(32).into(),
             rp: make_credential::PublicKeyCredentialRpEntity {
                 id: "webauth.io".to_string(),
                 name: Some("webauthn.io".to_string()),
             },
             user: webauthn::PublicKeyCredentialUserEntity {
-                id: rand::random_vec(16).into(),
+                id: RustCryptoRng::random_vec(16).into(),
                 name: "wendy".to_string(),
                 display_name: "wendy".to_string(),
             },

@@ -1,5 +1,7 @@
 //! Error responses
 
+use passkey_crypto::CoseKeyConversionError;
+
 use crate::utils::repr_enum::CodeOutOfRange;
 
 /// Ctap2 error which may or may not be explicitly defined
@@ -155,6 +157,22 @@ repr_enum! {
         UnauthorizedPermission : 0x40,
         /// Other unspecified error.
         Other : 0x7F,
+    }
+}
+
+impl From<CoseKeyConversionError> for Ctap2Error {
+    fn from(value: CoseKeyConversionError) -> Self {
+        match value {
+            CoseKeyConversionError::UnsupportedAlgorithm => Ctap2Error::UnsupportedAlgorithm,
+            CoseKeyConversionError::InvalidCredential => Ctap2Error::InvalidCredential,
+            CoseKeyConversionError::Other(_) => Ctap2Error::Other,
+        }
+    }
+}
+
+impl From<CoseKeyConversionError> for StatusCode {
+    fn from(value: CoseKeyConversionError) -> Self {
+        StatusCode::Known(Ctap2Error::from(value))
     }
 }
 
