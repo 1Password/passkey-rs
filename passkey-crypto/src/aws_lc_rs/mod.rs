@@ -4,7 +4,12 @@ use coset::{
     iana::{self, EnumI64},
 };
 
-use crate::{CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT, hash::Sha256Backend};
+use std::ops::RangeInclusive;
+
+use crate::{
+    CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT, hash::Sha256Backend,
+    rng::RngBackend,
+};
 use aws_lc_rs::{
     digest,
     encoding::{AsBigEndian, AsDer},
@@ -265,11 +270,51 @@ impl Sha256Backend for AwsLcRsSha2 {
     }
 }
 
+/// [RngBackend] backed by [`aws_lc_rs::rand`].
+pub struct AwsLcRsRng;
+
+impl RngBackend for AwsLcRsRng {
+    fn random_vec(len: usize) -> Vec<u8> {
+        let mut data = vec![0u8; len];
+        aws_lc_rs::rand::fill(&mut data).expect("aws-lc-rs RNG failure");
+        data
+    }
+
+    fn random_array<const N: usize>() -> [u8; N] {
+        let mut bytes = [0u8; N];
+        aws_lc_rs::rand::fill(&mut bytes).expect("aws-lc-rs RNG failure");
+        bytes
+    }
+
+    fn from_range(range: RangeInclusive<u8>) -> u8 {
+        let low = *range.start();
+        let high = *range.end();
+        if low >= high {
+            return low;
+        }
+        // span is in 2..=256 here (low < high, so at least 2 possibilities).
+        let span: u16 = u16::from(high - low) + 1;
+        // Largest multiple of `span` that fits in a byte: reject samples above it
+        // so the modulus doesn't bias the low residues.
+        let cutoff: u16 = if span == 256 { 256 } else { 256 - (256 % span) };
+        loop {
+            let mut buf = [0u8; 1];
+            aws_lc_rs::rand::fill(&mut buf).expect("aws-lc-rs RNG failure");
+            let sample = u16::from(buf[0]);
+            if sample < cutoff {
+                let offset = u8::try_from(sample % span)
+                    .expect("sample % span is < 256 by construction");
+                return low + offset;
+            }
+        }
+    }
+}
+
 /// [CryptoBackend] backed by aws-lc-rs.
 pub struct AwsLcRsBackend;
 
 impl CryptoBackend for AwsLcRsBackend {
-    type Rng = crate::rng::rand::RandRng;
+    type Rng = AwsLcRsRng;
 
     type Sha256 = AwsLcRsSha2;
 
@@ -322,9 +367,6 @@ impl CryptoBackend for AwsLcRsBackend {
         }
     }
 }
-
-/// Re-export of the [crate::rng::RngBackend] provided by this backend.
-pub type AwsLcRsRng = <AwsLcRsBackend as CryptoBackend>::Rng;
 
 fn extract_p256_xy(
     cose_key: &CoseKey,
