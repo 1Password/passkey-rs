@@ -121,13 +121,9 @@ impl PublicKeyT for AwsLcRsPublicKey {
         match &self.0 {
             AwsLcRsPublicKeyInner::P256(bytes) => {
                 let (x, y) = split_p256_uncompressed(bytes);
-                CoseKeyBuilder::new_ec2_pub_key(
-                    iana::EllipticCurve::P_256,
-                    x.to_vec(),
-                    y.to_vec(),
-                )
-                .algorithm(iana::Algorithm::ES256)
-                .build()
+                CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x.to_vec(), y.to_vec())
+                    .algorithm(iana::Algorithm::ES256)
+                    .build()
             }
             AwsLcRsPublicKeyInner::Ed25519(bytes) => CoseKeyBuilder::new_okp_key()
                 .algorithm(iana::Algorithm::EdDSA)
@@ -278,9 +274,7 @@ pub struct AwsLcRsSha2;
 impl Sha256Backend for AwsLcRsSha2 {
     fn sha256(data: &[u8]) -> [u8; 32] {
         let out = digest::digest(&digest::SHA256, data);
-        out.as_ref()
-            .try_into()
-            .expect("SHA-256 output is 32 bytes")
+        out.as_ref().try_into().expect("SHA-256 output is 32 bytes")
     }
 
     fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
@@ -324,8 +318,8 @@ impl RngBackend for AwsLcRsRng {
             aws_lc_rs::rand::fill(&mut buf).expect("aws-lc-rs RNG failure");
             let sample = u16::from(buf[0]);
             if sample < cutoff {
-                let offset = u8::try_from(sample % span)
-                    .expect("sample % span is < 256 by construction");
+                let offset =
+                    u8::try_from(sample % span).expect("sample % span is < 256 by construction");
                 return low + offset;
             }
         }
@@ -456,9 +450,7 @@ fn extract_okp_x(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyCon
     find_okp_x(cose_key)?.ok_or(CoseKeyConversionError::InvalidCredential)
 }
 
-fn find_okp_x(
-    cose_key: &CoseKey,
-) -> Result<Option<[u8; ED25519_KEY_LEN]>, CoseKeyConversionError> {
+fn find_okp_x(cose_key: &CoseKey) -> Result<Option<[u8; ED25519_KEY_LEN]>, CoseKeyConversionError> {
     let mut x = None;
     for (key, value) in &cose_key.params {
         if let coset::Label::Int(i) = key {
