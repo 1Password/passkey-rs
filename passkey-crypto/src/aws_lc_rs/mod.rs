@@ -312,7 +312,7 @@ impl RngBackend for AwsLcRsRng {
         let span: u16 = u16::from(high - low) + 1;
         // Largest multiple of `span` that fits in a byte: reject samples above it
         // so the modulus doesn't bias the low residues.
-        let cutoff: u16 = if span == 256 { 256 } else { 256 - (256 % span) };
+        let cutoff: u16 = 256 - (256 % span);
         loop {
             let mut buf = [0u8; 1];
             aws_lc_rs::rand::fill(&mut buf).expect("aws-lc-rs RNG failure");

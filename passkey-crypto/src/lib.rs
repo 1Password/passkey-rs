@@ -16,6 +16,9 @@ pub mod rust_crypto;
 #[cfg(feature = "aws-lc-rs")]
 pub mod aws_lc_rs;
 
+#[cfg(all(test, feature = "aws-lc-rs", feature = "rust-crypto"))]
+mod tests;
+
 /// Trait to capture cryptographic operations necessary in the other passkey-* crates.
 pub trait CryptoBackend {
     /// RNG implementation.
