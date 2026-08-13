@@ -5,15 +5,13 @@ use std::{
 
 use ciborium::value::Value;
 use passkey_crypto::{
-    CoseKey,
+    CoseKey, CryptoBackend,
     coset::{self, AsCborValue, CborSerializable},
+    hash::Sha256Backend,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    crypto::sha256,
-    ctap2::{Aaguid, Flags},
-};
+use crate::ctap2::{Aaguid, Flags};
 
 use super::{Ctap2Error, get_assertion, make_credential};
 
@@ -64,9 +62,9 @@ impl AuthenticatorData {
     /// Create a new AuthenticatorData object for an RP ID and an optional counter.
     ///
     /// The flags will be set to their default values.
-    pub fn new(rp_id: &str, counter: Option<u32>) -> Self {
+    pub fn new<C: CryptoBackend>(rp_id: &str, counter: Option<u32>, _crypto: &C) -> Self {
         Self {
-            rp_id_hash: sha256(rp_id.as_bytes()),
+            rp_id_hash: C::Sha256::sha256(rp_id.as_bytes()),
             flags: Flags::default(),
             counter,
             attested_credential_data: None,

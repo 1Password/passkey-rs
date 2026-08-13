@@ -6,5 +6,4 @@ pub(crate) mod serde;
 #[macro_use]
 pub(crate) mod serde_workaround;
 
-pub mod crypto;
 pub mod encoding;

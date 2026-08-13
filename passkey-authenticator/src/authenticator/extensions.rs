@@ -55,7 +55,10 @@ pub(super) struct GetExtensionOutputs {
     pub unsigned: Option<get_assertion::UnsignedExtensionOutputs>,
 }
 
-impl<S, U, C: CryptoBackend> Authenticator<S, U, C> {
+impl<S, U, C> Authenticator<S, U, C>
+where
+    C: CryptoBackend,
+{
     pub(super) fn make_extensions(
         &self,
         request: Option<make_credential::ExtensionInputs>,

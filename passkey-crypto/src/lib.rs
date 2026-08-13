@@ -3,6 +3,7 @@
 // TODO: investigate rolling our own IANA listings and COSE keys
 pub use coset::{self, CoseKey, iana};
 
+pub mod hash;
 pub mod rng;
 
 /// [CryptoBackend] implementation that uses the crates from the [RustCrypto
@@ -14,6 +15,9 @@ pub mod rust_crypto;
 pub trait CryptoBackend {
     /// RNG implementation.
     type Rng: rng::RngBackend;
+
+    /// The Sha256 implementation
+    type Sha256: hash::Sha256Backend;
 
     /// Signature algorithm's secret key.
     type SecretKey: SecretKeyT;
