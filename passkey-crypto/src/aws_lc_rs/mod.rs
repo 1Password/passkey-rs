@@ -82,6 +82,9 @@ impl PublicKeyT for AwsLcRsPublicKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
+                if find_ec2_crv(cose_key)? != Some(iana::EllipticCurve::P_256.to_i64()) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
                 let (x, y) = extract_p256_xy(cose_key)?;
                 let uncompressed = p256_uncompressed(&x, &y);
                 let parsed = ParsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, uncompressed.as_slice())
@@ -96,6 +99,9 @@ impl PublicKeyT for AwsLcRsPublicKey {
                     cose_key.kty,
                     coset::RegisteredLabel::Assigned(iana::KeyType::OKP)
                 ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                if find_okp_crv(cose_key)? != Some(iana::EllipticCurve::Ed25519.to_i64()) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
                 let x = extract_okp_x(cose_key)?;
@@ -155,9 +161,14 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
+                if find_ec2_crv(cose_key)? != Some(iana::EllipticCurve::P_256.to_i64()) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
                 let (x, y) = extract_p256_xy(cose_key)?;
                 let d = extract_p256_d(cose_key)?;
                 let uncompressed = p256_uncompressed(&x, &y);
+                // aws-lc-rs verifies that D and (X, Y) belong to the same key pair
+                // as part of `from_private_key_and_public_key`.
                 let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
                     &ECDSA_P256_SHA256_ASN1_SIGNING,
                     &d,
@@ -173,9 +184,19 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
+                if find_okp_crv(cose_key)? != Some(iana::EllipticCurve::Ed25519.to_i64()) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
                 let seed = extract_okp_d(cose_key)?;
-                let key_pair = Ed25519KeyPair::from_seed_unchecked(&seed)
-                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                // When the COSE key carries the public key alongside the seed, use
+                // aws-lc-rs' consistency-checked constructor so a mismatched X is rejected.
+                let key_pair = match find_okp_x(cose_key)? {
+                    Some(public_key) => {
+                        Ed25519KeyPair::from_seed_and_public_key(&seed, &public_key)
+                    }
+                    None => Ed25519KeyPair::from_seed_unchecked(&seed),
+                }
+                .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
                 Ok(Self(AwsLcRsSecretKeyInner::Ed25519 { key_pair, seed }))
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
@@ -426,6 +447,12 @@ fn extract_p256_d(cose_key: &CoseKey) -> Result<[u8; P256_FIELD_LEN], CoseKeyCon
 }
 
 fn extract_okp_x(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
+    find_okp_x(cose_key)?.ok_or(CoseKeyConversionError::InvalidCredential)
+}
+
+fn find_okp_x(
+    cose_key: &CoseKey,
+) -> Result<Option<[u8; ED25519_KEY_LEN]>, CoseKeyConversionError> {
     let mut x = None;
     for (key, value) in &cose_key.params {
         if let coset::Label::Int(i) = key {
@@ -438,10 +465,37 @@ fn extract_okp_x(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyCon
             }
         }
     }
-    x.ok_or(CoseKeyConversionError::InvalidCredential)?
-        .as_slice()
+    match x {
+        Some(bytes) => bytes
+            .as_slice()
+            .try_into()
+            .map(Some)
+            .map_err(|_| CoseKeyConversionError::InvalidCredential),
+        None => Ok(None),
+    }
+}
+
+fn find_ec2_crv(cose_key: &CoseKey) -> Result<Option<i64>, CoseKeyConversionError> {
+    find_crv(cose_key, iana::Ec2KeyParameter::Crv.to_i64())
+}
+
+fn find_okp_crv(cose_key: &CoseKey) -> Result<Option<i64>, CoseKeyConversionError> {
+    find_crv(cose_key, iana::OkpKeyParameter::Crv.to_i64())
+}
+
+fn find_crv(cose_key: &CoseKey, crv_label: i64) -> Result<Option<i64>, CoseKeyConversionError> {
+    let Some(value) = cose_key.params.iter().find_map(|(k, v)| match k {
+        coset::Label::Int(i) if *i == crv_label => Some(v),
+        _ => None,
+    }) else {
+        return Ok(None);
+    };
+    let crv: i64 = value
+        .as_integer()
+        .ok_or(CoseKeyConversionError::InvalidCredential)?
         .try_into()
-        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+    Ok(Some(crv))
 }
 
 fn extract_okp_d(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
