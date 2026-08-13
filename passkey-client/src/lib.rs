@@ -39,6 +39,8 @@ mod rp_id_verifier;
 
 #[cfg(all(feature = "linux", target_os = "linux"))]
 pub mod linux;
+#[cfg(all(feature = "windows", target_os = "windows"))]
+pub mod windows;
 
 pub use self::rp_id_verifier::{Fetcher, RelatedOriginResponse, RpIdVerifier};
 
@@ -75,7 +77,10 @@ pub enum WebauthnError {
     /// The string did not match the expected pattern.
     SyntaxError,
     /// The input failed validation
-    ValidationError,
+    ValidationError {
+        /// Context for the validation error
+        context: &'static str,
+    },
     /// The given RpId has possibly rolled out related origins
     RequiresRelatedOriginsSupport,
     /// An error when fetching remote resources

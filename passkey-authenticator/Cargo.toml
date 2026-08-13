@@ -32,7 +32,7 @@ passkey-types = { path = "../passkey-types", version = "0.6" }
 tokio = { version = "1", features = ["sync", "macros"], optional = true }
 
 [dev-dependencies]
-authenticator = { version = "0.4", default-features = false, features = [
+authenticator = { version = "0.5", default-features = false, features = [
   "crypto_dummy",
 ] }
 ciborium = "0.2"
@@ -44,3 +44,9 @@ passkey-types = { path = "../passkey-types", version = "0.6", features = [
 serde_cbor = "0.11"
 signature = { version = "2", features = ["rand_core"] }
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
+
+# We never use this directly, but due to an issue with dependency resolution,
+# `authenticator` doesn't build if `winapi/std` isn't enabled.
+# See https://github.com/mozilla/authenticator-rs/pull/366.
+[target.'cfg(target_os = "windows")'.dev-dependencies]
+winapi = { version = "^0.3", features = ["std"] }
