@@ -20,6 +20,7 @@ use aws_lc_rs::{
         Ed25519KeyPair, KeyPair, ParsedPublicKey, UnparsedPublicKey,
     },
 };
+use zeroize::Zeroizing;
 
 /// Length of an uncompressed SEC1 encoded P-256 public key (0x04 || X || Y).
 const P256_UNCOMPRESSED_LEN: usize = 65;
@@ -35,14 +36,14 @@ enum AwsLcRsSecretKeyInner {
     // Secret key that uses the P-256 ECDSA algorithm.
     P256 {
         key_pair: EcdsaKeyPair,
-        // Raw D scalar preserved for COSE encoding.
-        d: [u8; P256_FIELD_LEN],
+        // Raw D scalar preserved for COSE encoding, zeroized on drop.
+        d: Zeroizing<[u8; P256_FIELD_LEN]>,
     },
     // Secret key that uses the Ed25519 EdDSA algorithm.
     Ed25519 {
         key_pair: Ed25519KeyPair,
-        // Raw seed preserved for COSE encoding.
-        seed: [u8; ED25519_KEY_LEN],
+        // Raw seed preserved for COSE encoding, zeroized on drop.
+        seed: Zeroizing<[u8; ED25519_KEY_LEN]>,
     },
 }
 
@@ -171,7 +172,7 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 // as part of `from_private_key_and_public_key`.
                 let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
                     &ECDSA_P256_SHA256_ASN1_SIGNING,
-                    &d,
+                    d.as_slice(),
                     &uncompressed,
                 )
                 .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
@@ -192,9 +193,9 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 // aws-lc-rs' consistency-checked constructor so a mismatched X is rejected.
                 let key_pair = match find_okp_x(cose_key)? {
                     Some(public_key) => {
-                        Ed25519KeyPair::from_seed_and_public_key(&seed, &public_key)
+                        Ed25519KeyPair::from_seed_and_public_key(seed.as_slice(), &public_key)
                     }
-                    None => Ed25519KeyPair::from_seed_unchecked(&seed),
+                    None => Ed25519KeyPair::from_seed_unchecked(seed.as_slice()),
                 }
                 .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
                 Ok(Self(AwsLcRsSecretKeyInner::Ed25519 { key_pair, seed }))
@@ -247,7 +248,7 @@ impl SecretKeyT for AwsLcRsSecretKey {
                     iana::EllipticCurve::P_256,
                     x.to_vec(),
                     y.to_vec(),
-                    d.to_vec(),
+                    d.as_slice().to_vec(),
                 )
                 .algorithm(iana::Algorithm::ES256)
                 .build()
@@ -361,7 +362,7 @@ impl CryptoBackend for AwsLcRsBackend {
                         .to_string()
                         .into());
                 }
-                let mut d = [0u8; P256_FIELD_LEN];
+                let mut d: Zeroizing<[u8; P256_FIELD_LEN]> = Zeroizing::new([0u8; P256_FIELD_LEN]);
                 d.copy_from_slice(d_slice);
                 Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::P256 {
                     key_pair,
@@ -377,7 +378,8 @@ impl CryptoBackend for AwsLcRsBackend {
                         .to_string()
                         .into());
                 }
-                let mut seed = [0u8; ED25519_KEY_LEN];
+                let mut seed: Zeroizing<[u8; ED25519_KEY_LEN]> =
+                    Zeroizing::new([0u8; ED25519_KEY_LEN]);
                 seed.copy_from_slice(seed_slice);
                 Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::Ed25519 {
                     key_pair,
@@ -426,7 +428,9 @@ fn extract_p256_xy(
     Ok((x, y))
 }
 
-fn extract_p256_d(cose_key: &CoseKey) -> Result<[u8; P256_FIELD_LEN], CoseKeyConversionError> {
+fn extract_p256_d(
+    cose_key: &CoseKey,
+) -> Result<Zeroizing<[u8; P256_FIELD_LEN]>, CoseKeyConversionError> {
     let bytes = cose_key
         .params
         .iter()
@@ -440,10 +444,12 @@ fn extract_p256_d(cose_key: &CoseKey) -> Result<[u8; P256_FIELD_LEN], CoseKeyCon
             }
         })
         .ok_or(CoseKeyConversionError::InvalidCredential)?;
-    bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+    if bytes.len() != P256_FIELD_LEN {
+        return Err(CoseKeyConversionError::InvalidCredential);
+    }
+    let mut d: Zeroizing<[u8; P256_FIELD_LEN]> = Zeroizing::new([0u8; P256_FIELD_LEN]);
+    d.copy_from_slice(bytes);
+    Ok(d)
 }
 
 fn extract_okp_x(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
@@ -498,7 +504,9 @@ fn find_crv(cose_key: &CoseKey, crv_label: i64) -> Result<Option<i64>, CoseKeyCo
     Ok(Some(crv))
 }
 
-fn extract_okp_d(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
+fn extract_okp_d(
+    cose_key: &CoseKey,
+) -> Result<Zeroizing<[u8; ED25519_KEY_LEN]>, CoseKeyConversionError> {
     let bytes = cose_key
         .params
         .iter()
@@ -511,10 +519,12 @@ fn extract_okp_d(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyCon
                 .and_then(|_| v.as_bytes())
         })
         .ok_or(CoseKeyConversionError::InvalidCredential)?;
-    bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+    if bytes.len() != ED25519_KEY_LEN {
+        return Err(CoseKeyConversionError::InvalidCredential);
+    }
+    let mut seed: Zeroizing<[u8; ED25519_KEY_LEN]> = Zeroizing::new([0u8; ED25519_KEY_LEN]);
+    seed.copy_from_slice(bytes);
+    Ok(seed)
 }
 
 fn p256_uncompressed(
