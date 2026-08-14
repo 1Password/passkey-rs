@@ -16,7 +16,7 @@ version = "0.1.0"
 default = ["rust-crypto"]
 rand = ["dep:rand", "dep:getrandom"]
 js = ["getrandom/js"]
-rust-crypto = ["dep:p256", "dep:ed25519-dalek", "dep:signature", "rand", "dep:sha2", "dep:hmac"]
+rust-crypto = ["dep:p256", "dep:ed25519-dalek", "dep:signature", "rand", "dep:sha2", "dep:hmac", "dep:zeroize"]
 aws-lc-rs = ["dep:aws-lc-rs", "dep:zeroize"]
 
 [dependencies]

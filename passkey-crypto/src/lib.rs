@@ -16,6 +16,9 @@ pub mod rust_crypto;
 #[cfg(feature = "aws-lc-rs")]
 pub mod aws_lc_rs;
 
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+mod cose;
+
 /// The [CryptoBackend] to use when a downstream crate has not picked one explicitly.
 ///
 /// Resolves to [aws_lc_rs::AwsLcRsBackend] when the `aws-lc-rs` feature is enabled, otherwise

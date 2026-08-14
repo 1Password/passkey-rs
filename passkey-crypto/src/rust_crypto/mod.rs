@@ -186,21 +186,9 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                let bytes = cose_key
-                    .params
-                    .iter()
-                    .find_map(|(k, v)| {
-                        if let coset::Label::Int(i) = k {
-                            iana::Ec2KeyParameter::from_i64(*i)
-                                .filter(|p| p == &iana::Ec2KeyParameter::D)
-                                .and_then(|_| v.as_bytes())
-                        } else {
-                            None
-                        }
-                    })
-                    .ok_or(CoseKeyConversionError::InvalidCredential)?;
+                let d = crate::cose::extract_p256_d(cose_key)?;
                 Ok(Self(RustCryptoSecretKeyInner::P256(
-                    p256::ecdsa::SigningKey::from_slice(bytes)
+                    p256::ecdsa::SigningKey::from_slice(d.as_slice())
                         .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
                 )))
             }
@@ -211,27 +199,9 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                let bytes = cose_key
-                    .params
-                    .iter()
-                    .find_map(|(k, v)| {
-                        let coset::Label::Int(i) = k else {
-                            return None;
-                        };
-
-                        iana::OkpKeyParameter::from_i64(*i)
-                            .filter(|p| *p == iana::OkpKeyParameter::D)
-                            .and_then(|_| v.as_bytes())
-                    })
-                    .ok_or(CoseKeyConversionError::InvalidCredential)?;
-
-                let bytes: [u8; 32] = bytes
-                    .as_slice()
-                    .try_into()
-                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
-
+                let seed = crate::cose::extract_okp_d(cose_key)?;
                 Ok(Self(RustCryptoSecretKeyInner::Ed25519(
-                    ed25519_dalek::SigningKey::from_bytes(&bytes),
+                    ed25519_dalek::SigningKey::from_bytes(&*seed),
                 )))
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
