@@ -34,17 +34,9 @@ pub struct AwsLcRsSecretKey(AwsLcRsSecretKeyInner);
 
 enum AwsLcRsSecretKeyInner {
     // Secret key that uses the P-256 ECDSA algorithm.
-    P256 {
-        key_pair: EcdsaKeyPair,
-        // Raw D scalar preserved for COSE encoding, zeroized on drop.
-        d: Zeroizing<[u8; P256_FIELD_LEN]>,
-    },
+    P256(EcdsaKeyPair),
     // Secret key that uses the Ed25519 EdDSA algorithm.
-    Ed25519 {
-        key_pair: Ed25519KeyPair,
-        // Raw seed preserved for COSE encoding, zeroized on drop.
-        seed: Zeroizing<[u8; ED25519_KEY_LEN]>,
-    },
+    Ed25519(Ed25519KeyPair),
 }
 
 /// Public key backed by aws-lc-rs.
@@ -172,7 +164,7 @@ impl SecretKeyT for AwsLcRsSecretKey {
                     &uncompressed,
                 )
                 .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
-                Ok(Self(AwsLcRsSecretKeyInner::P256 { key_pair, d }))
+                Ok(Self(AwsLcRsSecretKeyInner::P256(key_pair)))
             }
             iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
                 if !matches!(
@@ -194,7 +186,7 @@ impl SecretKeyT for AwsLcRsSecretKey {
                     None => Ed25519KeyPair::from_seed_unchecked(seed.as_slice()),
                 }
                 .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
-                Ok(Self(AwsLcRsSecretKeyInner::Ed25519 { key_pair, seed }))
+                Ok(Self(AwsLcRsSecretKeyInner::Ed25519(key_pair)))
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
@@ -202,27 +194,25 @@ impl SecretKeyT for AwsLcRsSecretKey {
 
     fn sign(&mut self, target: &[u8]) -> Vec<u8> {
         match &self.0 {
-            AwsLcRsSecretKeyInner::P256 { key_pair, .. } => {
+            AwsLcRsSecretKeyInner::P256(key_pair) => {
                 let rng = SystemRandom::new();
                 let signature = key_pair
                     .sign(&rng, target)
                     .expect("aws-lc-rs ECDSA P-256 signing failed");
                 signature.as_ref().to_vec()
             }
-            AwsLcRsSecretKeyInner::Ed25519 { key_pair, .. } => {
-                key_pair.sign(target).as_ref().to_vec()
-            }
+            AwsLcRsSecretKeyInner::Ed25519(key_pair) => key_pair.sign(target).as_ref().to_vec(),
         }
     }
 
     fn public_key(&self) -> Self::PublicKey {
         match &self.0 {
-            AwsLcRsSecretKeyInner::P256 { key_pair, .. } => {
+            AwsLcRsSecretKeyInner::P256(key_pair) => {
                 let mut bytes = [0u8; P256_UNCOMPRESSED_LEN];
                 bytes.copy_from_slice(key_pair.public_key().as_ref());
                 AwsLcRsPublicKey(AwsLcRsPublicKeyInner::P256(bytes))
             }
-            AwsLcRsSecretKeyInner::Ed25519 { key_pair, .. } => {
+            AwsLcRsSecretKeyInner::Ed25519(key_pair) => {
                 let mut bytes = [0u8; ED25519_KEY_LEN];
                 bytes.copy_from_slice(key_pair.public_key().as_ref());
                 AwsLcRsPublicKey(AwsLcRsPublicKeyInner::Ed25519(bytes))
@@ -232,7 +222,7 @@ impl SecretKeyT for AwsLcRsSecretKey {
 
     fn to_cose_key(&self) -> CoseKey {
         match &self.0 {
-            AwsLcRsSecretKeyInner::P256 { key_pair, d } => {
+            AwsLcRsSecretKeyInner::P256(key_pair) => {
                 let (x, y) = split_p256_uncompressed(
                     key_pair
                         .public_key()
@@ -240,30 +230,40 @@ impl SecretKeyT for AwsLcRsSecretKey {
                         .try_into()
                         .expect("aws-lc-rs P-256 public key is 65 bytes"),
                 );
+                let d = key_pair
+                    .private_key()
+                    .as_be_bytes()
+                    .expect("aws-lc-rs failed to marshal a P-256 private scalar");
                 CoseKeyBuilder::new_ec2_priv_key(
                     iana::EllipticCurve::P_256,
                     x.to_vec(),
                     y.to_vec(),
-                    d.as_slice().to_vec(),
+                    d.as_ref().to_vec(),
                 )
                 .algorithm(iana::Algorithm::ES256)
                 .build()
             }
-            AwsLcRsSecretKeyInner::Ed25519 { key_pair, seed } => CoseKeyBuilder::new_okp_key()
-                .algorithm(iana::Algorithm::EdDSA)
-                .param(
-                    iana::OkpKeyParameter::Crv.to_i64(),
-                    Value::from(iana::EllipticCurve::Ed25519.to_i64()),
-                )
-                .param(
-                    iana::OkpKeyParameter::X.to_i64(),
-                    Value::from(key_pair.public_key().as_ref()),
-                )
-                .param(
-                    iana::OkpKeyParameter::D.to_i64(),
-                    Value::from(seed.as_slice()),
-                )
-                .build(),
+            AwsLcRsSecretKeyInner::Ed25519(key_pair) => {
+                let seed = key_pair
+                    .seed()
+                    .and_then(|s| s.as_be_bytes())
+                    .expect("aws-lc-rs failed to marshal an Ed25519 seed");
+                CoseKeyBuilder::new_okp_key()
+                    .algorithm(iana::Algorithm::EdDSA)
+                    .param(
+                        iana::OkpKeyParameter::Crv.to_i64(),
+                        Value::from(iana::EllipticCurve::Ed25519.to_i64()),
+                    )
+                    .param(
+                        iana::OkpKeyParameter::X.to_i64(),
+                        Value::from(key_pair.public_key().as_ref()),
+                    )
+                    .param(
+                        iana::OkpKeyParameter::D.to_i64(),
+                        Value::from(seed.as_ref()),
+                    )
+                    .build()
+            }
         }
     }
 }
@@ -353,36 +353,11 @@ impl CryptoBackend for AwsLcRsBackend {
         match algorithm {
             iana::Algorithm::ES256 | iana::Algorithm::ESP256 => {
                 let key_pair = EcdsaKeyPair::generate(&ECDSA_P256_SHA256_ASN1_SIGNING)?;
-                let d_bin = key_pair.private_key().as_be_bytes()?;
-                let d_slice = d_bin.as_ref();
-                if d_slice.len() != P256_FIELD_LEN {
-                    return Err("aws-lc-rs produced unexpected P-256 scalar length"
-                        .to_string()
-                        .into());
-                }
-                let mut d: Zeroizing<[u8; P256_FIELD_LEN]> = Zeroizing::new([0u8; P256_FIELD_LEN]);
-                d.copy_from_slice(d_slice);
-                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::P256 {
-                    key_pair,
-                    d,
-                }))
+                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::P256(key_pair)))
             }
             iana::Algorithm::EdDSA | iana::Algorithm::Ed25519 => {
                 let key_pair = Ed25519KeyPair::generate()?;
-                let seed_bin = key_pair.seed()?.as_be_bytes()?;
-                let seed_slice = seed_bin.as_ref();
-                if seed_slice.len() != ED25519_KEY_LEN {
-                    return Err("aws-lc-rs produced unexpected Ed25519 seed length"
-                        .to_string()
-                        .into());
-                }
-                let mut seed: Zeroizing<[u8; ED25519_KEY_LEN]> =
-                    Zeroizing::new([0u8; ED25519_KEY_LEN]);
-                seed.copy_from_slice(seed_slice);
-                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::Ed25519 {
-                    key_pair,
-                    seed,
-                }))
+                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::Ed25519(key_pair)))
             }
             _ => Err("Algorithm is unsupported".to_string().into()),
         }
