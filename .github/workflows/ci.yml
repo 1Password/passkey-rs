@@ -2,6 +2,9 @@ on: push
 
 name: CI
 
+env:
+  rust: ${{ '1.90' }}
+
 permissions: {}
 
 jobs:
@@ -10,10 +13,6 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    strategy:
-      matrix:
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -29,7 +28,7 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
           components: clippy
           target: x86_64-pc-windows-gnu
 
@@ -37,23 +36,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run Clippy
-        run: rustup run ${{ matrix.rust }} cargo clippy --all --all-targets -- -D warnings
+        run: rustup run ${{ env.rust }} cargo clippy --all --all-targets -- -D warnings
 
       - name: Run Clippy with `linux` feature
-        run: rustup run ${{ matrix.rust }} cargo clippy --all --features linux -- -D warnings
+        run: rustup run ${{ env.rust }} cargo clippy --all --features linux -- -D warnings
 
       - name: Run Clippy with `windows` feature
-        run: rustup run ${{ matrix.rust }} cargo clippy --all --target x86_64-pc-windows-gnu --features windows -- -D warnings
+        run: rustup run ${{ env.rust }} cargo clippy --all --target x86_64-pc-windows-gnu --features windows -- -D warnings
 
   fmt:
     name: Rustfmt
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    strategy:
-      matrix:
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -69,12 +64,12 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
           components: rustfmt
           target: x86_64-pc-windows-gnu
 
       - name: Run Rustfmt
-        run: rustup run ${{ matrix.rust }} cargo fmt --all -- --check
+        run: rustup run ${{ env.rust }} cargo fmt --all -- --check
 
   semver-checks:
     runs-on: ubuntu-24.04
@@ -120,10 +115,6 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    strategy:
-      matrix:
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -142,27 +133,23 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
           target: x86_64-pc-windows-gnu
 
       - name: Run rustdoc
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps
 
       - name: Run rustdoc with `linux` feature
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --features linux
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --features linux
 
       - name: Run rustdoc with `windows` feature
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ matrix.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows
 
   build-wasm:
     name: Build-WASM
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    strategy:
-      matrix:
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -181,21 +168,17 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
           target: wasm32-unknown-unknown
 
       - name: Run build
-        run: rustup run ${{ matrix.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio" --target wasm32-unknown-unknown
+        run: rustup run ${{ env.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio" --target wasm32-unknown-unknown
 
   test-linux:
     name: Test-Linux
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    strategy:
-      matrix:
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -211,13 +194,13 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
 
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run tests with `linux` feature
-        run: rustup run ${{ matrix.rust }} cargo test --features "linux,passkey-client/tokio,passkey-authenticator/tokio"
+        run: rustup run ${{ env.rust }} cargo test --features "linux,passkey-client/tokio,passkey-authenticator/tokio"
 
   test-windows:
     name: Test-Windows
@@ -229,8 +212,6 @@ jobs:
         runs-on:
           - windows-11-arm
           - windows-2025
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -246,10 +227,10 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
 
       - name: Run tests
-        run: rustup run ${{ matrix.rust }} cargo test --features "windows,passkey-client/tokio,passkey-authenticator/tokio"
+        run: rustup run ${{ env.rust }} cargo test --features "windows,passkey-client/tokio,passkey-authenticator/tokio"
 
   test-macos:
     name: Test-MacOS
@@ -261,8 +242,6 @@ jobs:
         runs-on:
           - macos-26-intel
           - macos-26
-        rust:
-          - 1.87.0
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -278,10 +257,10 @@ jobs:
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.rust }}
 
       - name: Run tests
-        run: rustup run ${{ matrix.rust }} cargo test --features "passkey-client/tokio,passkey-authenticator/tokio"
+        run: rustup run ${{ env.rust }} cargo test --features "passkey-client/tokio,passkey-authenticator/tokio"
 
   typeshare:
     name: Typeshare
@@ -290,8 +269,6 @@ jobs:
       contents: read
     strategy:
       matrix:
-        rust:
-          - 1.87.0
         lang:
           - typescript
           - kotlin
