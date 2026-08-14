@@ -9,6 +9,7 @@ use zeroize::Zeroizing;
 use crate::CoseKeyConversionError;
 
 /// Length of an uncompressed SEC1 encoded P-256 public key (0x04 || X || Y).
+#[cfg(feature = "aws-lc-rs")]
 pub const P256_UNCOMPRESSED_LEN: usize = 65;
 /// Length of a P-256 field element (X or Y coordinate, or the D scalar).
 pub const P256_FIELD_LEN: usize = 32;
@@ -16,6 +17,7 @@ pub const P256_FIELD_LEN: usize = 32;
 pub const ED25519_KEY_LEN: usize = 32;
 
 /// Assemble the uncompressed SEC1 encoding `0x04 || X || Y` for a P-256 point.
+#[cfg(feature = "aws-lc-rs")]
 pub fn p256_uncompressed(
     x: &[u8; P256_FIELD_LEN],
     y: &[u8; P256_FIELD_LEN],
@@ -28,6 +30,7 @@ pub fn p256_uncompressed(
 }
 
 /// Split a 65-byte uncompressed SEC1 P-256 point back into `(X, Y)` references.
+#[cfg(feature = "aws-lc-rs")]
 pub fn split_p256_uncompressed(
     bytes: &[u8; P256_UNCOMPRESSED_LEN],
 ) -> (&[u8; P256_FIELD_LEN], &[u8; P256_FIELD_LEN]) {
@@ -41,6 +44,7 @@ pub fn split_p256_uncompressed(
 }
 
 /// Extract the P-256 `X` and `Y` coordinates from an EC2 COSE key. Requires both to be present.
+#[cfg(feature = "aws-lc-rs")]
 pub fn extract_p256_xy(
     cose_key: &CoseKey,
 ) -> Result<([u8; P256_FIELD_LEN], [u8; P256_FIELD_LEN]), CoseKeyConversionError> {
@@ -104,11 +108,13 @@ pub fn extract_p256_d(
 }
 
 /// Extract the Ed25519 public key `X` from an OKP COSE key. Requires it to be present.
+#[cfg(feature = "aws-lc-rs")]
 pub fn extract_okp_x(cose_key: &CoseKey) -> Result<[u8; ED25519_KEY_LEN], CoseKeyConversionError> {
     find_okp_x(cose_key)?.ok_or(CoseKeyConversionError::InvalidCredential)
 }
 
 /// Extract the Ed25519 public key `X` from an OKP COSE key if present.
+#[cfg(feature = "aws-lc-rs")]
 pub fn find_okp_x(
     cose_key: &CoseKey,
 ) -> Result<Option<[u8; ED25519_KEY_LEN]>, CoseKeyConversionError> {
@@ -159,15 +165,18 @@ pub fn extract_okp_d(
 }
 
 /// Look up the `crv` value in an EC2 COSE key.
+#[cfg(feature = "aws-lc-rs")]
 pub fn find_ec2_crv(cose_key: &CoseKey) -> Result<Option<i64>, CoseKeyConversionError> {
     find_crv(cose_key, iana::Ec2KeyParameter::Crv.to_i64())
 }
 
 /// Look up the `crv` value in an OKP COSE key.
+#[cfg(feature = "aws-lc-rs")]
 pub fn find_okp_crv(cose_key: &CoseKey) -> Result<Option<i64>, CoseKeyConversionError> {
     find_crv(cose_key, iana::OkpKeyParameter::Crv.to_i64())
 }
 
+#[cfg(feature = "aws-lc-rs")]
 fn find_crv(cose_key: &CoseKey, crv_label: i64) -> Result<Option<i64>, CoseKeyConversionError> {
     let Some(value) = cose_key.params.iter().find_map(|(k, v)| match k {
         coset::Label::Int(i) if *i == crv_label => Some(v),

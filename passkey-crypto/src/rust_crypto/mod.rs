@@ -201,7 +201,7 @@ impl SecretKeyT for RustCryptoSecretKey {
                 }
                 let seed = crate::cose::extract_okp_d(cose_key)?;
                 Ok(Self(RustCryptoSecretKeyInner::Ed25519(
-                    ed25519_dalek::SigningKey::from_bytes(&*seed),
+                    ed25519_dalek::SigningKey::from_bytes(&seed),
                 )))
             }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
