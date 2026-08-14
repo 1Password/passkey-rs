@@ -471,8 +471,12 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
     let store = StoreWithoutDiscoverableSupport;
     let user_mock = MockUserValidationMethod::verified_user(0);
     let request = good_request();
-    let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend::new());
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        store,
+        user_mock,
+        AvailableBackend::new(),
+    );
     authenticator.set_make_credentials_with_signature_counter(true);
 
     // Act

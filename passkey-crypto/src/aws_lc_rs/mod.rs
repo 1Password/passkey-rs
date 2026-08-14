@@ -9,8 +9,8 @@ use std::ops::RangeInclusive;
 use crate::{
     CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
     cose::{
-        ED25519_KEY_LEN, P256_UNCOMPRESSED_LEN, extract_okp_d, extract_okp_x,
-        extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv, find_okp_x, p256_uncompressed,
+        ED25519_KEY_LEN, P256_UNCOMPRESSED_LEN, extract_okp_d, extract_okp_x, extract_p256_d,
+        extract_p256_xy, find_ec2_crv, find_okp_crv, find_okp_x, p256_uncompressed,
         split_p256_uncompressed,
     },
     hash::Sha256Backend,
@@ -361,4 +361,3 @@ impl CryptoBackend for AwsLcRsBackend {
         }
     }
 }
-
