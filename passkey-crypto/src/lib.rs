@@ -16,6 +16,38 @@ pub mod rust_crypto;
 #[cfg(feature = "aws-lc-rs")]
 pub mod aws_lc_rs;
 
+/// The [CryptoBackend] to use when a downstream crate has not picked one explicitly.
+///
+/// Resolves to [aws_lc_rs::AwsLcRsBackend] when the `aws-lc-rs` feature is enabled, otherwise
+/// [rust_crypto::RustCryptoBackend] when only the `rust-crypto` feature is enabled. If both
+/// features are enabled, aws-lc-rs wins.
+#[cfg(feature = "aws-lc-rs")]
+pub type AvailableBackend = aws_lc_rs::AwsLcRsBackend;
+
+/// The [CryptoBackend] to use when a downstream crate has not picked one explicitly.
+///
+/// Resolves to [aws_lc_rs::AwsLcRsBackend] when the `aws-lc-rs` feature is enabled, otherwise
+/// [rust_crypto::RustCryptoBackend] when only the `rust-crypto` feature is enabled. If both
+/// features are enabled, aws-lc-rs wins.
+#[cfg(all(feature = "rust-crypto", not(feature = "aws-lc-rs")))]
+pub type AvailableBackend = rust_crypto::RustCryptoBackend;
+
+/// The [rng::RngBackend] provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailableRng = <AvailableBackend as CryptoBackend>::Rng;
+
+/// The [hash::Sha256Backend] provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailableSha2 = <AvailableBackend as CryptoBackend>::Sha256;
+
+/// The signing-algorithm secret key type provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailableSecretKey = <AvailableBackend as CryptoBackend>::SecretKey;
+
+/// The signing-algorithm public key type provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailablePublicKey = <AvailableSecretKey as SecretKeyT>::PublicKey;
+
 #[cfg(all(test, feature = "aws-lc-rs", feature = "rust-crypto"))]
 mod tests;
 
@@ -29,6 +61,9 @@ pub trait CryptoBackend {
 
     /// Signature algorithm's secret key.
     type SecretKey: SecretKeyT;
+
+    /// Construct a new instance of this backend.
+    fn new() -> Self;
 
     /// List the signing algorithms supported by this [CryptoBackend].
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm>;

@@ -326,6 +326,10 @@ impl CryptoBackend for RustCryptoBackend {
 
     type SecretKey = RustCryptoSecretKey;
 
+    fn new() -> Self {
+        Self
+    }
+
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm> {
         vec![
             iana::Algorithm::ES256,

@@ -336,6 +336,10 @@ impl CryptoBackend for AwsLcRsBackend {
 
     type SecretKey = AwsLcRsSecretKey;
 
+    fn new() -> Self {
+        Self
+    }
+
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm> {
         vec![
             iana::Algorithm::ES256,

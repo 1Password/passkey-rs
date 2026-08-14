@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
-use passkey_crypto::{
-    iana,
-    rng::RngBackend,
-    rust_crypto::{RustCryptoBackend, RustCryptoRng},
-};
+use passkey_crypto::{AvailableBackend, AvailableRng, CryptoBackend, iana, rng::RngBackend};
 use passkey_types::{
     Bytes,
     ctap2::{
@@ -29,13 +25,13 @@ use crate::{
 
 fn good_request() -> Request {
     Request {
-        client_data_hash: RustCryptoRng::random_vec(32).into(),
+        client_data_hash: AvailableRng::random_vec(32).into(),
         rp: PublicKeyCredentialRpEntity {
             id: "future.1password.com".into(),
             name: Some("1password".into()),
         },
         user: webauthn::PublicKeyCredentialUserEntity {
-            id: RustCryptoRng::random_vec(16).into(),
+            id: AvailableRng::random_vec(16).into(),
             display_name: "wendy".into(),
             name: "Appleseed".into(),
         },
@@ -69,7 +65,7 @@ async fn assert_storage_on_success() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     authenticator
@@ -84,7 +80,7 @@ async fn assert_storage_on_success() {
 
 #[tokio::test]
 async fn assert_excluded_credentials() {
-    let cred_id: Bytes = RustCryptoRng::random_vec(16).into();
+    let cred_id: Bytes = AvailableRng::random_vec(16).into();
     let response = Request {
         exclude_list: Some(vec![webauthn::PublicKeyCredentialDescriptor {
             ty: webauthn::PublicKeyCredentialType::PublicKey,
@@ -133,7 +129,7 @@ async fn assert_excluded_credentials() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     authenticator
@@ -153,7 +149,7 @@ async fn assert_unsupported_algorithm() {
         Aaguid::new_empty(),
         MemoryStore::new(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     let request = Request {
@@ -182,7 +178,7 @@ async fn make_credential_counter_is_some_0_when_counters_are_enabled() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
     authenticator.set_make_credentials_with_signature_counter(true);
 
@@ -203,7 +199,7 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     let request = Request {
@@ -234,7 +230,7 @@ async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     let request = Request {
@@ -260,7 +256,7 @@ async fn supported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -287,7 +283,7 @@ async fn supported_extension_without_extension_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -311,7 +307,7 @@ async fn supported_extension_with_request_gives_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -349,7 +345,7 @@ async fn hmac_secret_mc_happy_path() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only().enable_on_make_credential());
 
@@ -357,8 +353,8 @@ async fn hmac_secret_mc_happy_path() {
         extensions: Some(ExtensionInputs {
             prf: Some(AuthenticatorPrfInputs {
                 eval: Some(AuthenticatorPrfValues {
-                    first: RustCryptoRng::random_vec(32).try_into().unwrap(),
-                    second: Some(RustCryptoRng::random_vec(32).try_into().unwrap()),
+                    first: AvailableRng::random_vec(32).try_into().unwrap(),
+                    second: Some(AvailableRng::random_vec(32).try_into().unwrap()),
                 }),
                 eval_by_credential: None,
             }),
@@ -398,7 +394,7 @@ async fn hmac_secret_mc_without_hmac_secret_support() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     )
     //support on make credential is not set.
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
@@ -407,7 +403,7 @@ async fn hmac_secret_mc_without_hmac_secret_support() {
         extensions: Some(ExtensionInputs {
             prf: Some(AuthenticatorPrfInputs {
                 eval: Some(AuthenticatorPrfValues {
-                    first: RustCryptoRng::random_vec(32).try_into().unwrap(),
+                    first: AvailableRng::random_vec(32).try_into().unwrap(),
                     second: None,
                 }),
                 eval_by_credential: None,
@@ -476,7 +472,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
     let user_mock = MockUserValidationMethod::verified_user(0);
     let request = good_request();
     let mut authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+        Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend::new());
     authenticator.set_make_credentials_with_signature_counter(true);
 
     // Act
@@ -495,7 +491,7 @@ async fn empty_store_with_exclude_credentials_succeeds() {
     // would return NoCredentials error when checking excludeCredentials,
     // causing credential creation to fail incorrectly.
 
-    let cred_id: Bytes = RustCryptoRng::random_vec(16).into();
+    let cred_id: Bytes = AvailableRng::random_vec(16).into();
     let request = Request {
         exclude_list: Some(vec![webauthn::PublicKeyCredentialDescriptor {
             ty: webauthn::PublicKeyCredentialType::PublicKey,
@@ -516,7 +512,7 @@ async fn empty_store_with_exclude_credentials_succeeds() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     // This should succeed - an empty store means no credentials to exclude
@@ -547,7 +543,7 @@ async fn empty_exclude_credentials_with_empty_store_succeeds() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     authenticator
@@ -564,15 +560,15 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
     // but none of them are in the excludeCredentials list,
     // credential creation should succeed.
 
-    let stored_cred_id: Bytes = RustCryptoRng::random_vec(16).into();
-    let excluded_cred_id: Bytes = RustCryptoRng::random_vec(16).into();
+    let stored_cred_id: Bytes = AvailableRng::random_vec(16).into();
+    let excluded_cred_id: Bytes = AvailableRng::random_vec(16).into();
 
     // Create a passkey that will be stored (with different ID than excluded)
     let passkey = Passkey {
         key: Default::default(),
         rp_id: "future.1password.com".into(),
         credential_id: stored_cred_id.clone(),
-        user_handle: Some(RustCryptoRng::random_vec(16).into()),
+        user_handle: Some(AvailableRng::random_vec(16).into()),
         username: Some("Appleseed".into()),
         user_display_name: Some("wendy".into()),
         counter: None,
@@ -605,7 +601,7 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend::new(),
     );
 
     // This should succeed - the store contains credentials, but not the excluded one
