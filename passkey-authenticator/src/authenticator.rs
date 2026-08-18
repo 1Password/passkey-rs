@@ -171,6 +171,25 @@ where
         self.credential_id_length
     }
 
+    /// Override the crypto backend's algorithm enumeration into a subset of what it supports.
+    ///
+    /// If the provided list does not intersect with the crypto backend's supported algorithms,
+    /// this method will return an error.
+    pub fn set_algorithms(&mut self, algs: &[iana::Algorithm]) -> Result<(), Ctap2Error> {
+        // iana::Algorithm doesn't implement hash, so we gotta loop
+        let backend_supported = self.crypto.enumerate_algorithms();
+        let retained: Vec<_> = algs
+            .iter()
+            .filter(|alg| backend_supported.contains(*alg))
+            .cloned()
+            .collect();
+        if retained.is_empty() {
+            return Err(Ctap2Error::UnsupportedAlgorithm);
+        }
+        self.algs = retained;
+        Ok(())
+    }
+
     /// Access the [`CredentialStore`] to look into what is stored.
     pub fn store(&self) -> &S {
         &self.store
