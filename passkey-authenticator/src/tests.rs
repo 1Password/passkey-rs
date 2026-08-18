@@ -13,8 +13,7 @@ fn private_key_cose_round_trip_sanity_check() {
         let private_cose = original_private_key.to_cose_key();
         let public_key = original_private_key.public_key();
 
-        let auth_data =
-            AuthenticatorData::new("future.1password.com", None, &AvailableBackend);
+        let auth_data = AuthenticatorData::new("future.1password.com", None, &AvailableBackend);
         let mut signature_target = auth_data.to_vec();
         signature_target.extend(AvailableRng::random_vec(32));
 

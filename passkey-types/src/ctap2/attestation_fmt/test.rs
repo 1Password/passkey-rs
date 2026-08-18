@@ -161,20 +161,19 @@ fn deserialize_authenticator_data_with_only_ed() {
 
 #[test]
 fn round_trip_deserialization() {
-    let expected =
-        AuthenticatorData::new("future.1password.com", Some(0), &AvailableBackend)
-            .set_attested_credential_data(AttestedCredentialData {
-                aaguid: Aaguid::new_empty(),
-                credential_id: AvailableRng::random_vec(16),
-                key: CoseKeyBuilder::new_ec2_pub_key(
-                    coset::iana::EllipticCurve::P_256,
-                    // seeing as these are random, it is not a valid key, so don't use this.
-                    AvailableRng::random_vec(32),
-                    AvailableRng::random_vec(32),
-                )
-                .algorithm(coset::iana::Algorithm::ES256)
-                .build(),
-            });
+    let expected = AuthenticatorData::new("future.1password.com", Some(0), &AvailableBackend)
+        .set_attested_credential_data(AttestedCredentialData {
+            aaguid: Aaguid::new_empty(),
+            credential_id: AvailableRng::random_vec(16),
+            key: CoseKeyBuilder::new_ec2_pub_key(
+                coset::iana::EllipticCurve::P_256,
+                // seeing as these are random, it is not a valid key, so don't use this.
+                AvailableRng::random_vec(32),
+                AvailableRng::random_vec(32),
+            )
+            .algorithm(coset::iana::Algorithm::ES256)
+            .build(),
+        });
 
     let auth_data_bytes = expected.to_vec();
 

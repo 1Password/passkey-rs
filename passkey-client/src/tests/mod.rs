@@ -3,9 +3,7 @@ use crate::rp_id_verifier::tests::TestFetcher;
 use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
-use passkey_crypto::{
-    AvailableBackend, AvailableRng, AvailableSha2, rng::RngBackend,
-};
+use passkey_crypto::{AvailableBackend, AvailableRng, AvailableSha2, rng::RngBackend};
 use passkey_types::{Bytes, ctap2, encoding::try_from_base64url, webauthn::CollectedClientData};
 use serde::Deserialize;
 use url::{ParseError, Url};

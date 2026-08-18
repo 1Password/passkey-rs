@@ -4,7 +4,13 @@ use coset::{
     iana::{self, EnumI64},
 };
 
-use crate::{cose::{extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv}, hash::Sha256Backend, CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT};
+use crate::{
+    CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
+    cose::{
+        extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
+    },
+    hash::Sha256Backend,
+};
 use ed25519_dalek::{Signer, ed25519::SignatureEncoding};
 use hmac::{Hmac, KeyInit, Mac};
 use p256::{Sec1Point, elliptic_curve::Generate, pkcs8::EncodePublicKey};
@@ -58,9 +64,7 @@ impl PublicKeyT for RustCryptoPublicKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                if find_ec2_crv(cose_key)?
-                    != Some(iana::EllipticCurve::P_256.to_i64())
-                {
+                if find_ec2_crv(cose_key)? != Some(iana::EllipticCurve::P_256.to_i64()) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
                 let (x, y) = extract_p256_xy(cose_key)?;
@@ -80,9 +84,7 @@ impl PublicKeyT for RustCryptoPublicKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                if find_okp_crv(cose_key)?
-                    != Some(iana::EllipticCurve::Ed25519.to_i64())
-                {
+                if find_okp_crv(cose_key)? != Some(iana::EllipticCurve::Ed25519.to_i64()) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
                 let x = extract_okp_x(cose_key)?;
@@ -146,9 +148,7 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                if find_ec2_crv(cose_key)?
-                    != Some(iana::EllipticCurve::P_256.to_i64())
-                {
+                if find_ec2_crv(cose_key)? != Some(iana::EllipticCurve::P_256.to_i64()) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
                 let d = extract_p256_d(cose_key)?;
@@ -164,9 +164,7 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                if find_okp_crv(cose_key)?
-                    != Some(iana::EllipticCurve::Ed25519.to_i64())
-                {
+                if find_okp_crv(cose_key)? != Some(iana::EllipticCurve::Ed25519.to_i64()) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
                 let seed = extract_okp_d(cose_key)?;
