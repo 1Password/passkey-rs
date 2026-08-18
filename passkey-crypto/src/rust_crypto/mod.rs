@@ -4,14 +4,10 @@ use coset::{
     iana::{self, EnumI64},
 };
 
-use crate::{CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT, hash::Sha256Backend};
+use crate::{cose::{extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv}, hash::Sha256Backend, CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT};
 use ed25519_dalek::{Signer, ed25519::SignatureEncoding};
 use hmac::{Hmac, KeyInit, Mac};
-use p256::{
-    Sec1Point,
-    elliptic_curve::{Generate, array::Array},
-    pkcs8::EncodePublicKey,
-};
+use p256::{Sec1Point, elliptic_curve::Generate, pkcs8::EncodePublicKey};
 use sha2::{Digest, Sha256};
 use signature::Verifier;
 
@@ -62,36 +58,13 @@ impl PublicKeyT for RustCryptoPublicKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                let (mut x, mut y) = (None, None);
-                for (key, value) in &cose_key.params {
-                    if let coset::Label::Int(i) = key {
-                        let key = iana::Ec2KeyParameter::from_i64(*i)
-                            .ok_or(CoseKeyConversionError::InvalidCredential)?;
-                        match key {
-                            iana::Ec2KeyParameter::X => {
-                                if value.as_bytes().and_then(|v| x.replace(v)).is_some() {
-                                    log::warn!("Cose key has multiple entries for X coordinate");
-                                }
-                            }
-                            iana::Ec2KeyParameter::Y => {
-                                if value.as_bytes().and_then(|v| y.replace(v)).is_some() {
-                                    log::warn!("Cose key has multiple entries for Y coordinate");
-                                }
-                            }
-                            _ => (),
-                        }
-                    }
-                }
-                let (Some(x), Some(y)) = (x, y) else {
+                if find_ec2_crv(cose_key)?
+                    != Some(iana::EllipticCurve::P_256.to_i64())
+                {
                     return Err(CoseKeyConversionError::InvalidCredential);
-                };
-                let point = Sec1Point::from_affine_coordinates(
-                    &Array::try_from(x.as_slice())
-                        .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
-                    &Array::try_from(y.as_slice())
-                        .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
-                    false,
-                );
+                }
+                let (x, y) = extract_p256_xy(cose_key)?;
+                let point = Sec1Point::from_affine_coordinates((&x).into(), (&y).into(), false);
                 let Ok(pub_key) = p256::ecdsa::VerifyingKey::from_sec1_point(&point) else {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 };
@@ -107,27 +80,14 @@ impl PublicKeyT for RustCryptoPublicKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                let mut x = None;
-                for (key, value) in &cose_key.params {
-                    if let coset::Label::Int(i) = key {
-                        let key = iana::OkpKeyParameter::from_i64(*i)
-                            .ok_or(CoseKeyConversionError::InvalidCredential)?;
-                        if key == iana::OkpKeyParameter::X
-                            && value.as_bytes().and_then(|v| x.replace(v)).is_some()
-                        {
-                            log::warn!("Cose key has multiple entries for X coordinate");
-                        }
-                    }
-                }
-                let Some(x) = x else {
+                if find_okp_crv(cose_key)?
+                    != Some(iana::EllipticCurve::Ed25519.to_i64())
+                {
                     return Err(CoseKeyConversionError::InvalidCredential);
-                };
-                let public_key = ed25519_dalek::VerifyingKey::from_bytes(
-                    x.as_slice()
-                        .try_into()
-                        .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
-                )
-                .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                }
+                let x = extract_okp_x(cose_key)?;
+                let public_key = ed25519_dalek::VerifyingKey::from_bytes(&x)
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
 
                 public_key
                     .to_public_key_der()
@@ -186,7 +146,12 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                let d = crate::cose::extract_p256_d(cose_key)?;
+                if find_ec2_crv(cose_key)?
+                    != Some(iana::EllipticCurve::P_256.to_i64())
+                {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let d = extract_p256_d(cose_key)?;
                 Ok(Self(RustCryptoSecretKeyInner::P256(
                     p256::ecdsa::SigningKey::from_slice(d.as_slice())
                         .map_err(|_| CoseKeyConversionError::InvalidCredential)?,
@@ -199,7 +164,12 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ) {
                     return Err(CoseKeyConversionError::InvalidCredential);
                 }
-                let seed = crate::cose::extract_okp_d(cose_key)?;
+                if find_okp_crv(cose_key)?
+                    != Some(iana::EllipticCurve::Ed25519.to_i64())
+                {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let seed = extract_okp_d(cose_key)?;
                 Ok(Self(RustCryptoSecretKeyInner::Ed25519(
                     ed25519_dalek::SigningKey::from_bytes(&seed),
                 )))
