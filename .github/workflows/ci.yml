@@ -165,7 +165,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        backend: [rust-crypto]
+        backend: [rust-crypto, aws-lc-rs]
     permissions:
       contents: read
     steps:
@@ -182,15 +182,18 @@ jobs:
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+      - name: Install clang and emscripten
+        run: sudo apt-get update && sudo apt-get install -y clang emscripten
+
       - name: Install Rust toolchain
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
           toolchain: ${{ env.rust }}
-          target: wasm32-unknown-unknown
+          target: wasm32-unknown-emscripten
 
       - name: Run build
-        run: rustup run ${{ env.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}" --target wasm32-unknown-unknown
+        run: rustup run ${{ env.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}" --target wasm32-unknown-emscripten
 
   test-linux:
     name: Test-Linux
