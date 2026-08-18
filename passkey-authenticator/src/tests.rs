@@ -7,14 +7,14 @@ use passkey_types::ctap2::AuthenticatorData;
 fn private_key_cose_round_trip_sanity_check() {
     let algs = [iana::Algorithm::ES256, iana::Algorithm::Ed25519];
     for alg in algs {
-        let original_private_key = AvailableBackend::new()
+        let original_private_key = AvailableBackend
             .generate_key(alg)
             .unwrap_or_else(|_| panic!("Backend does not support {:?}", alg));
         let private_cose = original_private_key.to_cose_key();
         let public_key = original_private_key.public_key();
 
         let auth_data =
-            AuthenticatorData::new("future.1password.com", None, &AvailableBackend::new());
+            AuthenticatorData::new("future.1password.com", None, &AvailableBackend);
         let mut signature_target = auth_data.to_vec();
         signature_target.extend(AvailableRng::random_vec(32));
 

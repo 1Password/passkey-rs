@@ -1,5 +1,5 @@
 use passkey_crypto::rng::RngBackend;
-use passkey_crypto::{AvailableBackend, AvailableRng, CryptoBackend};
+use passkey_crypto::{AvailableBackend, AvailableRng};
 use passkey_types::{
     Passkey, StoredHmacSecret,
     ctap2::{
@@ -15,7 +15,7 @@ use crate::{
 };
 
 fn create_passkey(hmac_secret: Option<Vec<u8>>) -> Passkey {
-    let builder = Passkey::mock("example.com".into(), AvailableBackend::new());
+    let builder = Passkey::mock("example.com".into(), AvailableBackend);
 
     if let Some(hs) = hmac_secret {
         builder.hmac_secret(StoredHmacSecret {
@@ -49,7 +49,7 @@ async fn get_assertion_returns_no_credentials_found() {
         Aaguid::new_empty(),
         store,
         MockUserValidationMethod::verified_user_with_hint(1, MockUiHint::InformNoCredentialsFound),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     // Act
@@ -75,7 +75,7 @@ async fn get_assertion_increments_signature_counter_when_counter_is_some() {
             1,
             MockUiHint::RequestExistingCredential(passkey),
         ),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     // Act
@@ -102,7 +102,7 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let request = Request {
@@ -131,7 +131,7 @@ async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let request = Request {
@@ -157,7 +157,7 @@ async fn supported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -184,7 +184,7 @@ async fn supported_extension_without_extension_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -208,7 +208,7 @@ async fn supported_extension_with_request_gives_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 

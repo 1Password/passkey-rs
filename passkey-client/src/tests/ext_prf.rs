@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use passkey_authenticator::extensions::HmacSecretConfig;
-use passkey_crypto::{AvailableBackend, CryptoBackend};
+use passkey_crypto::AvailableBackend;
 use passkey_types::ctap2::{AuthenticatorData, Flags};
 
 use super::*;
@@ -29,7 +29,7 @@ async fn registration_without_eval() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(1),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
 
@@ -68,7 +68,7 @@ async fn registration_with_single_input_eval() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(1),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
@@ -138,7 +138,7 @@ async fn registration_with_eval_by_credential() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_user_check_skip(1),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -198,7 +198,7 @@ macro_rules! valid_authentication_with_prf {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_with_creation(2),
-                    AvailableBackend::new()
+                    AvailableBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -312,7 +312,7 @@ async fn auth_empty_allow_credentials() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_user_check_skip(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -367,7 +367,7 @@ macro_rules! invalid_eval_by_credential_in_authentication {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_user_check_skip(2),
-                    AvailableBackend::new()
+                    AvailableBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -441,7 +441,7 @@ macro_rules! compare_auth_calls {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_with_creation(3),
-                    AvailableBackend::new()
+                    AvailableBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -559,7 +559,7 @@ async fn registration_and_authentication_with_unsupported_authenticator_ignores_
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -608,7 +608,7 @@ async fn empty_extension_and_no_hmac_secret_support() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -655,7 +655,7 @@ async fn empty_extension_with_hmac_secret_support() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -705,7 +705,7 @@ async fn two_eval_by_credential_entries() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(3),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -826,7 +826,7 @@ async fn prf_already_hashed_does_not_hash_again() {
         ctap2::Aaguid::new_empty(),
         None,
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
@@ -921,7 +921,7 @@ async fn prf_takes_precedence_over_prf_already_hashed() {
         ctap2::Aaguid::new_empty(),
         None,
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);

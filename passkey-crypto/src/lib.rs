@@ -24,14 +24,14 @@ mod cose;
 /// Resolves to AwsLcRsBackend when the `aws-lc-rs` feature is enabled, otherwise RustCryptoBackend
 /// when only the `rust-crypto` feature is enabled. If both features are enabled, aws-lc-rs wins.
 #[cfg(feature = "aws-lc-rs")]
-pub type AvailableBackend = aws_lc_rs::AwsLcRsBackend;
+pub use aws_lc_rs::AwsLcRsBackend as AvailableBackend;
 
 /// The [CryptoBackend] to use when a downstream crate has not picked one explicitly.
 ///
 /// Resolves to AwsLcRsBackend when the `aws-lc-rs` feature is enabled, otherwise RustCryptoBackend
 /// when only the `rust-crypto` feature is enabled. If both features are enabled, aws-lc-rs wins.
 #[cfg(all(feature = "rust-crypto", not(feature = "aws-lc-rs")))]
-pub type AvailableBackend = rust_crypto::RustCryptoBackend;
+pub use rust_crypto::RustCryptoBackend as AvailableBackend;
 
 /// The [rng::RngBackend] provided by the [AvailableBackend].
 #[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
@@ -62,9 +62,6 @@ pub trait CryptoBackend {
 
     /// Signature algorithm's secret key.
     type SecretKey: SecretKeyT;
-
-    /// Construct a new instance of this backend.
-    fn new() -> Self;
 
     /// List the signing algorithms supported by this [CryptoBackend].
     fn enumerate_algorithms(&self) -> Vec<iana::Algorithm>;

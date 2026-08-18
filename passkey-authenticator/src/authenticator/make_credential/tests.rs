@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use passkey_crypto::{AvailableBackend, AvailableRng, CryptoBackend, iana, rng::RngBackend};
+use passkey_crypto::{AvailableBackend, AvailableRng, iana, rng::RngBackend};
 use passkey_types::{
     Bytes,
     ctap2::{
@@ -65,7 +65,7 @@ async fn assert_storage_on_success() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     authenticator
@@ -129,7 +129,7 @@ async fn assert_excluded_credentials() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     authenticator
@@ -149,7 +149,7 @@ async fn assert_unsupported_algorithm() {
         Aaguid::new_empty(),
         MemoryStore::new(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let request = Request {
@@ -178,7 +178,7 @@ async fn make_credential_counter_is_some_0_when_counters_are_enabled() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     authenticator.set_make_credentials_with_signature_counter(true);
 
@@ -199,7 +199,7 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let request = Request {
@@ -230,7 +230,7 @@ async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let request = Request {
@@ -256,7 +256,7 @@ async fn supported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -283,7 +283,7 @@ async fn supported_extension_without_extension_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -307,7 +307,7 @@ async fn supported_extension_with_request_gives_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -345,7 +345,7 @@ async fn hmac_secret_mc_happy_path() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only().enable_on_make_credential());
 
@@ -394,7 +394,7 @@ async fn hmac_secret_mc_without_hmac_secret_support() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     )
     //support on make credential is not set.
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
@@ -475,7 +475,7 @@ async fn make_credential_returns_err_when_rk_is_requested_but_not_supported() {
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     authenticator.set_make_credentials_with_signature_counter(true);
 
@@ -516,7 +516,7 @@ async fn empty_store_with_exclude_credentials_succeeds() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     // This should succeed - an empty store means no credentials to exclude
@@ -547,7 +547,7 @@ async fn empty_exclude_credentials_with_empty_store_succeeds() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     authenticator
@@ -605,7 +605,7 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     // This should succeed - the store contains credentials, but not the excluded one

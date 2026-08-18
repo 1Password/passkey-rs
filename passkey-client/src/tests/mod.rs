@@ -4,7 +4,7 @@ use super::*;
 use coset::iana;
 use passkey_authenticator::{MemoryStore, MockUserValidationMethod, UserCheck};
 use passkey_crypto::{
-    AvailableBackend, AvailableRng, AvailableSha2, CryptoBackend, rng::RngBackend,
+    AvailableBackend, AvailableRng, AvailableSha2, rng::RngBackend,
 };
 use passkey_types::{Bytes, ctap2, encoding::try_from_base64url, webauthn::CollectedClientData};
 use serde::Deserialize;
@@ -87,7 +87,7 @@ async fn create_and_authenticate() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -121,7 +121,7 @@ async fn create_and_authenticate_with_extra_client_data() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -186,7 +186,7 @@ async fn create_and_authenticate_with_origin_subdomain() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -228,7 +228,7 @@ async fn create_and_authenticate_without_rp_id() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -279,7 +279,7 @@ async fn create_and_authenticate_without_cred_params() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -438,7 +438,7 @@ async fn client_register_triggers_uv_when_uv_is_required() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         user_mock_with_uv(),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
     let origin = Url::parse("https://future.1password.com").unwrap();
@@ -466,7 +466,7 @@ async fn client_register_does_not_trigger_uv_when_uv_is_discouraged() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         user_mock_without_uv(),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
     let origin = Url::parse("https://future.1password.com").unwrap();
@@ -569,7 +569,7 @@ async fn create_and_authenticate_with_related_origins() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let mut client = Client::new_with_custom_tld_provider(
@@ -604,7 +604,7 @@ async fn fail_to_create_with_unrelated_origin() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(0),
-        AvailableBackend::new(),
+        AvailableBackend,
     );
 
     let mut client = Client::new_with_custom_tld_provider(

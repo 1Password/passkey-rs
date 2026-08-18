@@ -20,7 +20,7 @@ rust-crypto = ["dep:p256", "dep:ed25519-dalek", "dep:signature", "rand", "dep:sh
 aws-lc-rs = ["dep:aws-lc-rs", "dep:zeroize"]
 
 [dependencies]
-aws-lc-rs = { version = "1.18", features = ["fips"], optional = true }
+aws-lc-rs = { version = "1.18", optional = true }
 coset.workspace = true
 ed25519-dalek = { version = "3.0", optional = true, features = [ "alloc", "rand_core", "pkcs8" ] }
 hmac = { version = "0.13", optional = true }

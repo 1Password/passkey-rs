@@ -30,7 +30,7 @@ async fn check_user_does_not_check_up_or_uv_when_not_requested() {
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: false,
@@ -73,7 +73,7 @@ async fn check_user_checks_up_when_requested() {
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
@@ -119,7 +119,7 @@ async fn check_user_checks_uv_when_requested() {
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
@@ -162,7 +162,7 @@ async fn check_user_returns_operation_denied_when_up_was_requested_but_not_retur
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
@@ -210,7 +210,7 @@ async fn check_user_returns_operation_denied_when_uv_was_requested_but_not_retur
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
@@ -244,7 +244,7 @@ async fn check_user_returns_unsupported_option_when_uv_was_requested_but_is_not_
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
@@ -293,7 +293,7 @@ async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_
         Aaguid::new_empty(),
         store,
         user_mock,
-        AvailableBackend::new(),
+        AvailableBackend,
     );
     let options = passkey_types::ctap2::make_credential::Options {
         up: false,
