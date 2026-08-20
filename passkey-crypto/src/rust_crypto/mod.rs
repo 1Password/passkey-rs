@@ -7,18 +7,18 @@ use coset::{
 use crate::{
     CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
     cose::{
-        extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
-        ML_DSA_SEED_LEN, extract_akp_priv, extract_akp_pub,
+        ML_DSA_SEED_LEN, extract_akp_priv, extract_akp_pub, extract_okp_d, extract_okp_x,
+        extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
     },
     hash::Sha256Backend,
 };
 use ed25519_dalek::{Signer, ed25519::SignatureEncoding};
 use hmac::{Hmac, KeyInit, Mac};
+use ml_dsa::pkcs8::{der::AnyRef, spki::AssociatedAlgorithmIdentifier};
 use ml_dsa::{
     MlDsa44, MlDsa65, MlDsa87, MlDsaParams, Seed as MlDsaSeed, Signature as MlDsaSignature,
     SigningKey as MlDsaSigningKey, VerifyingKey as MlDsaVerifyingKey, signature::Keypair,
 };
-use ml_dsa::pkcs8::{der::AnyRef, spki::AssociatedAlgorithmIdentifier};
 use p256::{Sec1Point, elliptic_curve::Generate, pkcs8::EncodePublicKey};
 use sha2::{Digest, Sha256};
 use signature::Verifier;
@@ -356,15 +356,15 @@ impl CryptoBackend for RustCryptoBackend {
                     ed25519_dalek::SigningKey::generate(&mut rng),
                 )))
             }
-            iana::Algorithm::ML_DSA_44 => Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::MlDsa44(
-                ml_dsa_generate::<MlDsa44>(),
-            ))),
-            iana::Algorithm::ML_DSA_65 => Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::MlDsa65(
-                ml_dsa_generate::<MlDsa65>(),
-            ))),
-            iana::Algorithm::ML_DSA_87 => Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::MlDsa87(
-                ml_dsa_generate::<MlDsa87>(),
-            ))),
+            iana::Algorithm::ML_DSA_44 => Ok(RustCryptoSecretKey(
+                RustCryptoSecretKeyInner::MlDsa44(ml_dsa_generate::<MlDsa44>()),
+            )),
+            iana::Algorithm::ML_DSA_65 => Ok(RustCryptoSecretKey(
+                RustCryptoSecretKeyInner::MlDsa65(ml_dsa_generate::<MlDsa65>()),
+            )),
+            iana::Algorithm::ML_DSA_87 => Ok(RustCryptoSecretKey(
+                RustCryptoSecretKeyInner::MlDsa87(ml_dsa_generate::<MlDsa87>()),
+            )),
             _ => Err("Algorithm is unsupported".to_string().into()),
         }
     }
@@ -403,7 +403,9 @@ fn ml_dsa_secret_from_cose_key<P: MlDsaParams>(
     }
     let seed = extract_akp_priv(cose_key)?;
     let seed_bytes: [u8; ML_DSA_SEED_LEN] = *seed;
-    Ok(MlDsaSigningKey::<P>::from_seed(&MlDsaSeed::from(seed_bytes)))
+    Ok(MlDsaSigningKey::<P>::from_seed(&MlDsaSeed::from(
+        seed_bytes,
+    )))
 }
 
 fn ml_dsa_der_from_cose_key<P>(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError>

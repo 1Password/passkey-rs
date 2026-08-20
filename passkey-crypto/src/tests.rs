@@ -258,8 +258,7 @@ fn ml_dsa_priv_cose(variant: MlDsaVariant, seed: &[u8]) -> CoseKey {
             Value::from(seed.to_vec()),
         )
         .build();
-    let secret =
-        RustCryptoSecretKey::from_cose_key(&priv_cose_no_pub).expect("valid ml-dsa seed");
+    let secret = RustCryptoSecretKey::from_cose_key(&priv_cose_no_pub).expect("valid ml-dsa seed");
     secret.to_cose_key()
 }
 
