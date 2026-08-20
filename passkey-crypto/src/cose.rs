@@ -15,6 +15,8 @@ pub const P256_UNCOMPRESSED_LEN: usize = 65;
 pub const P256_FIELD_LEN: usize = 32;
 /// Length of an Ed25519 seed / public key.
 pub const ED25519_KEY_LEN: usize = 32;
+/// Length of an ML-DSA seed (all variants use a 32-byte seed).
+pub const ML_DSA_SEED_LEN: usize = 32;
 
 /// Assemble the uncompressed SEC1 encoding `0x04 || X || Y` for a P-256 point.
 #[cfg(feature = "aws-lc-rs")]
@@ -169,6 +171,46 @@ pub fn find_ec2_crv(cose_key: &CoseKey) -> Result<Option<i64>, CoseKeyConversion
 /// Look up the `crv` value in an OKP COSE key.
 pub fn find_okp_crv(cose_key: &CoseKey) -> Result<Option<i64>, CoseKeyConversionError> {
     find_crv(cose_key, iana::OkpKeyParameter::Crv.to_i64())
+}
+
+/// Extract the ML-DSA raw public key (`Pub`) from an AKP COSE key.
+pub fn extract_akp_pub(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError> {
+    cose_key
+        .params
+        .iter()
+        .find_map(|(k, v)| {
+            let coset::Label::Int(i) = k else {
+                return None;
+            };
+            iana::AkpKeyParameter::from_i64(*i)
+                .filter(|p| *p == iana::AkpKeyParameter::Pub)
+                .and_then(|_| v.as_bytes().cloned())
+        })
+        .ok_or(CoseKeyConversionError::InvalidCredential)
+}
+
+/// Extract the ML-DSA seed (`Priv`) from an AKP COSE key.
+pub fn extract_akp_priv(
+    cose_key: &CoseKey,
+) -> Result<Zeroizing<[u8; ML_DSA_SEED_LEN]>, CoseKeyConversionError> {
+    let bytes = cose_key
+        .params
+        .iter()
+        .find_map(|(k, v)| {
+            let coset::Label::Int(i) = k else {
+                return None;
+            };
+            iana::AkpKeyParameter::from_i64(*i)
+                .filter(|p| *p == iana::AkpKeyParameter::Priv)
+                .and_then(|_| v.as_bytes())
+        })
+        .ok_or(CoseKeyConversionError::InvalidCredential)?;
+    if bytes.len() != ML_DSA_SEED_LEN {
+        return Err(CoseKeyConversionError::InvalidCredential);
+    }
+    let mut seed: Zeroizing<[u8; ML_DSA_SEED_LEN]> = Zeroizing::new([0u8; ML_DSA_SEED_LEN]);
+    seed.copy_from_slice(bytes);
+    Ok(seed)
 }
 
 fn find_crv(cose_key: &CoseKey, crv_label: i64) -> Result<Option<i64>, CoseKeyConversionError> {

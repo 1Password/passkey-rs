@@ -2,7 +2,7 @@
 //! methods like the Rng methods and generate_key are not tested.
 
 use coset::{
-    CoseKey, CoseKeyBuilder,
+    CoseKey, CoseKeyBuilder, MlDsaVariant,
     cbor::Value,
     iana::{self, EnumI64},
 };
@@ -242,4 +242,110 @@ fn ed25519_sign_aws_lc_rs_verify_rust_crypto() {
             .verify(msg, &sig)
             .expect("RustCrypto must verify an aws-lc-rs Ed25519 signature");
     }
+}
+
+// ML-DSA tests.
+const ML_DSA_SEED_44: [u8; 32] = [0x11; 32];
+const ML_DSA_SEED_65: [u8; 32] = [0x22; 32];
+const ML_DSA_SEED_87: [u8; 32] = [0x33; 32];
+
+fn ml_dsa_priv_cose(variant: MlDsaVariant, seed: &[u8]) -> CoseKey {
+    // Derive the raw public key with the RustCrypto backend so we can put it in the COSE key
+    // alongside the seed.
+    let priv_cose_no_pub = CoseKeyBuilder::new_mldsa_pub_key(variant, Vec::new())
+        .param(
+            iana::AkpKeyParameter::Priv.to_i64(),
+            Value::from(seed.to_vec()),
+        )
+        .build();
+    let secret =
+        RustCryptoSecretKey::from_cose_key(&priv_cose_no_pub).expect("valid ml-dsa seed");
+    secret.to_cose_key()
+}
+
+fn ml_dsa_pub_cose(variant: MlDsaVariant, seed: &[u8]) -> CoseKey {
+    let priv_cose = ml_dsa_priv_cose(variant, seed);
+    RustCryptoSecretKey::from_cose_key(&priv_cose)
+        .unwrap()
+        .public_key()
+        .to_cose_key()
+}
+
+fn ml_dsa_der_matches(variant: MlDsaVariant, seed: &[u8]) {
+    let cose = ml_dsa_pub_cose(variant, seed);
+    let aws = AwsLcRsPublicKey::der_from_cose_key(&cose).unwrap();
+    let rc = RustCryptoPublicKey::der_from_cose_key(&cose).unwrap();
+    assert_eq!(aws, rc, "ML-DSA {:?} DER mismatch", variant);
+}
+
+#[test]
+fn ml_dsa_public_der_from_cose_matches() {
+    ml_dsa_der_matches(MlDsaVariant::MlDsa44, &ML_DSA_SEED_44);
+    ml_dsa_der_matches(MlDsaVariant::MlDsa65, &ML_DSA_SEED_65);
+    ml_dsa_der_matches(MlDsaVariant::MlDsa87, &ML_DSA_SEED_87);
+}
+
+fn ml_dsa_public_key_matches(variant: MlDsaVariant, seed: &[u8]) {
+    let cose = ml_dsa_priv_cose(variant, seed);
+    let aws_sec = AwsLcRsSecretKey::from_cose_key(&cose).unwrap();
+    let rc_sec = RustCryptoSecretKey::from_cose_key(&cose).unwrap();
+    assert_eq!(
+        aws_sec.public_key().to_cose_key(),
+        rc_sec.public_key().to_cose_key(),
+        "ML-DSA {:?} public key mismatch",
+        variant,
+    );
+}
+
+#[test]
+fn ml_dsa_secret_public_key_matches() {
+    ml_dsa_public_key_matches(MlDsaVariant::MlDsa44, &ML_DSA_SEED_44);
+    ml_dsa_public_key_matches(MlDsaVariant::MlDsa65, &ML_DSA_SEED_65);
+    ml_dsa_public_key_matches(MlDsaVariant::MlDsa87, &ML_DSA_SEED_87);
+}
+
+fn ml_dsa_secret_cose_matches(variant: MlDsaVariant, seed: &[u8]) {
+    let cose = ml_dsa_priv_cose(variant, seed);
+    let aws_sec = AwsLcRsSecretKey::from_cose_key(&cose).unwrap();
+    let rc_sec = RustCryptoSecretKey::from_cose_key(&cose).unwrap();
+    assert_eq!(
+        aws_sec.to_cose_key(),
+        rc_sec.to_cose_key(),
+        "ML-DSA {:?} secret COSE mismatch",
+        variant,
+    );
+}
+
+#[test]
+fn ml_dsa_secret_to_cose_matches() {
+    ml_dsa_secret_cose_matches(MlDsaVariant::MlDsa44, &ML_DSA_SEED_44);
+    ml_dsa_secret_cose_matches(MlDsaVariant::MlDsa65, &ML_DSA_SEED_65);
+    ml_dsa_secret_cose_matches(MlDsaVariant::MlDsa87, &ML_DSA_SEED_87);
+}
+
+fn ml_dsa_cross_verify(variant: MlDsaVariant, seed: &[u8]) {
+    let cose = ml_dsa_priv_cose(variant, seed);
+    let mut rc_sec = RustCryptoSecretKey::from_cose_key(&cose).unwrap();
+    let mut aws_sec = AwsLcRsSecretKey::from_cose_key(&cose).unwrap();
+    let aws_pub = aws_sec.public_key();
+    let rc_pub = rc_sec.public_key();
+
+    for msg in TEST_MESSAGES {
+        let rc_sig = rc_sec.sign(msg);
+        aws_pub
+            .verify(msg, &rc_sig)
+            .expect("aws-lc-rs must verify a RustCrypto ML-DSA signature");
+
+        let aws_sig = aws_sec.sign(msg);
+        rc_pub
+            .verify(msg, &aws_sig)
+            .expect("RustCrypto must verify an aws-lc-rs ML-DSA signature");
+    }
+}
+
+#[test]
+fn ml_dsa_cross_backend_sign_verify() {
+    ml_dsa_cross_verify(MlDsaVariant::MlDsa44, &ML_DSA_SEED_44);
+    ml_dsa_cross_verify(MlDsaVariant::MlDsa65, &ML_DSA_SEED_65);
+    ml_dsa_cross_verify(MlDsaVariant::MlDsa87, &ML_DSA_SEED_87);
 }

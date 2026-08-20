@@ -1,11 +1,11 @@
 use passkey_crypto::{
-    AvailableBackend, AvailableRng, CryptoBackend, PublicKeyT, SecretKeyT, iana, rng::RngBackend,
+    AvailableBackend, AvailableRng, CryptoBackend, PublicKeyT, SecretKeyT, rng::RngBackend,
 };
 use passkey_types::ctap2::AuthenticatorData;
 
 #[test]
 fn private_key_cose_round_trip_sanity_check() {
-    let algs = [iana::Algorithm::ES256, iana::Algorithm::Ed25519];
+    let algs = AvailableBackend.enumerate_algorithms();
     for alg in algs {
         let original_private_key = AvailableBackend
             .generate_key(alg)

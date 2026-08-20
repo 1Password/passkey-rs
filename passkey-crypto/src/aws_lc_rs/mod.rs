@@ -1,5 +1,5 @@
 use coset::{
-    CoseKey, CoseKeyBuilder,
+    CoseKey, CoseKeyBuilder, MlDsaVariant,
     cbor::Value,
     iana::{self, EnumI64},
 };
@@ -9,9 +9,9 @@ use std::ops::RangeInclusive;
 use crate::{
     CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
     cose::{
-        ED25519_KEY_LEN, P256_UNCOMPRESSED_LEN, extract_okp_d, extract_okp_x, extract_p256_d,
-        extract_p256_xy, find_ec2_crv, find_okp_crv, find_okp_x, p256_uncompressed,
-        split_p256_uncompressed,
+        ED25519_KEY_LEN, ML_DSA_SEED_LEN, P256_UNCOMPRESSED_LEN, extract_akp_priv, extract_akp_pub,
+        extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
+        find_okp_x, p256_uncompressed, split_p256_uncompressed,
     },
     hash::Sha256Backend,
     rng::RngBackend,
@@ -23,7 +23,9 @@ use aws_lc_rs::{
     rand::SystemRandom,
     signature::{
         ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_ASN1_SIGNING, ED25519, EcdsaKeyPair,
-        Ed25519KeyPair, KeyPair, ParsedPublicKey, UnparsedPublicKey,
+        Ed25519KeyPair, KeyPair, ML_DSA_44, ML_DSA_44_SIGNING, ML_DSA_65, ML_DSA_65_SIGNING,
+        ML_DSA_87, ML_DSA_87_SIGNING, ParsedPublicKey, PqdsaKeyPair, PqdsaSigningAlgorithm,
+        PqdsaVerificationAlgorithm, UnparsedPublicKey,
     },
 };
 
@@ -35,6 +37,11 @@ enum AwsLcRsSecretKeyInner {
     P256(EcdsaKeyPair),
     // Secret key that uses the Ed25519 EdDSA algorithm.
     Ed25519(Ed25519KeyPair),
+    // Secret key that uses an ML-DSA algorithm.
+    MlDsa {
+        variant: MlDsaVariant,
+        key_pair: PqdsaKeyPair,
+    },
 }
 
 /// Public key backed by aws-lc-rs.
@@ -45,6 +52,11 @@ enum AwsLcRsPublicKeyInner {
     P256([u8; P256_UNCOMPRESSED_LEN]),
     // Raw 32-byte Ed25519 public key.
     Ed25519([u8; ED25519_KEY_LEN]),
+    // Raw ML-DSA public key bytes together with its variant.
+    MlDsa {
+        variant: MlDsaVariant,
+        bytes: Box<[u8]>,
+    },
 }
 
 impl PublicKeyT for AwsLcRsPublicKey {
@@ -56,6 +68,10 @@ impl PublicKeyT for AwsLcRsPublicKey {
             }
             AwsLcRsPublicKeyInner::Ed25519(bytes) => {
                 UnparsedPublicKey::new(&ED25519, bytes.as_slice()).verify(target, signature)?;
+            }
+            AwsLcRsPublicKeyInner::MlDsa { variant, bytes } => {
+                UnparsedPublicKey::new(pqdsa_verify_alg(*variant), bytes.as_ref())
+                    .verify(target, signature)?;
             }
         }
         Ok(())
@@ -103,6 +119,25 @@ impl PublicKeyT for AwsLcRsPublicKey {
                     .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
                 Ok(der.as_ref().to_vec())
             }
+            iana::Algorithm::ML_DSA_44
+            | iana::Algorithm::ML_DSA_65
+            | iana::Algorithm::ML_DSA_87 => {
+                if !matches!(
+                    cose_key.kty,
+                    coset::RegisteredLabel::Assigned(iana::KeyType::AKP)
+                ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let variant = MlDsaVariant::try_from(alg)
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                let pub_bytes = extract_akp_pub(cose_key)?;
+                let parsed = ParsedPublicKey::new(pqdsa_verify_alg(variant), pub_bytes.as_slice())
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                let der = parsed
+                    .as_der()
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                Ok(der.as_ref().to_vec())
+            }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
     }
@@ -126,6 +161,9 @@ impl PublicKeyT for AwsLcRsPublicKey {
                     Value::from(bytes.as_slice()),
                 )
                 .build(),
+            AwsLcRsPublicKeyInner::MlDsa { variant, bytes } => {
+                CoseKeyBuilder::new_mldsa_pub_key(*variant, bytes.to_vec()).build()
+            }
         }
     }
 }
@@ -186,6 +224,22 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
                 Ok(Self(AwsLcRsSecretKeyInner::Ed25519(key_pair)))
             }
+            iana::Algorithm::ML_DSA_44
+            | iana::Algorithm::ML_DSA_65
+            | iana::Algorithm::ML_DSA_87 => {
+                if !matches!(
+                    cose_key.kty,
+                    coset::RegisteredLabel::Assigned(iana::KeyType::AKP)
+                ) {
+                    return Err(CoseKeyConversionError::InvalidCredential);
+                }
+                let variant = MlDsaVariant::try_from(alg)
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                let seed = extract_akp_priv(cose_key)?;
+                let key_pair = PqdsaKeyPair::from_seed(pqdsa_sign_alg(variant), seed.as_slice())
+                    .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+                Ok(Self(AwsLcRsSecretKeyInner::MlDsa { variant, key_pair }))
+            }
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
     }
@@ -200,6 +254,14 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 signature.as_ref().to_vec()
             }
             AwsLcRsSecretKeyInner::Ed25519(key_pair) => key_pair.sign(target).as_ref().to_vec(),
+            AwsLcRsSecretKeyInner::MlDsa { key_pair, .. } => {
+                let sig_len = key_pair.algorithm().signature_len();
+                let mut signature = vec![0u8; sig_len];
+                key_pair
+                    .sign(target, &mut signature)
+                    .expect("aws-lc-rs ML-DSA signing failed");
+                signature
+            }
         }
     }
 
@@ -214,6 +276,15 @@ impl SecretKeyT for AwsLcRsSecretKey {
                 let mut bytes = [0u8; ED25519_KEY_LEN];
                 bytes.copy_from_slice(key_pair.public_key().as_ref());
                 AwsLcRsPublicKey(AwsLcRsPublicKeyInner::Ed25519(bytes))
+            }
+            AwsLcRsSecretKeyInner::MlDsa {
+                variant, key_pair, ..
+            } => {
+                let bytes = key_pair.public_key().as_ref().to_vec().into_boxed_slice();
+                AwsLcRsPublicKey(AwsLcRsPublicKeyInner::MlDsa {
+                    variant: *variant,
+                    bytes,
+                })
             }
         }
     }
@@ -259,6 +330,16 @@ impl SecretKeyT for AwsLcRsSecretKey {
                     .param(
                         iana::OkpKeyParameter::D.to_i64(),
                         Value::from(seed.as_ref()),
+                    )
+                    .build()
+            }
+            AwsLcRsSecretKeyInner::MlDsa { variant, key_pair } => {
+                let seed = pqdsa_extract_seed(key_pair)
+                    .expect("aws-lc-rs failed to marshal an ML-DSA seed");
+                CoseKeyBuilder::new_mldsa_pub_key(*variant, key_pair.public_key().as_ref().to_vec())
+                    .param(
+                        iana::AkpKeyParameter::Priv.to_i64(),
+                        Value::from(seed.as_slice()),
                     )
                     .build()
             }
@@ -340,6 +421,9 @@ impl CryptoBackend for AwsLcRsBackend {
             iana::Algorithm::ESP256,
             iana::Algorithm::EdDSA,
             iana::Algorithm::Ed25519,
+            iana::Algorithm::ML_DSA_44,
+            iana::Algorithm::ML_DSA_65,
+            iana::Algorithm::ML_DSA_87,
         ]
     }
 
@@ -353,7 +437,54 @@ impl CryptoBackend for AwsLcRsBackend {
                 let key_pair = Ed25519KeyPair::generate()?;
                 Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::Ed25519(key_pair)))
             }
+            iana::Algorithm::ML_DSA_44
+            | iana::Algorithm::ML_DSA_65
+            | iana::Algorithm::ML_DSA_87 => {
+                let variant = MlDsaVariant::try_from(algorithm)
+                    .expect("algorithm was matched as an ML-DSA variant");
+                let key_pair = PqdsaKeyPair::generate(pqdsa_sign_alg(variant))?;
+                Ok(AwsLcRsSecretKey(AwsLcRsSecretKeyInner::MlDsa {
+                    variant,
+                    key_pair,
+                }))
+            }
             _ => Err("Algorithm is unsupported".to_string().into()),
         }
     }
+}
+
+fn pqdsa_sign_alg(variant: MlDsaVariant) -> &'static PqdsaSigningAlgorithm {
+    match variant {
+        MlDsaVariant::MlDsa44 => &ML_DSA_44_SIGNING,
+        MlDsaVariant::MlDsa65 => &ML_DSA_65_SIGNING,
+        MlDsaVariant::MlDsa87 => &ML_DSA_87_SIGNING,
+    }
+}
+
+fn pqdsa_verify_alg(variant: MlDsaVariant) -> &'static PqdsaVerificationAlgorithm {
+    match variant {
+        MlDsaVariant::MlDsa44 => &ML_DSA_44,
+        MlDsaVariant::MlDsa65 => &ML_DSA_65,
+        MlDsaVariant::MlDsa87 => &ML_DSA_87,
+    }
+}
+
+/// Pull the 32-byte seed out of an ML-DSA key pair's PKCS#8 v1 encoding.
+fn pqdsa_extract_seed(
+    key_pair: &PqdsaKeyPair,
+) -> Option<zeroize::Zeroizing<[u8; ML_DSA_SEED_LEN]>> {
+    // 0x04 0x22: OCTET STRING of length 34 (the PrivateKeyInfo.privateKey).
+    // 0x80 0x20: [0] IMPLICIT OCTET STRING of length 32 (the seed itself).
+    const TRAILER: [u8; 4] = [0x04, 0x22, 0x80, 0x20];
+    let pkcs8 = key_pair.to_pkcs8v1().ok()?;
+    let bytes = pkcs8.as_ref();
+    let split = bytes.len().checked_sub(TRAILER.len() + ML_DSA_SEED_LEN)?;
+    let (framing, seed) = bytes[split..].split_at(TRAILER.len());
+    if framing != TRAILER {
+        return None;
+    }
+    let mut out: zeroize::Zeroizing<[u8; ML_DSA_SEED_LEN]> =
+        zeroize::Zeroizing::new([0u8; ML_DSA_SEED_LEN]);
+    out.copy_from_slice(seed);
+    Some(out)
 }

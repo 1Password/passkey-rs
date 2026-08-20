@@ -1,5 +1,5 @@
 use coset::{
-    CoseKey, CoseKeyBuilder,
+    CoseKey, CoseKeyBuilder, MlDsaVariant,
     cbor::Value,
     iana::{self, EnumI64},
 };
@@ -8,11 +8,17 @@ use crate::{
     CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
     cose::{
         extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
+        ML_DSA_SEED_LEN, extract_akp_priv, extract_akp_pub,
     },
     hash::Sha256Backend,
 };
 use ed25519_dalek::{Signer, ed25519::SignatureEncoding};
 use hmac::{Hmac, KeyInit, Mac};
+use ml_dsa::{
+    MlDsa44, MlDsa65, MlDsa87, MlDsaParams, Seed as MlDsaSeed, Signature as MlDsaSignature,
+    SigningKey as MlDsaSigningKey, VerifyingKey as MlDsaVerifyingKey, signature::Keypair,
+};
+use ml_dsa::pkcs8::{der::AnyRef, spki::AssociatedAlgorithmIdentifier};
 use p256::{Sec1Point, elliptic_curve::Generate, pkcs8::EncodePublicKey};
 use sha2::{Digest, Sha256};
 use signature::Verifier;
@@ -25,6 +31,12 @@ enum RustCryptoSecretKeyInner {
     P256(p256::ecdsa::SigningKey),
     // Secret key that uses the Ed25519 EdDSA algorithm
     Ed25519(ed25519_dalek::SigningKey),
+    // Secret key that uses ML-DSA-44.
+    MlDsa44(MlDsaSigningKey<MlDsa44>),
+    // Secret key that uses ML-DSA-65.
+    MlDsa65(MlDsaSigningKey<MlDsa65>),
+    // Secret key that uses ML-DSA-87.
+    MlDsa87(MlDsaSigningKey<MlDsa87>),
 }
 
 /// Public key backed by the RustCrypto crates.
@@ -35,11 +47,17 @@ enum RustCryptoPublicKeyInner {
     P256(p256::ecdsa::VerifyingKey),
     // Public key that uses the Ed25519 EdDSA algorithm
     Ed25519(ed25519_dalek::VerifyingKey),
+    // Public key that uses ML-DSA-44.
+    MlDsa44(MlDsaVerifyingKey<MlDsa44>),
+    // Public key that uses ML-DSA-65.
+    MlDsa65(MlDsaVerifyingKey<MlDsa65>),
+    // Public key that uses ML-DSA-87.
+    MlDsa87(MlDsaVerifyingKey<MlDsa87>),
 }
 
 impl PublicKeyT for RustCryptoPublicKey {
     fn verify(&self, target: &[u8], signature: &[u8]) -> Result<(), crate::Error> {
-        match self.0 {
+        match &self.0 {
             RustCryptoPublicKeyInner::P256(public_key) => {
                 let signature = p256::ecdsa::Signature::from_der(signature)?;
                 public_key.verify(target, &signature)?;
@@ -47,6 +65,15 @@ impl PublicKeyT for RustCryptoPublicKey {
             RustCryptoPublicKeyInner::Ed25519(public_key) => {
                 let signature = ed25519_dalek::ed25519::Signature::from_slice(signature)?;
                 public_key.verify(target, &signature)?;
+            }
+            RustCryptoPublicKeyInner::MlDsa44(public_key) => {
+                verify_ml_dsa(public_key, target, signature)?;
+            }
+            RustCryptoPublicKeyInner::MlDsa65(public_key) => {
+                verify_ml_dsa(public_key, target, signature)?;
+            }
+            RustCryptoPublicKeyInner::MlDsa87(public_key) => {
+                verify_ml_dsa(public_key, target, signature)?;
             }
         }
         Ok(())
@@ -96,12 +123,15 @@ impl PublicKeyT for RustCryptoPublicKey {
                     .map_err(|_| CoseKeyConversionError::InvalidCredential)
                     .map(|pk| pk.as_ref().to_vec())
             }
+            iana::Algorithm::ML_DSA_44 => ml_dsa_der_from_cose_key::<MlDsa44>(cose_key),
+            iana::Algorithm::ML_DSA_65 => ml_dsa_der_from_cose_key::<MlDsa65>(cose_key),
+            iana::Algorithm::ML_DSA_87 => ml_dsa_der_from_cose_key::<MlDsa87>(cose_key),
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
     }
 
     fn to_cose_key(&self) -> CoseKey {
-        match self.0 {
+        match &self.0 {
             RustCryptoPublicKeyInner::P256(public_key) => {
                 let encoded_public_key = public_key.to_sec1_point(false);
 
@@ -126,6 +156,15 @@ impl PublicKeyT for RustCryptoPublicKey {
                     Value::from(public_key.to_bytes().as_slice()),
                 )
                 .build(),
+            RustCryptoPublicKeyInner::MlDsa44(public_key) => {
+                ml_dsa_public_to_cose_key(public_key, MlDsaVariant::MlDsa44)
+            }
+            RustCryptoPublicKeyInner::MlDsa65(public_key) => {
+                ml_dsa_public_to_cose_key(public_key, MlDsaVariant::MlDsa65)
+            }
+            RustCryptoPublicKeyInner::MlDsa87(public_key) => {
+                ml_dsa_public_to_cose_key(public_key, MlDsaVariant::MlDsa87)
+            }
         }
     }
 }
@@ -172,6 +211,15 @@ impl SecretKeyT for RustCryptoSecretKey {
                     ed25519_dalek::SigningKey::from_bytes(&seed),
                 )))
             }
+            iana::Algorithm::ML_DSA_44 => Ok(Self(RustCryptoSecretKeyInner::MlDsa44(
+                ml_dsa_secret_from_cose_key::<MlDsa44>(cose_key)?,
+            ))),
+            iana::Algorithm::ML_DSA_65 => Ok(Self(RustCryptoSecretKeyInner::MlDsa65(
+                ml_dsa_secret_from_cose_key::<MlDsa65>(cose_key)?,
+            ))),
+            iana::Algorithm::ML_DSA_87 => Ok(Self(RustCryptoSecretKeyInner::MlDsa87(
+                ml_dsa_secret_from_cose_key::<MlDsa87>(cose_key)?,
+            ))),
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
     }
@@ -183,6 +231,9 @@ impl SecretKeyT for RustCryptoSecretKey {
                 signature.to_der().to_vec()
             }
             RustCryptoSecretKeyInner::Ed25519(secret_key) => secret_key.sign(target).to_vec(),
+            RustCryptoSecretKeyInner::MlDsa44(secret_key) => ml_dsa_sign(secret_key, target),
+            RustCryptoSecretKeyInner::MlDsa65(secret_key) => ml_dsa_sign(secret_key, target),
+            RustCryptoSecretKeyInner::MlDsa87(secret_key) => ml_dsa_sign(secret_key, target),
         }
     }
 
@@ -193,6 +244,15 @@ impl SecretKeyT for RustCryptoSecretKey {
             }
             RustCryptoSecretKeyInner::Ed25519(secret_key) => RustCryptoPublicKey(
                 RustCryptoPublicKeyInner::Ed25519(secret_key.verifying_key()),
+            ),
+            RustCryptoSecretKeyInner::MlDsa44(secret_key) => RustCryptoPublicKey(
+                RustCryptoPublicKeyInner::MlDsa44(secret_key.verifying_key()),
+            ),
+            RustCryptoSecretKeyInner::MlDsa65(secret_key) => RustCryptoPublicKey(
+                RustCryptoPublicKeyInner::MlDsa65(secret_key.verifying_key()),
+            ),
+            RustCryptoSecretKeyInner::MlDsa87(secret_key) => RustCryptoPublicKey(
+                RustCryptoPublicKeyInner::MlDsa87(secret_key.verifying_key()),
             ),
         }
     }
@@ -231,6 +291,15 @@ impl SecretKeyT for RustCryptoSecretKey {
                     Value::from(&secret_key.to_bytes()[..]),
                 )
                 .build(),
+            RustCryptoSecretKeyInner::MlDsa44(secret_key) => {
+                ml_dsa_secret_to_cose_key(secret_key, MlDsaVariant::MlDsa44)
+            }
+            RustCryptoSecretKeyInner::MlDsa65(secret_key) => {
+                ml_dsa_secret_to_cose_key(secret_key, MlDsaVariant::MlDsa65)
+            }
+            RustCryptoSecretKeyInner::MlDsa87(secret_key) => {
+                ml_dsa_secret_to_cose_key(secret_key, MlDsaVariant::MlDsa87)
+            }
         }
     }
 }
@@ -270,6 +339,9 @@ impl CryptoBackend for RustCryptoBackend {
             iana::Algorithm::ESP256,
             iana::Algorithm::EdDSA,
             iana::Algorithm::Ed25519,
+            iana::Algorithm::ML_DSA_44,
+            iana::Algorithm::ML_DSA_65,
+            iana::Algorithm::ML_DSA_87,
         ]
     }
 
@@ -284,6 +356,15 @@ impl CryptoBackend for RustCryptoBackend {
                     ed25519_dalek::SigningKey::generate(&mut rng),
                 )))
             }
+            iana::Algorithm::ML_DSA_44 => Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::MlDsa44(
+                ml_dsa_generate::<MlDsa44>(),
+            ))),
+            iana::Algorithm::ML_DSA_65 => Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::MlDsa65(
+                ml_dsa_generate::<MlDsa65>(),
+            ))),
+            iana::Algorithm::ML_DSA_87 => Ok(RustCryptoSecretKey(RustCryptoSecretKeyInner::MlDsa87(
+                ml_dsa_generate::<MlDsa87>(),
+            ))),
             _ => Err("Algorithm is unsupported".to_string().into()),
         }
     }
@@ -291,3 +372,76 @@ impl CryptoBackend for RustCryptoBackend {
 
 /// Re-export of the [crate::rng::RngBackend] provided by this backend.
 pub type RustCryptoRng = <RustCryptoBackend as CryptoBackend>::Rng;
+
+fn verify_ml_dsa<P: MlDsaParams>(
+    public_key: &MlDsaVerifyingKey<P>,
+    target: &[u8],
+    signature: &[u8],
+) -> Result<(), crate::Error> {
+    let signature = MlDsaSignature::<P>::try_from(signature)?;
+    public_key.verify(target, &signature)?;
+    Ok(())
+}
+
+fn ml_dsa_sign<P: MlDsaParams>(secret_key: &MlDsaSigningKey<P>, target: &[u8]) -> Vec<u8> {
+    let signature: MlDsaSignature<P> = secret_key.sign(target);
+    signature.encode().as_slice().to_vec()
+}
+
+fn ml_dsa_generate<P: MlDsaParams>() -> MlDsaSigningKey<P> {
+    MlDsaSigningKey::<P>::generate()
+}
+
+fn ml_dsa_secret_from_cose_key<P: MlDsaParams>(
+    cose_key: &CoseKey,
+) -> Result<MlDsaSigningKey<P>, CoseKeyConversionError> {
+    if !matches!(
+        cose_key.kty,
+        coset::RegisteredLabel::Assigned(iana::KeyType::AKP)
+    ) {
+        return Err(CoseKeyConversionError::InvalidCredential);
+    }
+    let seed = extract_akp_priv(cose_key)?;
+    let seed_bytes: [u8; ML_DSA_SEED_LEN] = *seed;
+    Ok(MlDsaSigningKey::<P>::from_seed(&MlDsaSeed::from(seed_bytes)))
+}
+
+fn ml_dsa_der_from_cose_key<P>(cose_key: &CoseKey) -> Result<Vec<u8>, CoseKeyConversionError>
+where
+    P: MlDsaParams + AssociatedAlgorithmIdentifier<Params = AnyRef<'static>>,
+{
+    if !matches!(
+        cose_key.kty,
+        coset::RegisteredLabel::Assigned(iana::KeyType::AKP)
+    ) {
+        return Err(CoseKeyConversionError::InvalidCredential);
+    }
+    let pub_bytes = extract_akp_pub(cose_key)?;
+    let encoded = ml_dsa::EncodedVerifyingKey::<P>::try_from(pub_bytes.as_slice())
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)?;
+    let verifying_key = MlDsaVerifyingKey::<P>::decode(&encoded);
+    verifying_key
+        .to_public_key_der()
+        .map_err(|_| CoseKeyConversionError::InvalidCredential)
+        .map(|pk| pk.as_ref().to_vec())
+}
+
+fn ml_dsa_public_to_cose_key<P: MlDsaParams>(
+    public_key: &MlDsaVerifyingKey<P>,
+    variant: MlDsaVariant,
+) -> CoseKey {
+    CoseKeyBuilder::new_mldsa_pub_key(variant, public_key.encode().as_slice().to_vec()).build()
+}
+
+fn ml_dsa_secret_to_cose_key<P: MlDsaParams>(
+    secret_key: &MlDsaSigningKey<P>,
+    variant: MlDsaVariant,
+) -> CoseKey {
+    let verifying_key = secret_key.verifying_key();
+    CoseKeyBuilder::new_mldsa_pub_key(variant, verifying_key.encode().as_slice().to_vec())
+        .param(
+            iana::AkpKeyParameter::Priv.to_i64(),
+            Value::from(secret_key.to_seed().as_slice()),
+        )
+        .build()
+}
