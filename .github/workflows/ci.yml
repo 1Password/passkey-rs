@@ -11,6 +11,9 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        backend: [rust-crypto, aws-lc-rs]
     permissions:
       contents: read
     steps:
@@ -35,18 +38,24 @@ jobs:
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+      - name: Install mingw toolchain and NASM
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 nasm
+
       - name: Run Clippy
-        run: rustup run ${{ env.rust }} cargo clippy --all --all-targets -- -D warnings
+        run: rustup run ${{ env.rust }} cargo clippy --all --all-targets --features ${{ matrix.backend }} -- -D warnings
 
       - name: Run Clippy with `linux` feature
-        run: rustup run ${{ env.rust }} cargo clippy --all --features linux -- -D warnings
+        run: rustup run ${{ env.rust }} cargo clippy --all --features linux,${{ matrix.backend }} -- -D warnings
 
       - name: Run Clippy with `windows` feature
-        run: rustup run ${{ env.rust }} cargo clippy --all --target x86_64-pc-windows-gnu --features windows -- -D warnings
+        run: rustup run ${{ env.rust }} cargo clippy --all --target x86_64-pc-windows-gnu --features windows,${{ matrix.backend }} -- -D warnings
 
   fmt:
     name: Rustfmt
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        backend: [rust-crypto, aws-lc-rs]
     permissions:
       contents: read
     steps:
@@ -113,6 +122,9 @@ jobs:
   docs:
     name: Documentation
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        backend: [rust-crypto, aws-lc-rs]
     permissions:
       contents: read
     steps:
@@ -128,6 +140,9 @@ jobs:
 
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
+      - name: Install mingw toolchain and NASM
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 nasm
 
       - name: Install Rust toolchain
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
@@ -137,17 +152,20 @@ jobs:
           target: x86_64-pc-windows-gnu
 
       - name: Run rustdoc
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --features ${{ matrix.backend }}
 
       - name: Run rustdoc with `linux` feature
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --features linux
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --features linux,${{ matrix.backend }}
 
       - name: Run rustdoc with `windows` feature
-        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows
+        run: RUSTDOCFLAGS="-D warnings " rustup run ${{ env.rust }} cargo doc --workspace --no-deps --target x86_64-pc-windows-gnu --features windows,${{ matrix.backend }}
 
   build-wasm:
     name: Build-WASM
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        backend: [rust-crypto, aws-lc-rs]
     permissions:
       contents: read
     steps:
@@ -164,19 +182,25 @@ jobs:
       - name: Install libudev
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+      - name: Install clang and emscripten
+        run: sudo apt-get update && sudo apt-get install -y clang emscripten
+
       - name: Install Rust toolchain
         uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
         with:
           profile: minimal
           toolchain: ${{ env.rust }}
-          target: wasm32-unknown-unknown
+          target: wasm32-unknown-emscripten
 
       - name: Run build
-        run: rustup run ${{ env.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio" --target wasm32-unknown-unknown
+        run: rustup run ${{ env.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}" --target wasm32-unknown-emscripten
 
   test-linux:
     name: Test-Linux
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        backend: [rust-crypto, aws-lc-rs]
     permissions:
       contents: read
     steps:
@@ -200,7 +224,32 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run tests with `linux` feature
-        run: rustup run ${{ env.rust }} cargo test --features "linux,passkey-client/tokio,passkey-authenticator/tokio"
+        run: rustup run ${{ env.rust }} cargo test --features "linux,passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}"
+
+  test-crypto-backend-compatibility:
+    name: Test-Crypto-Backend-Compatibility
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
+        with:
+          profile: minimal
+          toolchain: ${{ env.rust }}
+
+      - name: Run cross-backend compatibility tests
+        run: rustup run ${{ env.rust }} cargo test -p passkey-crypto --features rust-crypto,aws-lc-rs
 
   test-windows:
     name: Test-Windows
@@ -209,6 +258,7 @@ jobs:
       contents: read
     strategy:
       matrix:
+        backend: [rust-crypto, aws-lc-rs]
         runs-on:
           - windows-11-arm
           - windows-2025
@@ -230,7 +280,7 @@ jobs:
           toolchain: ${{ env.rust }}
 
       - name: Run tests
-        run: rustup run ${{ env.rust }} cargo test --features "windows,passkey-client/tokio,passkey-authenticator/tokio"
+        run: rustup run ${{ env.rust }} cargo test --features "windows,passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}"
 
   test-macos:
     name: Test-MacOS
@@ -239,6 +289,7 @@ jobs:
       contents: read
     strategy:
       matrix:
+        backend: [rust-crypto, aws-lc-rs]
         runs-on:
           - macos-26-intel
           - macos-26
@@ -260,7 +311,7 @@ jobs:
           toolchain: ${{ env.rust }}
 
       - name: Run tests
-        run: rustup run ${{ env.rust }} cargo test --features "passkey-client/tokio,passkey-authenticator/tokio"
+        run: rustup run ${{ env.rust }} cargo test --features "passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}"
 
   typeshare:
     name: Typeshare

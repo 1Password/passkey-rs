@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use passkey_authenticator::extensions::HmacSecretConfig;
-use passkey_crypto::rust_crypto::RustCryptoBackend;
+use passkey_crypto::AvailableBackend;
 use passkey_types::ctap2::{AuthenticatorData, Flags};
 
 use super::*;
@@ -29,7 +29,7 @@ async fn registration_without_eval() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(1),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
 
@@ -68,7 +68,7 @@ async fn registration_with_single_input_eval() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(1),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
@@ -138,7 +138,7 @@ async fn registration_with_eval_by_credential() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_user_check_skip(1),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -177,12 +177,12 @@ impl PrfValuesConfig {
         match self {
             PrfValuesConfig::None => None,
             PrfValuesConfig::One => Some(webauthn::AuthenticationExtensionsPrfValues {
-                first: Bytes::from(RustCryptoRng::random_vec(128)),
+                first: Bytes::from(AvailableRng::random_vec(128)),
                 second: None,
             }),
             PrfValuesConfig::Two => Some(webauthn::AuthenticationExtensionsPrfValues {
-                first: Bytes::from(RustCryptoRng::random_vec(128)),
-                second: Some(Bytes::from(RustCryptoRng::random_vec(128))),
+                first: Bytes::from(AvailableRng::random_vec(128)),
+                second: Some(Bytes::from(AvailableRng::random_vec(128))),
             }),
         }
     }
@@ -198,7 +198,7 @@ macro_rules! valid_authentication_with_prf {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_with_creation(2),
-                    RustCryptoBackend
+                    AvailableBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
@@ -312,14 +312,14 @@ async fn auth_empty_allow_credentials() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_user_check_skip(2),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
 
     let origin = Url::parse("https://future.1password.com").unwrap();
     let eval_by_cred = webauthn::AuthenticationExtensionsPrfValues {
-        first: Bytes::from(RustCryptoRng::random_vec(128)),
+        first: Bytes::from(AvailableRng::random_vec(128)),
         second: None,
     };
     let options = good_credential_creation_options_with_prf(Some(eval_by_cred.clone()));
@@ -367,13 +367,13 @@ macro_rules! invalid_eval_by_credential_in_authentication {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_user_check_skip(2),
-                    RustCryptoBackend
+                    AvailableBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
 
                 let eval_by_cred = webauthn::AuthenticationExtensionsPrfValues {
-                    first: Bytes::from(RustCryptoRng::random_vec(128)),
+                    first: Bytes::from(AvailableRng::random_vec(128)),
                     second: None,
                 };
 
@@ -421,7 +421,7 @@ macro_rules! invalid_eval_by_credential_in_authentication {
 invalid_eval_by_credential_in_authentication! {
     auth_empty_key_in_eval_by_credential: String::from(""),
     auth_invalid_base64url_key_in_eval_by_credential: String::from("xyz"),
-    auth_no_matching_credential_id_in_allow_credentials: String::from(Bytes::from(RustCryptoRng::random_vec(64)))
+    auth_no_matching_credential_id_in_allow_credentials: String::from(Bytes::from(AvailableRng::random_vec(64)))
 }
 
 #[cfg(test)]
@@ -441,13 +441,13 @@ macro_rules! compare_auth_calls {
                     ctap2::Aaguid::new_empty(),
                     MemoryStore::new(),
                     uv_mock_with_creation(3),
-                    RustCryptoBackend
+                    AvailableBackend
                 )
                 .hmac_secret(HmacSecretConfig::new_without_uv());
                 let mut client = Client::new(auth);
 
-                let mut first = Bytes::from(RustCryptoRng::random_vec(128));
-                let mut second = Some(Bytes::from(RustCryptoRng::random_vec(128)));
+                let mut first = Bytes::from(AvailableRng::random_vec(128));
+                let mut second = Some(Bytes::from(AvailableRng::random_vec(128)));
 
                 let eval_by_cred = webauthn::AuthenticationExtensionsPrfValues {
                     first: first.clone(),
@@ -491,8 +491,8 @@ macro_rules! compare_auth_calls {
                     .expect("failed to authenticate with PRF input");
 
                 if $same_inputs == SameInputs::No {
-                    first = Bytes::from(RustCryptoRng::random_vec(128));
-                    second = Some(Bytes::from(RustCryptoRng::random_vec(128)));
+                    first = Bytes::from(AvailableRng::random_vec(128));
+                    second = Some(Bytes::from(AvailableRng::random_vec(128)));
                 }
 
                 let auth_options = webauthn::CredentialRequestOptions {
@@ -559,7 +559,7 @@ async fn registration_and_authentication_with_unsupported_authenticator_ignores_
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        RustCryptoBackend,
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -608,7 +608,7 @@ async fn empty_extension_and_no_hmac_secret_support() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        RustCryptoBackend,
+        AvailableBackend,
     );
     let mut client = Client::new(auth);
 
@@ -655,7 +655,7 @@ async fn empty_extension_with_hmac_secret_support() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(2),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
@@ -705,14 +705,14 @@ async fn two_eval_by_credential_entries() {
         ctap2::Aaguid::new_empty(),
         MemoryStore::new(),
         uv_mock_with_creation(3),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv());
     let mut client = Client::new(auth);
 
     let eval_values = webauthn::AuthenticationExtensionsPrfValues {
-        first: Bytes::from(RustCryptoRng::random_vec(128)),
-        second: Some(Bytes::from(RustCryptoRng::random_vec(128))),
+        first: Bytes::from(AvailableRng::random_vec(128)),
+        second: Some(Bytes::from(AvailableRng::random_vec(128))),
     };
 
     let origin = Url::parse("https://future.1password.com").unwrap();
@@ -748,8 +748,8 @@ async fn two_eval_by_credential_entries() {
         .expect("failed to authenticate with PRF input");
 
     let eval_values_2 = webauthn::AuthenticationExtensionsPrfValues {
-        first: Bytes::from(RustCryptoRng::random_vec(128)),
-        second: Some(Bytes::from(RustCryptoRng::random_vec(128))),
+        first: Bytes::from(AvailableRng::random_vec(128)),
+        second: Some(Bytes::from(AvailableRng::random_vec(128))),
     };
 
     let mut cred_id_2 = cred_id.clone();
@@ -818,7 +818,7 @@ async fn prf_already_hashed_does_not_hash_again() {
     let salt = [2; 32];
 
     let hashed_salt =
-        RustCryptoSha2::sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
+        AvailableSha2::sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
 
     let origin = Url::parse("https://future.1password.com").unwrap();
 
@@ -826,7 +826,7 @@ async fn prf_already_hashed_does_not_hash_again() {
         ctap2::Aaguid::new_empty(),
         None,
         uv_mock_with_creation(2),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
@@ -864,7 +864,7 @@ async fn prf_already_hashed_does_not_hash_again() {
         .cred_with_uv
         .clone();
 
-    let expected_output = RustCryptoSha2::hmac_sha256(&hmac_secret, &hashed_salt);
+    let expected_output = AvailableSha2::hmac_sha256(&hmac_secret, &hashed_salt);
 
     let prf_results = created
         .client_extension_results
@@ -913,7 +913,7 @@ async fn prf_takes_precedence_over_prf_already_hashed() {
     let salt = [2; 32];
 
     let hashed_salt =
-        RustCryptoSha2::sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
+        AvailableSha2::sha256(&[b"WebAuthn PRF".as_slice(), &[0x00], salt.as_slice()].concat());
 
     let origin = Url::parse("https://future.1password.com").unwrap();
 
@@ -921,7 +921,7 @@ async fn prf_takes_precedence_over_prf_already_hashed() {
         ctap2::Aaguid::new_empty(),
         None,
         uv_mock_with_creation(2),
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(HmacSecretConfig::new_without_uv().enable_on_make_credential());
     let mut client = Client::new(auth);
@@ -959,7 +959,7 @@ async fn prf_takes_precedence_over_prf_already_hashed() {
         .cred_with_uv
         .clone();
 
-    let expected_output = RustCryptoSha2::hmac_sha256(&hmac_secret, &hashed_salt);
+    let expected_output = AvailableSha2::hmac_sha256(&hmac_secret, &hashed_salt);
 
     let prf_results = created
         .client_extension_results

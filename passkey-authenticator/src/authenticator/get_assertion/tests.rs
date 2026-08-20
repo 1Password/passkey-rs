@@ -1,5 +1,5 @@
 use passkey_crypto::rng::RngBackend;
-use passkey_crypto::rust_crypto::{RustCryptoBackend, RustCryptoRng};
+use passkey_crypto::{AvailableBackend, AvailableRng};
 use passkey_types::{
     Passkey, StoredHmacSecret,
     ctap2::{
@@ -15,7 +15,7 @@ use crate::{
 };
 
 fn create_passkey(hmac_secret: Option<Vec<u8>>) -> Passkey {
-    let builder = Passkey::mock("example.com".into(), RustCryptoBackend);
+    let builder = Passkey::mock("example.com".into(), AvailableBackend);
 
     if let Some(hs) = hmac_secret {
         builder.hmac_secret(StoredHmacSecret {
@@ -49,7 +49,7 @@ async fn get_assertion_returns_no_credentials_found() {
         Aaguid::new_empty(),
         store,
         MockUserValidationMethod::verified_user_with_hint(1, MockUiHint::InformNoCredentialsFound),
-        RustCryptoBackend,
+        AvailableBackend,
     );
 
     // Act
@@ -75,7 +75,7 @@ async fn get_assertion_increments_signature_counter_when_counter_is_some() {
             1,
             MockUiHint::RequestExistingCredential(passkey),
         ),
-        RustCryptoBackend,
+        AvailableBackend,
     );
 
     // Act
@@ -102,12 +102,12 @@ async fn unsupported_extension_with_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend,
     );
 
     let request = Request {
         extensions: Some(ExtensionInputs {
-            prf: Some(prf_eval_request(Some(RustCryptoRng::random_vec(32)))),
+            prf: Some(prf_eval_request(Some(AvailableRng::random_vec(32)))),
             ..Default::default()
         }),
         ..good_request()
@@ -131,7 +131,7 @@ async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend,
     );
 
     let request = Request {
@@ -150,14 +150,14 @@ async fn unsupported_extension_with_empty_request_gives_no_ext_output() {
 
 #[tokio::test]
 async fn supported_extension_with_empty_request_gives_no_ext_output() {
-    let shared_store = Some(create_passkey(Some(RustCryptoRng::random_vec(32))));
+    let shared_store = Some(create_passkey(Some(AvailableRng::random_vec(32))));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
     let mut authenticator = Authenticator::new(
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -177,14 +177,14 @@ async fn supported_extension_with_empty_request_gives_no_ext_output() {
 
 #[tokio::test]
 async fn supported_extension_without_extension_request_gives_no_ext_output() {
-    let shared_store = Some(create_passkey(Some(RustCryptoRng::random_vec(32))));
+    let shared_store = Some(create_passkey(Some(AvailableRng::random_vec(32))));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
     let mut authenticator = Authenticator::new(
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
@@ -201,20 +201,20 @@ async fn supported_extension_without_extension_request_gives_no_ext_output() {
 
 #[tokio::test]
 async fn supported_extension_with_request_gives_output() {
-    let shared_store = Some(create_passkey(Some(RustCryptoRng::random_vec(32))));
+    let shared_store = Some(create_passkey(Some(AvailableRng::random_vec(32))));
     let user_mock = MockUserValidationMethod::verified_user(1);
 
     let mut authenticator = Authenticator::new(
         Aaguid::new_empty(),
         shared_store.clone(),
         user_mock,
-        RustCryptoBackend,
+        AvailableBackend,
     )
     .hmac_secret(extensions::HmacSecretConfig::new_with_uv_only());
 
     let request = Request {
         extensions: Some(ExtensionInputs {
-            prf: Some(prf_eval_request(Some(RustCryptoRng::random_vec(32)))),
+            prf: Some(prf_eval_request(Some(AvailableRng::random_vec(32)))),
             ..Default::default()
         }),
         ..good_request()

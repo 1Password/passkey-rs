@@ -1,4 +1,4 @@
-use passkey_crypto::{CryptoBackend, rust_crypto::RustCryptoBackend};
+use passkey_crypto::{AvailableBackend, CryptoBackend};
 use passkey_types::ctap2::{Aaguid, Flags};
 
 use crate::{
@@ -26,8 +26,7 @@ async fn check_user_does_not_check_up_or_uv_when_not_requested() {
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: false,
         uv: false,
@@ -65,8 +64,7 @@ async fn check_user_checks_up_when_requested() {
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
         uv: false,
@@ -107,8 +105,7 @@ async fn check_user_checks_uv_when_requested() {
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
         uv: true,
@@ -146,8 +143,7 @@ async fn check_user_returns_operation_denied_when_up_was_requested_but_not_retur
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
         uv: false,
@@ -190,8 +186,7 @@ async fn check_user_returns_operation_denied_when_uv_was_requested_but_not_retur
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
         uv: true,
@@ -220,8 +215,7 @@ async fn check_user_returns_unsupported_option_when_uv_was_requested_but_is_not_
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: true,
         uv: true,
@@ -265,8 +259,7 @@ async fn check_user_returns_up_and_uv_flags_when_neither_up_or_uv_was_requested_
 
     // Arrange
     let store = None;
-    let authenticator =
-        Authenticator::new(Aaguid::new_empty(), store, user_mock, RustCryptoBackend);
+    let authenticator = Authenticator::new(Aaguid::new_empty(), store, user_mock, AvailableBackend);
     let options = passkey_types::ctap2::make_credential::Options {
         up: false,
         uv: false,
@@ -308,8 +301,7 @@ fn credential_id_lengths_validate() {
 fn credential_id_generation() {
     let valid_range = 0..=64;
     for _ in 0..=100 {
-        let length =
-            CredentialIdLength::randomized::<<RustCryptoBackend as CryptoBackend>::Rng>().0;
+        let length = CredentialIdLength::randomized::<<AvailableBackend as CryptoBackend>::Rng>().0;
         assert!(valid_range.contains(&length));
     }
 }

@@ -11,6 +11,47 @@ pub mod rng;
 #[cfg(feature = "rust-crypto")]
 pub mod rust_crypto;
 
+/// [CryptoBackend] implementation backed by the [aws-lc-rs](https://github.com/aws/aws-lc-rs)
+/// crate.
+#[cfg(feature = "aws-lc-rs")]
+pub mod aws_lc_rs;
+
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+mod cose;
+
+/// The [CryptoBackend] to use when a downstream crate has not picked one explicitly.
+///
+/// Resolves to AwsLcRsBackend when the `aws-lc-rs` feature is enabled, otherwise RustCryptoBackend
+/// when only the `rust-crypto` feature is enabled. If both features are enabled, aws-lc-rs wins.
+#[cfg(feature = "aws-lc-rs")]
+pub use aws_lc_rs::AwsLcRsBackend as AvailableBackend;
+
+/// The [CryptoBackend] to use when a downstream crate has not picked one explicitly.
+///
+/// Resolves to AwsLcRsBackend when the `aws-lc-rs` feature is enabled, otherwise RustCryptoBackend
+/// when only the `rust-crypto` feature is enabled. If both features are enabled, aws-lc-rs wins.
+#[cfg(all(feature = "rust-crypto", not(feature = "aws-lc-rs")))]
+pub use rust_crypto::RustCryptoBackend as AvailableBackend;
+
+/// The [rng::RngBackend] provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailableRng = <AvailableBackend as CryptoBackend>::Rng;
+
+/// The [hash::Sha256Backend] provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailableSha2 = <AvailableBackend as CryptoBackend>::Sha256;
+
+/// The signing-algorithm secret key type provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailableSecretKey = <AvailableBackend as CryptoBackend>::SecretKey;
+
+/// The signing-algorithm public key type provided by the [AvailableBackend].
+#[cfg(any(feature = "aws-lc-rs", feature = "rust-crypto"))]
+pub type AvailablePublicKey = <AvailableSecretKey as SecretKeyT>::PublicKey;
+
+#[cfg(all(test, feature = "aws-lc-rs", feature = "rust-crypto"))]
+mod tests;
+
 /// Trait to capture cryptographic operations necessary in the other passkey-* crates.
 pub trait CryptoBackend {
     /// RNG implementation.
