@@ -212,13 +212,13 @@ impl SecretKeyT for RustCryptoSecretKey {
                 )))
             }
             iana::Algorithm::ML_DSA_44 => Ok(Self(RustCryptoSecretKeyInner::MlDsa44(
-                ml_dsa_secret_from_cose_key::<MlDsa44>(cose_key)?,
+                ml_dsa_secret_from_cose_key(cose_key)?,
             ))),
             iana::Algorithm::ML_DSA_65 => Ok(Self(RustCryptoSecretKeyInner::MlDsa65(
-                ml_dsa_secret_from_cose_key::<MlDsa65>(cose_key)?,
+                ml_dsa_secret_from_cose_key(cose_key)?,
             ))),
             iana::Algorithm::ML_DSA_87 => Ok(Self(RustCryptoSecretKeyInner::MlDsa87(
-                ml_dsa_secret_from_cose_key::<MlDsa87>(cose_key)?,
+                ml_dsa_secret_from_cose_key(cose_key)?,
             ))),
             _ => Err(CoseKeyConversionError::UnsupportedAlgorithm),
         }
@@ -357,13 +357,13 @@ impl CryptoBackend for RustCryptoBackend {
                 )))
             }
             iana::Algorithm::ML_DSA_44 => Ok(RustCryptoSecretKey(
-                RustCryptoSecretKeyInner::MlDsa44(ml_dsa_generate::<MlDsa44>()),
+                RustCryptoSecretKeyInner::MlDsa44(ml_dsa_generate()),
             )),
             iana::Algorithm::ML_DSA_65 => Ok(RustCryptoSecretKey(
-                RustCryptoSecretKeyInner::MlDsa65(ml_dsa_generate::<MlDsa65>()),
+                RustCryptoSecretKeyInner::MlDsa65(ml_dsa_generate()),
             )),
             iana::Algorithm::ML_DSA_87 => Ok(RustCryptoSecretKey(
-                RustCryptoSecretKeyInner::MlDsa87(ml_dsa_generate::<MlDsa87>()),
+                RustCryptoSecretKeyInner::MlDsa87(ml_dsa_generate()),
             )),
             _ => Err("Algorithm is unsupported".to_string().into()),
         }
