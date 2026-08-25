@@ -16,7 +16,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use hidparser::ReportField;
+use hidreport::{Field, Report, ReportDescriptor, UsagePage};
 use rand::Rng;
 use tokio::io::Interest;
 use tokio::io::unix::AsyncFd;
@@ -230,20 +230,20 @@ fn device_has_fido_usage(file: &File) -> io::Result<bool> {
 
 /// Walk an HID report descriptor and return whether it includes a `Usage Page (0xF1D0)` item.
 fn report_descriptor_has_fido_usage(desc: &[u8]) -> bool {
-    let Ok(descriptor) = hidparser::parse_report_descriptor(desc) else {
+    let Ok(descriptor) = ReportDescriptor::try_from(desc) else {
         // Report descriptor failed to parse; don't return it, since this is probably caused by a
         // broken device or kernel module out of our control
         return false;
     };
-    if descriptor.input_reports.is_empty() {
+    if descriptor.input_reports().is_empty() {
         return false;
     }
-    for report in descriptor.input_reports {
-        for field in report.fields {
-            let ReportField::Variable(v) = field else {
+    for report in descriptor.input_reports() {
+        for field in report.fields() {
+            let Field::Variable(v) = field else {
                 continue;
             };
-            if v.usage.page() == 0xF1D0 {
+            if v.usage.usage_page == UsagePage::from(0xF1D0) {
                 return true;
             }
         }
