@@ -20,7 +20,7 @@ repository = "https://github.com/1Password/passkey-rs"
 rust-version = "1.87.0"
 
 [workspace.dependencies]
-coset = ">=0.3.8, <=0.4"
+coset = ">=0.4.2"
 
 [workspace.lints.rust]
 missing_docs = "warn"
