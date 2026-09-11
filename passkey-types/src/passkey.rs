@@ -117,7 +117,7 @@ impl Passkey {
     /// The default credential Id length is 16, change it with the [`PasskeyBuilder::credential_id`]
     /// method.
     #[cfg(feature = "testable")]
-    pub fn mock<C: passkey_crypto::CryptoBackend>(rp_id: String, crypto: C) -> PasskeyBuilder {
+    pub fn mock<C: passkey_crypto::CryptoBackend>(rp_id: String, crypto: C) -> PasskeyBuilder<C> {
         PasskeyBuilder::new(rp_id, crypto)
     }
 }

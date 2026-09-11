@@ -3,15 +3,16 @@ use passkey_crypto::{CryptoBackend, SecretKeyT, iana, rng::RngBackend};
 use crate::{Passkey, StoredHmacSecret};
 
 /// A builder for the [`Passkey`] type which should be used as a mock for testing.
-pub struct PasskeyBuilder {
+pub struct PasskeyBuilder<C> {
     inner: Passkey,
+    _crypto: C,
 }
 
-impl PasskeyBuilder {
+impl<C: CryptoBackend> PasskeyBuilder<C> {
     /// Create a new
-    pub(super) fn new<C: CryptoBackend>(rp_id: String, crypto: C) -> Self {
+    pub(super) fn new(rp_id: String, _crypto: C) -> Self {
         // This expect is safe since this is test code and should never be used in production.
-        let private_key = crypto
+        let private_key = _crypto
             .generate_key(iana::Algorithm::ES256)
             .expect("The crypto backend does not support ES256");
 
@@ -27,17 +28,18 @@ impl PasskeyBuilder {
                 counter: None,
                 extensions: Default::default(),
             },
+            _crypto,
         }
     }
 
     /// Regenerate the credential ID with a different size than the default 16 bytes
-    pub fn credential_id<C: CryptoBackend>(mut self, len: usize) -> Self {
+    pub fn credential_id(mut self, len: usize) -> Self {
         self.inner.credential_id = C::Rng::random_vec(len).into();
         self
     }
 
     /// Generate the user handle with an optional custom size. The default is 16 bytes.
-    pub fn user_handle<C: CryptoBackend>(mut self, len: Option<usize>) -> Self {
+    pub fn user_handle(mut self, len: Option<usize>) -> Self {
         self.inner.user_handle = Some(C::Rng::random_vec(len.unwrap_or(16)).into());
         self
     }
