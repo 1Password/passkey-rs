@@ -5,7 +5,7 @@ use coset::{
 };
 
 use crate::{
-    CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
+    CoseKeyConversionError, CryptoBackend, Pkcs8, PublicKeyT, SecretKeyT,
     cose::{
         ML_DSA_SEED_LEN, extract_akp_priv, extract_akp_pub, extract_okp_d, extract_okp_x,
         extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
@@ -19,13 +19,21 @@ use ml_dsa::{
     MlDsa44, MlDsa65, MlDsa87, MlDsaParams, Seed as MlDsaSeed, Signature as MlDsaSignature,
     SigningKey as MlDsaSigningKey, VerifyingKey as MlDsaVerifyingKey, signature::Keypair,
 };
-use p256::{Sec1Point, elliptic_curve::Generate, pkcs8::EncodePublicKey};
+use p256::{
+    Sec1Point,
+    elliptic_curve::Generate,
+    pkcs8::{
+        AssociatedOid, DecodePrivateKey, EncodePrivateKey, EncodePublicKey, PrivateKeyInfoOwned,
+    },
+};
 use sha2::{Digest, Sha256};
 use signature::Verifier;
 
 /// Secret key backed by the RustCrypto crates.
+#[cfg_attr(test, derive(Debug))]
 pub struct RustCryptoSecretKey(RustCryptoSecretKeyInner);
 
+#[cfg_attr(test, derive(Debug))]
 enum RustCryptoSecretKeyInner {
     // Secret key that uses the P256 ECDSA algorithm.
     P256(p256::ecdsa::SigningKey),
@@ -301,6 +309,78 @@ impl SecretKeyT for RustCryptoSecretKey {
                 ml_dsa_secret_to_cose_key(secret_key, MlDsaVariant::MlDsa87)
             }
         }
+    }
+}
+
+impl Pkcs8 for RustCryptoSecretKey {
+    fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, crate::Error> {
+        let info = PrivateKeyInfoOwned::from_pkcs8_der(pkcs8)?;
+        let algorithm_id = info.algorithm.oid;
+
+        const MLDSA44_OID: p256::pkcs8::ObjectIdentifier = MlDsa44::ALGORITHM_IDENTIFIER.oid;
+        const MLDSA65_OID: p256::pkcs8::ObjectIdentifier = MlDsa65::ALGORITHM_IDENTIFIER.oid;
+        const MLDSA87_OID: p256::pkcs8::ObjectIdentifier = MlDsa87::ALGORITHM_IDENTIFIER.oid;
+
+        match algorithm_id {
+            p256::NistP256::OID | p256::elliptic_curve::ALGORITHM_OID => {
+                let secretkey = p256::SecretKey::from_pkcs8_der(pkcs8)?;
+                Ok(Self(RustCryptoSecretKeyInner::P256(secretkey.into())))
+            }
+            ed25519_dalek::pkcs8::ALGORITHM_OID => {
+                use ed25519_dalek::pkcs8::DecodePrivateKey;
+                let private_key = ed25519_dalek::SigningKey::from_pkcs8_der(pkcs8)?;
+                Ok(Self(RustCryptoSecretKeyInner::Ed25519(private_key)))
+            }
+            MLDSA44_OID => {
+                let secretkey = ml_dsa::SigningKey::from_pkcs8_der(pkcs8)?;
+                Ok(Self(RustCryptoSecretKeyInner::MlDsa44(secretkey)))
+            }
+            MLDSA65_OID => {
+                let secretkey = ml_dsa::SigningKey::from_pkcs8_der(pkcs8)?;
+                Ok(Self(RustCryptoSecretKeyInner::MlDsa65(secretkey)))
+            }
+            MLDSA87_OID => {
+                let secretkey = ml_dsa::SigningKey::from_pkcs8_der(pkcs8)?;
+                Ok(Self(RustCryptoSecretKeyInner::MlDsa87(secretkey)))
+            }
+
+            _ => Err(format!("Unsupported PKCS#8 payload of id {}", algorithm_id).into()),
+        }
+    }
+
+    fn to_pkcs8(&self) -> Result<Vec<u8>, crate::Error> {
+        match &self.0 {
+            RustCryptoSecretKeyInner::P256(signing_key) => {
+                Ok(signing_key.to_pkcs8_der()?.as_bytes().to_vec())
+            }
+            RustCryptoSecretKeyInner::Ed25519(signing_key) => {
+                use ed25519_dalek::pkcs8::EncodePrivateKey;
+                Ok(signing_key.to_pkcs8_der()?.as_bytes().to_vec())
+            }
+            RustCryptoSecretKeyInner::MlDsa44(signing_key) => {
+                Ok(signing_key.to_pkcs8_der()?.as_bytes().to_vec())
+            }
+            RustCryptoSecretKeyInner::MlDsa65(signing_key) => {
+                Ok(signing_key.to_pkcs8_der()?.as_bytes().to_vec())
+            }
+            RustCryptoSecretKeyInner::MlDsa87(signing_key) => {
+                Ok(signing_key.to_pkcs8_der()?.as_bytes().to_vec())
+            }
+        }
+    }
+}
+
+#[cfg(all(test, feature = "rust-crypto", feature = "aws-lc-rs"))]
+impl PartialEq<RustCryptoSecretKey> for crate::tests::KeyAlgorithm {
+    fn eq(&self, other: &RustCryptoSecretKey) -> bool {
+        matches!(
+            (self, &other.0),
+            (Self::P256, RustCryptoSecretKeyInner::P256(_))
+                | (Self::Ed25519, RustCryptoSecretKeyInner::Ed25519(_))
+                | (Self::MlDsa44, RustCryptoSecretKeyInner::MlDsa44(_))
+                | (Self::MlDsa65, RustCryptoSecretKeyInner::MlDsa65(_))
+                | (Self::MlDsa87, RustCryptoSecretKeyInner::MlDsa87(_))
+        )
     }
 }
 

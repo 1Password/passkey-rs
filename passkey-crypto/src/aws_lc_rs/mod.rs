@@ -7,7 +7,7 @@ use coset::{
 use std::ops::RangeInclusive;
 
 use crate::{
-    CoseKeyConversionError, CryptoBackend, PublicKeyT, SecretKeyT,
+    CoseKeyConversionError, CryptoBackend, Pkcs8, PublicKeyT, SecretKeyT,
     cose::{
         ED25519_KEY_LEN, ML_DSA_SEED_LEN, P256_UNCOMPRESSED_LEN, extract_akp_priv, extract_akp_pub,
         extract_okp_d, extract_okp_x, extract_p256_d, extract_p256_xy, find_ec2_crv, find_okp_crv,
@@ -30,8 +30,10 @@ use aws_lc_rs::{
 };
 
 /// Secret key backed by aws-lc-rs.
+#[cfg_attr(test, derive(Debug))]
 pub struct AwsLcRsSecretKey(AwsLcRsSecretKeyInner);
 
+#[cfg_attr(test, derive(Debug))]
 enum AwsLcRsSecretKeyInner {
     // Secret key that uses the P-256 ECDSA algorithm.
     P256(EcdsaKeyPair),
@@ -343,6 +345,67 @@ impl SecretKeyT for AwsLcRsSecretKey {
                     )
                     .build()
             }
+        }
+    }
+}
+
+impl Pkcs8 for AwsLcRsSecretKey {
+    fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, crate::Error> {
+        // Aws-lc does not provide a way to parse the algorithm identifier from the pkcs8 payload
+        // So we're stuck with doing trial and error.
+        if let Ok(ec_private_key) = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8)
+        {
+            Ok(Self(AwsLcRsSecretKeyInner::P256(ec_private_key)))
+        } else if let Ok(ed_private_key) = Ed25519KeyPair::from_pkcs8(pkcs8) {
+            Ok(Self(AwsLcRsSecretKeyInner::Ed25519(ed_private_key)))
+        } else if let Ok(ml_dsa_pk) = PqdsaKeyPair::from_pkcs8(&ML_DSA_44_SIGNING, pkcs8) {
+            Ok(Self(AwsLcRsSecretKeyInner::MlDsa {
+                variant: MlDsaVariant::MlDsa44,
+                key_pair: ml_dsa_pk,
+            }))
+        } else if let Ok(ml_dsa_pk) = PqdsaKeyPair::from_pkcs8(&ML_DSA_65_SIGNING, pkcs8) {
+            Ok(Self(AwsLcRsSecretKeyInner::MlDsa {
+                variant: MlDsaVariant::MlDsa65,
+                key_pair: ml_dsa_pk,
+            }))
+        } else if let Ok(ml_dsa_pk) = PqdsaKeyPair::from_pkcs8(&ML_DSA_87_SIGNING, pkcs8) {
+            Ok(Self(AwsLcRsSecretKeyInner::MlDsa {
+                variant: MlDsaVariant::MlDsa87,
+                key_pair: ml_dsa_pk,
+            }))
+        } else {
+            Err("Unsupported algorithm in PKCS#8 payload".to_string().into())
+        }
+    }
+
+    fn to_pkcs8(&self) -> Result<Vec<u8>, crate::Error> {
+        match &self.0 {
+            AwsLcRsSecretKeyInner::P256(ecdsa_key_pair) => {
+                Ok(ecdsa_key_pair.to_pkcs8v1()?.as_ref().to_vec())
+            }
+            AwsLcRsSecretKeyInner::Ed25519(ed25519_key_pair) => {
+                Ok(ed25519_key_pair.to_pkcs8v1()?.as_ref().to_vec())
+            }
+            AwsLcRsSecretKeyInner::MlDsa { key_pair, .. } => {
+                Ok(key_pair.to_pkcs8v1()?.as_ref().to_vec())
+            }
+        }
+    }
+}
+
+#[cfg(all(test, feature = "rust-crypto", feature = "aws-lc-rs"))]
+impl PartialEq<AwsLcRsSecretKey> for crate::tests::KeyAlgorithm {
+    fn eq(&self, other: &AwsLcRsSecretKey) -> bool {
+        match (self, &other.0) {
+            (Self::P256, AwsLcRsSecretKeyInner::P256(_))
+            | (Self::Ed25519, AwsLcRsSecretKeyInner::Ed25519(_)) => true,
+            (_, AwsLcRsSecretKeyInner::MlDsa { variant, .. }) => matches!(
+                (self, variant),
+                (Self::MlDsa44, MlDsaVariant::MlDsa44)
+                    | (Self::MlDsa65, MlDsaVariant::MlDsa65)
+                    | (Self::MlDsa87, MlDsaVariant::MlDsa87)
+            ),
+            _ => false,
         }
     }
 }
