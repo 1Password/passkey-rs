@@ -1,42 +1,39 @@
 [package]
-authors.workspace = true
-categories.workspace = true
-description = "Generic cryptographic backend for the passkey-rs crates"
-edition.workspace = true
-include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
-keywords.workspace = true
-license.workspace = true
 name = "passkey-crypto"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Generic cryptographic backend for the passkey-rs crates"
 readme = "README.md"
 repository.workspace = true
-rust-version.workspace = true
-version = "0.1.0"
-
-[features]
-default = ["rust-crypto"]
-rand = ["dep:rand", "dep:getrandom"]
-js = ["getrandom/wasm_js"]
-rust-crypto = ["dep:p256", "dep:ed25519-dalek", "dep:ml-dsa", "dep:signature", "rand", "dep:sha2", "dep:hmac", "dep:zeroize"]
-aws-lc-rs = ["dep:aws-lc-rs", "dep:zeroize"]
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
 
 [dependencies]
 aws-lc-rs = { version = "1.18", optional = true }
 coset.workspace = true
-ed25519-dalek = { version = "3.0", optional = true, features = [ "alloc", "rand_core", "pkcs8" ] }
+ed25519-dalek = { version = "3.0", features = ["alloc", "pkcs8", "rand_core"], optional = true }
 hmac = { version = "0.13", optional = true }
 log = "0.4"
-ml-dsa = { version = "0.1", optional = true, features = ["pkcs8"] }
-p256 = { version = "0.14", optional = true, features = [
-  "arithmetic",
-  "pem"
-] }
+ml-dsa = { version = "0.1", features = ["pkcs8"], optional = true }
+p256 = { version = "0.14", features = ["arithmetic", "pem"], optional = true }
 rand = { version = "0.10", optional = true }
 sha2 = { version = "0.11", optional = true }
 signature = { version = "3.0", optional = true }
 zeroize = { version = "1", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.4", optional = true, features = [ "wasm_js" ] }
+getrandom = { version = "0.4", features = ["wasm_js"], optional = true }
+
+[features]
+default = ["rust-crypto"]
+aws-lc-rs = ["dep:aws-lc-rs", "dep:zeroize"]
+js = ["getrandom/wasm_js"]
+rand = ["dep:getrandom", "dep:rand"]
+rust-crypto = ["dep:ed25519-dalek", "dep:hmac", "dep:ml-dsa", "dep:p256", "dep:sha2", "dep:signature", "dep:zeroize", "rand"]
 
 [lints]
 workspace = true

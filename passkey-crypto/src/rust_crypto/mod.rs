@@ -13,7 +13,7 @@ use crate::{
     hash::Sha256Backend,
 };
 use ed25519_dalek::{Signer, ed25519::SignatureEncoding};
-use hmac::{Hmac, KeyInit, Mac};
+use hmac::{Hmac, KeyInit};
 use ml_dsa::pkcs8::{der::AnyRef, spki::AssociatedAlgorithmIdentifier};
 use ml_dsa::{
     MlDsa44, MlDsa65, MlDsa87, MlDsaParams, Seed as MlDsaSeed, Signature as MlDsaSignature,
@@ -396,6 +396,7 @@ impl Sha256Backend for RustCryptoSha2 {
 
     /// Compute the HMAC of the given data with the given key
     fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+        use sha2::digest::Mac;
         let mut mac = Hmac::<Sha256>::new_from_slice(key).expect("hmac can take key of any size");
         mac.update(data);
 
