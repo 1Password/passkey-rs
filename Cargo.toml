@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
   "passkey",
   "passkey-authenticator",
@@ -8,27 +9,21 @@ members = [
   "passkey-types",
   "public-suffix",
 ]
-resolver = "2"
 
 [workspace.package]
+# Disabling the deprecation because rust-analyzer at 1.90
+# requires authors to be present
+# tombi: lint.rules.deprecated.disabled = true
 authors = ["1Password"]
-categories = ["authentication"]
 edition = "2024"
-keywords = ["ctap", "fido2", "passkey", "passwordless", "webauthn"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/1Password/passkey-rs"
 rust-version = "1.87.0"
+repository = "https://github.com/1Password/passkey-rs"
+license = "MIT OR Apache-2.0"
+keywords = ["ctap", "fido2", "passkey", "passwordless", "webauthn"]
+categories = ["authentication"]
 
 [workspace.dependencies]
-coset = ">=0.3.8, <=0.4"
-
-[workspace.lints.rust]
-missing_docs = "warn"
-unused-qualifications = "deny"
-unused_must_use = "forbid"
-
-[workspace.lints.rustdoc]
-broken_intra_doc_links = "deny"
+coset = ">=0.4.2"
 
 [workspace.lints.clippy]
 as_conversions = "deny"
@@ -38,3 +33,11 @@ todo = "deny"
 undocumented_unsafe_blocks = "deny"
 unimplemented = "deny"
 unused_async = "deny"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unused_must_use = "forbid"
+unused-qualifications = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"

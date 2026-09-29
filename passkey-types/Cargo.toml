@@ -1,19 +1,29 @@
 [package]
-authors.workspace = true
-categories.workspace = true
-description = "Rust type definitions for the webauthn and CTAP specifications"
-edition.workspace = true
-include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
-keywords.workspace = true
-license.workspace = true
 name = "passkey-types"
+version = "0.6.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Rust type definitions for the webauthn and CTAP specifications"
 readme = "README.md"
 repository.workspace = true
-rust-version.workspace = true
-version = "0.6.0"
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
 
-[lints]
-workspace = true
+[dependencies]
+bitflags = "2"
+ciborium = "0.2"
+data-encoding = "2"
+indexmap = { version = "2", features = ["serde"] }
+passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+strum = { version = "0.27", features = ["derive"] }
+typeshare = { version = "1", optional = true }
+url = { version = "2", features = ["serde"] }
+zeroize = { version = "1", features = ["zeroize_derive"] }
 
 [features]
 default = []
@@ -21,15 +31,5 @@ serialize_bytes_as_base64_string = []
 testable = []
 typeshare = ["dep:typeshare"]
 
-[dependencies]
-bitflags = "2"
-ciborium = "0.2"
-data-encoding = "2"
-indexmap = { version = "2", features = ["serde"] }
-passkey-crypto = { path = "../passkey-crypto", version = "0.1"}
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
-strum = { version = "0.27", features = ["derive"] }
-typeshare = { version = "1", optional = true }
-url = { version = "2", features = ["serde"] }
-zeroize = { version = "1", features = ["zeroize_derive"] }
+[lints]
+workspace = true

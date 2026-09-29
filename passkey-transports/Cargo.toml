@@ -1,33 +1,32 @@
 [package]
-authors.workspace = true
-categories.workspace = true
-description = "A crate managing CTAP2 transport-specific bindings."
-edition.workspace = true
-include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
-keywords.workspace = true
-license.workspace = true
 name = "passkey-transports"
+version = "0.2.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "A crate managing CTAP2 transport-specific bindings."
 readme = "README.md"
 repository.workspace = true
-rust-version.workspace = true
-version = "0.2.0"
-
-
-[lints]
-workspace = true
-
-[features]
-default = []
-linux = ["dep:libc", "dep:udev", "dep:nix", "dep:tokio", "dep:rand", "dep:hidreport", "tokio/time"]
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
 
 [dependencies]
 
+[dev-dependencies]
+
 [target.'cfg(target_os = "linux")'.dependencies]
+hidreport = { version = "0.6", optional = true }
 libc = { version = "0.2", optional = true }
 nix = { version = "0.29", features = ["ioctl"], optional = true }
+rand = { version = "0.10", optional = true }
 tokio = { version = "1", features = ["net"], optional = true }
 udev = { version = "0.9", optional = true }
-hidreport = { version = "0.6", optional = true }
-rand = { version = "0.10", optional = true }
 
-[dev-dependencies]
+[features]
+default = []
+linux = ["dep:hidreport", "dep:libc", "dep:nix", "dep:rand", "dep:tokio", "dep:udev", "tokio/time"]
+
+[lints]
+workspace = true

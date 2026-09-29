@@ -1,0 +1,13 @@
+toml-version = "v1.0.0"
+
+[files]
+include = ["**/Cargo.toml", "**/*deny.toml", "tombi.toml"]
+exclude = ["target/**"]
+
+# The bundled Cargo schema defaults to a newer TOML version, which makes tombi explode
+# inline tables (e.g. `dep = { version, features = [...] }`) into fully multi-line form.
+# This is fine for `cargo` but some other TOML tools choke on this syntax if they only support TOML v1.0.0
+[[schemas]]
+toml-version = "v1.0.0"
+path = "tombi://www.schemastore.org/cargo.json"
+include = ["**/Cargo.toml"]

@@ -1,25 +1,16 @@
 [package]
-authors.workspace = true
-categories.workspace = true
-description = "A webauthn authenticator supporting passkeys."
-edition.workspace = true
-include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
-keywords.workspace = true
-license.workspace = true
 name = "passkey-authenticator"
+version = "0.6.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "A webauthn authenticator supporting passkeys."
 readme = "README.md"
 repository.workspace = true
-rust-version.workspace = true
-version = "0.6.0"
-
-[lints]
-workspace = true
-
-[features]
-default = []
-testable = ["dep:mockall", "passkey-types/testable"]
-tokio = ["dep:tokio"]
-linux = ["dep:tokio", "dep:passkey-transports", "tokio/macros", "passkey-transports/linux"]
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "src/"]
 
 [dependencies]
 async-trait = "0.1"
@@ -29,7 +20,7 @@ mockall = { version = "0.11", optional = true }
 passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
 passkey-transports = { path = "../passkey-transports", version = "0.2", optional = true }
 passkey-types = { path = "../passkey-types", version = "0.6" }
-tokio = { version = "1", features = ["sync", "macros"], optional = true }
+tokio = { version = "1", features = ["macros", "sync"], optional = true }
 
 [dev-dependencies]
 authenticator = { version = "0.5", default-features = false, features = [
@@ -50,3 +41,12 @@ tokio = { version = "1", features = ["macros", "rt", "sync"] }
 # See https://github.com/mozilla/authenticator-rs/pull/366.
 [target.'cfg(target_os = "windows")'.dev-dependencies]
 winapi = { version = "^0.3", features = ["std"] }
+
+[features]
+default = []
+linux = ["dep:passkey-transports", "dep:tokio", "passkey-transports/linux", "tokio/macros"]
+testable = ["dep:mockall", "passkey-types/testable"]
+tokio = ["dep:tokio"]
+
+[lints]
+workspace = true

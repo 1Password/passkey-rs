@@ -86,6 +86,22 @@ pub trait SecretKeyT {
     fn to_cose_key(&self) -> CoseKey;
 }
 
+/// A trait for parsing and emitting PKCS#8 payloads in DER format
+///
+/// May be useful for interoperability with the
+/// [`credential-exchange-format`](https://docs.rs/credential-exchange-format/latest/credential_exchange_format/)
+/// crate.
+///
+/// # Errors
+///
+/// If attempting to parse PKCS#8 in PEM format, these methods may fail
+pub trait Pkcs8: SecretKeyT + Sized {
+    /// Parse unencrypted bytes as PKCS#8 v1 DER into a private key.
+    fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, Error>;
+    /// Serializes this private key into a PKCS#8 v1 DER formated vector of bytes.
+    fn to_pkcs8(&self) -> Result<Vec<u8>, Error>;
+}
+
 /// Errors that can arise when converting from a COSE key.
 // TODO: is this conformant with CTAP2? Do we need to expose other error variants?
 #[derive(Debug)]

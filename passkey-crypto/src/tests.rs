@@ -348,3 +348,96 @@ fn ml_dsa_cross_backend_sign_verify() {
     ml_dsa_cross_verify(MlDsaVariant::MlDsa65, &ML_DSA_SEED_65);
     ml_dsa_cross_verify(MlDsaVariant::MlDsa87, &ML_DSA_SEED_87);
 }
+
+// PKCS8 Tests
+mod pkcs8_keys;
+use crate::Pkcs8;
+use pkcs8_keys::{ED25519_PKCS8, MLDSA44_PKCS8, MLDSA65_PKCS8, MLDSA87_PKCS8, P256_PKCS8};
+
+#[derive(Debug)]
+pub enum KeyAlgorithm {
+    P256,
+    Ed25519,
+    MlDsa44,
+    MlDsa65,
+    MlDsa87,
+}
+
+fn pkcs8_cross_verify(variant: KeyAlgorithm, key: &[u8]) {
+    let mut rc_sec =
+        RustCryptoSecretKey::from_pkcs8(key).expect("RustCrypto failed to parse OpenSSL pkcs8");
+    let mut aws_sec =
+        AwsLcRsSecretKey::from_pkcs8(key).expect("AwsLcRs failed to parse OpenSSL pkcs8");
+
+    assert_eq!(variant, rc_sec);
+    assert_eq!(variant, aws_sec);
+
+    let mut rc2aws = AwsLcRsSecretKey::from_pkcs8(&rc_sec.to_pkcs8().unwrap())
+        .expect("AwsLcRs could not parse PKCS8 from RustCrypto");
+    let mut aws2rc = RustCryptoSecretKey::from_pkcs8(&aws_sec.to_pkcs8().unwrap())
+        .expect("RustCrypto could not parse PKCS8 from AwsLcRs");
+
+    assert_eq!(variant, rc2aws);
+    assert_eq!(variant, aws2rc);
+
+    let rc_pub = rc_sec.public_key();
+    let aws_pub = aws_sec.public_key();
+    let rc2aws_pub = rc2aws.public_key();
+    let aws2rc_pub = aws2rc.public_key();
+
+    for msg in TEST_MESSAGES {
+        let signatures = [
+            (rc_sec.sign(msg), "rc"),
+            (aws_sec.sign(msg), "aws"),
+            (rc2aws.sign(msg), "rc2aws"),
+            (aws2rc.sign(msg), "aws2rc"),
+        ];
+        for (sign, src) in signatures {
+            assert!(
+                rc_pub.verify(msg, &sign).is_ok(),
+                "Rust crypto could not verify signature from {}",
+                src
+            );
+            assert!(
+                aws_pub.verify(msg, &sign).is_ok(),
+                "AwsLcRs could not verify signature from {}",
+                src
+            );
+            assert!(
+                rc2aws_pub.verify(msg, &sign).is_ok(),
+                "AwsLcRs from Rust Crypto could not verify signature from {}",
+                src
+            );
+            assert!(
+                aws2rc_pub.verify(msg, &sign).is_ok(),
+                "Rust crypto from AwsLcRs could not verify signature from {}",
+                src
+            );
+        }
+    }
+}
+
+#[test]
+fn p256_pkcs8_cross_verify() {
+    pkcs8_cross_verify(KeyAlgorithm::P256, &P256_PKCS8);
+}
+
+#[test]
+fn ed25519_pkcs8_cross_verify() {
+    pkcs8_cross_verify(KeyAlgorithm::Ed25519, &ED25519_PKCS8);
+}
+
+#[test]
+fn mldsa44_pkcs8_cross_verify() {
+    pkcs8_cross_verify(KeyAlgorithm::MlDsa44, &MLDSA44_PKCS8);
+}
+
+#[test]
+fn mldsa65_pkcs8_cross_verify() {
+    pkcs8_cross_verify(KeyAlgorithm::MlDsa65, &MLDSA65_PKCS8);
+}
+
+#[test]
+fn mldsa87_pkcs8_cross_verify() {
+    pkcs8_cross_verify(KeyAlgorithm::MlDsa87, &MLDSA87_PKCS8);
+}
