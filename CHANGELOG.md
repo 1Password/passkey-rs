@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### passkey-crypto v0.1.1
+
+- Remove the `wasm_js` feature automatically being enabled for wasm builds.
+  Enable the `js` feature if you need it in your dependency tree. ([#126](https://github.com/1Password/passkey-rs/pull/126))
+
 ## Passkey v0.6.0
 
 * Re-export `passkey-crypto` as `passkey::crypto` ([#91](https://github.com/1Password/passkey-rs/pull/91))
