@@ -2,13 +2,36 @@
 
 ## Unreleased
 
-### passkey-authenticator
+## Passkey v0.6.0
 
+* Re-export `passkey-crypto` as `passkey::crypto` ([#91](https://github.com/1Password/passkey-rs/pull/91))
+* Add `linux` feature flag enabling the Linux HIDRAW authenticator and client ([#99](https://github.com/1Password/passkey-rs/pull/99))
+* Add `windows` feature flag enabling the Windows WebAuthn client ([#111](https://github.com/1Password/passkey-rs/pull/111))
+* Add `rust-crypto` and `aws-lc-rs` feature flags to select the crypto backend ([#117](https://github.com/1Password/passkey-rs/pull/117))
+
+### passkey-authenticator 0.6.0
+
+- ⚠ BREAKING: Added new generic parameter to Authenticator for the crypto backend ([#91](https://github.com/1Password/passkey-rs/pull/91))
+  - Which the `Authenticator::new` constructor now has a new crypto backend parameter.
+- ⚠ BREAKING: Replace the `private_key_from_cose_key` and `public_key_der_from_cose_key` functions with methods on `passkey-crypto` traits ([#91](https://github.com/1Password/passkey-rs/pull/91))
+- ⚠ BREAKING: `CoseKeyPair::from_secret_key` now takes a generic `SecretKeyT` and no longer takes an `Algorithm` ([#91](https://github.com/1Password/passkey-rs/pull/91))
+- ⚠ BREAKING: `CredentialIdLength::randomized` now uses a generic `RngBackend` instead of taking a `rand::Rng` ([#91](https://github.com/1Password/passkey-rs/pull/91))
+- Add `linux` module with a `LinuxAuthenticator` for USB CTAP2 hardware authenticators ([#99](https://github.com/1Password/passkey-rs/pull/99))
 - ⚠ BREAKING: Remove U2F support ([#105](https://github.com/1Password/passkey-rs/pull/105))
+- Add a builder method on Authenticator to set supported algorithms ([#116](https://github.com/1Password/passkey-rs/pull/116))
 
-### passkey-client
+### passkey-client v0.6.0
 
+- ⚠ BREAKING: Added new generic parameter to Client for the crypto backend ([#91](https://github.com/1Password/passkey-rs/pull/91))
 - Fix RP ID validation to require dot boundary ([#92](https://github.com/1Password/passkey-rs/pull/92))
+- ⚠ BREAKING: `WebauthnError` is now `#[non_exhaustive]` and has a new `TimeoutError` variant ([#94](https://github.com/1Password/passkey-rs/pull/94))
+- `Client::register` and `Client::authenticate` now respect request timeouts when the `tokio` feature is enabled ([#94](https://github.com/1Password/passkey-rs/pull/94))
+- Add `Client::user_verification_when_preferred` builder to control `uv` when the RP asks for `Preferred` ([#96](https://github.com/1Password/passkey-rs/pull/96))
+- Add `linux` module with a client for external hardware authenticators ([#99](https://github.com/1Password/passkey-rs/pull/99))
+- Client now verifies credential ID length during credential registration ([#100](https://github.com/1Password/passkey-rs/pull/100))
+- An empty client data hash now falls back to hashing the client data JSON ([#107](https://github.com/1Password/passkey-rs/pull/107))
+- ⚠ BREAKING: `WebauthnError::ValidationError` is now a struct variant with a `context` field ([#111](https://github.com/1Password/passkey-rs/pull/111))
+- Add `windows` module with a `WindowsClient` backed by the Windows WebAuthn API ([#111](https://github.com/1Password/passkey-rs/pull/111))
 
 ### passkey-crypto v0.1.0
 
@@ -19,18 +42,36 @@ rules.
 
 - New `RngBackend` trait which replaces the pre-existing `passkey-types::rand::random_vec` function.
   Use this new method as `passkey-crypto::rng::Rng::random_vec`.
+- Supports 2 cryptography backends: 
+  - RustCrypto ecosystem as the default choice
+  - Awc-lc-rs as an alternative choice
+- Adds support for Ed25519 and ML-DSA passkeys
 
-### passkey-transports
+### passkey-transports v0.2.0
 
+- Add a Linux-only `hidraw` module for talking to USB CTAP2 authenticators ([#99](https://github.com/1Password/passkey-rs/pull/99))
 - ⚠ BREAKING: Remove `hid::Command::Msg` variant as that is U2F only and U2F support is now being removed.
   ([#105](https://github.com/1Password/passkey-rs/pull/105))
 
-### passkey-types
+### passkey-types v0.6.0
 
+- ⚠ BREAKING: The `passkey-types::rand` module no longer exists and is instead replaced by `passkey-crypto::rng` ([#91](https://github.com/1Password/passkey-rs/pull/91))
+- `Ctap2Error` and `StatusCode` now implement `From<CoseKeyConversionError>` ([#91](https://github.com/1Password/passkey-rs/pull/91))
+- ⚠ BREAKING: Remove the `CoseKey` re-export, which now comes from `passkey-crypto` ([#91](https://github.com/1Password/passkey-rs/pull/91))
+- ⚠ BREAKING: `Passkey::mock` now takes a `CryptoBackend`, and `PasskeyBuilder` is now generic over it ([#91](https://github.com/1Password/passkey-rs/pull/91), [#121](https://github.com/1Password/passkey-rs/pull/121))
+- `PublicKeyCredentialParameters` now accepts a stringified `alg` and skips unknown algorithms without failing ([#96](https://github.com/1Password/passkey-rs/pull/96))
+- `CredentialExtensions` now derives `Debug` ([#96](https://github.com/1Password/passkey-rs/pull/96))
+- ⚠ BREAKING: `get_assertion::Options` is now its own type without `rk`, instead of re-exporting `make_credential::Options` ([#99](https://github.com/1Password/passkey-rs/pull/99))
+- ⚠ BREAKING: `get_assertion::Response::user` now uses `ctap2::make_credential::PublicKeyCredentialUserEntity`, whose fields are optional ([#99](https://github.com/1Password/passkey-rs/pull/99))
+- ⚠ BREAKING: The CTAP2 `PublicKeyCredentialUserEntity` now serializes as camelCase, with `icon_url` renamed to `icon` on the wire ([#99](https://github.com/1Password/passkey-rs/pull/99))
+- Add a `Ctap2Command` enum ([#99](https://github.com/1Password/passkey-rs/pull/99))
+- `PublicKeyCredentialDescriptor` now derives `Clone` ([#99](https://github.com/1Password/passkey-rs/pull/99))
+- `make_credential::Options::up` is no longer serialized when false ([#99](https://github.com/1Password/passkey-rs/pull/99))
 - ⚠ BREAKING: Remove U2F support ([#105](https://github.com/1Password/passkey-rs/pull/105))
-- ⚠ BREAKING: Migrate `U2FError` variant into `Ctap2Error`, rename `Ctap2Code` to `StatusCode`,
+- ⚠ BREAKING: Migrate `U2FError` variant into `Ctap2Error`, rename `Ctap2Code` to `StatusCode` ([#105](https://github.com/1Password/passkey-rs/pull/105))
   and finaly remove the old `StatusCode`. ([#105](https://github.com/1Password/passkey-rs/pull/105))
-- ⚠ BREAKING: The `passkey-types::rand` module no longer exists and is instead replaced by `passkey-crypto::rng`.
+- ⚠ BREAKING: Remove the `crypto` module (`sha256`/`hmac_sha256`) in favour of `passkey-crypto::hash::Sha256Backend` ([#109](https://github.com/1Password/passkey-rs/pull/109))
+- ⚠ BREAKING: `AuthenticatorData::new` now takes a `CryptoBackend` argument ([#109](https://github.com/1Password/passkey-rs/pull/109))
 
 ## Passkey v0.5.0
 
