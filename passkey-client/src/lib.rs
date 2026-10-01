@@ -88,6 +88,7 @@ pub enum WebauthnError {
     /// A redirect that was not allowed occured
     RedirectError,
     /// Related Origins endpoint contains a number of labels exceeding the max limit
+    #[deprecated(since = "0.6.1", note = "No longer used")]
     ExceedsMaxLabelLimit,
     /// JSON serialization error
     SerializationError,
