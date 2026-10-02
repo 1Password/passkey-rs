@@ -1,6 +1,9 @@
-use std::{borrow::Cow, collections::HashMap, ops::ControlFlow};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, hash_map::Entry},
+    ops::ControlFlow,
+};
 
-use itertools::Itertools;
 use passkey_types::webauthn::WellKnown;
 use url::Url;
 
@@ -212,22 +215,28 @@ where
             .filter_map(|origin| decode_host(origin.domain()?))
             .collect();
 
-        let labels_to_origins: HashMap<_, _> = origin_domains
-            .iter()
-            .filter_map(|origin| {
-                let etld = self.tld_provider.effective_tld_plus_one(origin).ok()?;
-                let (label, _) = etld.split_once('.')?;
-                if label.is_empty() {
-                    None
-                } else {
-                    Some((label, origin))
+        let mut labels_to_origins = HashMap::<&str, Vec<&Cow<'_, str>>>::new();
+        for origin in origin_domains.iter() {
+            let Some((label, _)) = self
+                .tld_provider
+                .effective_tld_plus_one(origin.as_ref())
+                .ok()
+                .and_then(|etld| etld.split_once('.'))
+            else {
+                continue;
+            };
+            if label.is_empty() {
+                continue;
+            }
+            let len = labels_to_origins.len();
+            match labels_to_origins.entry(label) {
+                Entry::Occupied(e) => e.into_mut().push(origin),
+                // Only take up to the configured number of labels.
+                Entry::Vacant(e) if len < Self::ORIGIN_LABEL_LIMIT => {
+                    e.insert(vec![origin]);
                 }
-            })
-            .into_group_map();
-
-        // upper limit of registerable domain labels
-        if labels_to_origins.len() > Self::ORIGIN_LABEL_LIMIT {
-            return Err(WebauthnError::ExceedsMaxLabelLimit);
+                Entry::Vacant(_) => {}
+            }
         }
 
         let decoded_effective_domain =

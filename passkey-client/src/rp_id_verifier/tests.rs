@@ -34,6 +34,19 @@ impl Default for TestFetcher {
     }
 }
 
+impl TestFetcher {
+    fn new(origins: &[&str]) -> Self {
+        TestFetcher {
+            origins: origins
+                .iter()
+                .map(|input| Url::parse(input))
+                .map(Result::unwrap)
+                .collect(),
+            final_url: None,
+        }
+    }
+}
+
 impl Fetcher for TestFetcher {
     async fn fetch_related_origins(
         &self,
@@ -79,6 +92,53 @@ async fn test_happy_path_no_redirects() {
         .await
         .expect_err("kolide sub domain should not match");
     assert_eq!(should_error, WebauthnError::OriginRpMissmatch);
+}
+
+/// This test contains more than the upper limit of 5 different labels. The first 5 should
+/// pass, and the others should be ignored without error.
+#[tokio::test]
+async fn test_too_many_labels() {
+    // 6 labels
+    let origins = [
+        "https://rpid1.com",
+        "https://label2.ca",
+        "https://sub.label3.com",
+        "https://label4.eu",
+        "https://label5.com",
+        "https://extra6.com",
+        // Same label as a previous label, so should be allowed even though there's an extra label
+        // before it that is ignored.
+        "https://rpid1.co.uk",
+    ];
+    let fetcher = TestFetcher::new(&origins);
+    let verifier = RpIdVerifier::new(DEFAULT_PROVIDER, Some(fetcher));
+    let rp_id = "rpid1.com";
+    let should_pass = [
+        "rpid1.com",
+        "label2.ca",
+        "sub.label3.com",
+        "label4.eu",
+        "label5.com",
+        "rpid1.co.uk",
+    ];
+    for related_origin in should_pass {
+        let op_rpid = verifier
+            .validate_related_origins(rp_id, related_origin)
+            .await
+            .unwrap_or_else(|_| {
+                panic!("Could not validate cross tld {related_origin} for {rp_id}")
+            });
+        assert_eq!(op_rpid, rp_id);
+    }
+
+    // This is the last label that appears, but it is over the limit, so it should not verify.
+    let missing_label = verifier
+        .validate_related_origins(rp_id, "extra6.com")
+        .await
+        .expect_err(&format!(
+            "`extra6` label should not match given origins {origins:?}"
+        ));
+    assert_eq!(missing_label, WebauthnError::OriginRpMissmatch);
 }
 
 #[tokio::test]
