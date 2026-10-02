@@ -218,7 +218,7 @@ jobs:
           target: wasm32-unknown-emscripten
 
       - name: Run build
-        run: rustup run ${{ env.rust }} cargo build --features "passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}" --target wasm32-unknown-emscripten
+        run: rustup run ${{ env.rust }} cargo build --features "passkey-crypto/js,passkey-client/tokio,passkey-authenticator/tokio,${{ matrix.backend }}" --target wasm32-unknown-emscripten
 
   test-linux:
     name: Test-Linux

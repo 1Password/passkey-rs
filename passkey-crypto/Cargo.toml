@@ -1,6 +1,6 @@
 [package]
 name = "passkey-crypto"
-version = "0.1.0"
+version = "0.1.1"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -26,7 +26,7 @@ signature = { version = "3.0", optional = true }
 zeroize = { version = "1", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.4", features = ["wasm_js"], optional = true }
+getrandom = { version = "0.4", optional = true }
 
 [features]
 default = ["rust-crypto"]
