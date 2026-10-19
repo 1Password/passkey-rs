@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### passkey-client
+
+- Deprecate WebAuthnError::ExceedsMaxLabelLimit variant ([#125](https://github.com/1Password/passkey-rs/pull/125))
+- Relax WebAuthn related origins validations to ignore, instead of error, when too many labels are encountered. ([#125](https://github.com/1Password/passkey-rs/pull/125))
+
 ### passkey-crypto v0.1.1
 
 - Remove the `wasm_js` feature automatically being enabled for wasm builds.
@@ -47,7 +52,7 @@ rules.
 
 - New `RngBackend` trait which replaces the pre-existing `passkey-types::rand::random_vec` function.
   Use this new method as `passkey-crypto::rng::Rng::random_vec`.
-- Supports 2 cryptography backends: 
+- Supports 2 cryptography backends:
   - RustCrypto ecosystem as the default choice
   - Awc-lc-rs as an alternative choice
 - Adds support for Ed25519 and ML-DSA passkeys
