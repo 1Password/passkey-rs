@@ -17,7 +17,7 @@ async-trait = "0.1"
 ciborium = { version = "0.2" }
 log = "0.4"
 mockall = { version = "0.11", optional = true }
-passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
+passkey-crypto = { path = "../passkey-crypto", version = "0.1", default-features = false }
 passkey-transports = { path = "../passkey-transports", version = "0.2", optional = true }
 passkey-types = { path = "../passkey-types", version = "0.6" }
 tokio = { version = "1", features = ["macros", "sync"], optional = true }
@@ -29,6 +29,7 @@ authenticator = { version = "0.5", default-features = false, features = [
 ciborium = "0.2"
 generic-array = { version = "=0.14.7", default-features = false }
 mockall = { version = "0.11" }
+passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
 passkey-types = { path = "../passkey-types", version = "0.6", features = [
   "testable",
 ] }

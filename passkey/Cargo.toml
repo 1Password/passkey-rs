@@ -20,7 +20,7 @@ development = [
 [dependencies]
 passkey-authenticator = { path = "../passkey-authenticator", version = "0.6" }
 passkey-client = { path = "../passkey-client", version = "0.6" }
-passkey-crypto = { path = "../passkey-crypto", version = "0.1" }
+passkey-crypto = { path = "../passkey-crypto", version = "0.1", default-features = false }
 passkey-transports = { path = "../passkey-transports", version = "0.2" }
 passkey-types = { path = "../passkey-types", version = "0.6" }
 
