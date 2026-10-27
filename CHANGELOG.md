@@ -2,10 +2,21 @@
 
 ## Unreleased
 
+* Only add `rust-crypto` dependencies when `rust-crypto` feature flag is selected ([#129](https://github.com/1Password/passkey-rs/pull/129))
+
+### passkey-authenticator
+
+- Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
+
 ### passkey-client
 
 - Deprecate WebAuthnError::ExceedsMaxLabelLimit variant ([#125](https://github.com/1Password/passkey-rs/pull/125))
 - Relax WebAuthn related origins validations to ignore, instead of error, when too many labels are encountered. ([#125](https://github.com/1Password/passkey-rs/pull/125))
+- Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
+
+### passkey-types
+
+- Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
 
 ### passkey-crypto v0.1.1
 
