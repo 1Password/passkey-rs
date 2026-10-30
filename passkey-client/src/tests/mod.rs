@@ -634,3 +634,105 @@ async fn fail_to_create_with_unrelated_origin() {
 
     assert_eq!(res, WebauthnError::OriginRpMissmatch);
 }
+
+fn credential_descriptor(len: usize) -> webauthn::PublicKeyCredentialDescriptor {
+    webauthn::PublicKeyCredentialDescriptor {
+        ty: webauthn::PublicKeyCredentialType::PublicKey,
+        id: AvailableRng::random_vec(len).into(),
+        transports: None,
+    }
+}
+
+#[tokio::test]
+async fn register_validates_exclude_credentials_id_length() {
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(1),
+        AvailableBackend,
+    );
+    let mut client = Client::new(auth);
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let exclude_credentials =
+        |len| Some(vec![credential_descriptor(16), credential_descriptor(len)]);
+
+    // Rejected before the user is asked for consent: `check_user` expects exactly one call,
+    // which the accepted request below makes.
+    let options = webauthn::CredentialCreationOptions {
+        public_key: webauthn::PublicKeyCredentialCreationOptions {
+            exclude_credentials: exclude_credentials(1024),
+            ..good_credential_creation_options()
+        },
+    };
+    let res = client
+        .register(&origin, options, DefaultClientData)
+        .await
+        .expect_err("registered with a 1024 byte credential ID in exclude_credentials");
+    assert_eq!(res, WebauthnError::CredentialIdTooLong);
+
+    let options = webauthn::CredentialCreationOptions {
+        public_key: webauthn::PublicKeyCredentialCreationOptions {
+            exclude_credentials: exclude_credentials(1023),
+            ..good_credential_creation_options()
+        },
+    };
+    client
+        .register(&origin, options, DefaultClientData)
+        .await
+        .expect("failed to register with a 1023 byte credential ID in exclude_credentials");
+}
+
+#[tokio::test]
+async fn authenticate_validates_allow_credentials_id_length() {
+    let auth = Authenticator::new(
+        ctap2::Aaguid::new_empty(),
+        MemoryStore::new(),
+        uv_mock_with_creation(2),
+        AvailableBackend,
+    );
+    let mut client = Client::new(auth);
+    let origin = Url::parse("https://future.1password.com").unwrap();
+    let options = webauthn::CredentialCreationOptions {
+        public_key: good_credential_creation_options(),
+    };
+    let cred = client
+        .register(&origin, options, DefaultClientData)
+        .await
+        .expect("failed to register with options");
+
+    let allow_credentials = |len| {
+        Some(vec![
+            webauthn::PublicKeyCredentialDescriptor {
+                ty: webauthn::PublicKeyCredentialType::PublicKey,
+                id: cred.raw_id.clone(),
+                transports: None,
+            },
+            credential_descriptor(len),
+        ])
+    };
+
+    // Rejected before the user is asked for consent: `check_user` expects exactly two calls,
+    // which the registration above and the accepted request below make.
+    let auth_options = webauthn::CredentialRequestOptions {
+        public_key: webauthn::PublicKeyCredentialRequestOptions {
+            allow_credentials: allow_credentials(1024),
+            ..good_credential_request_options(cred.raw_id.clone())
+        },
+    };
+    let res = client
+        .authenticate(&origin, auth_options, DefaultClientData)
+        .await
+        .expect_err("authenticated with a 1024 byte credential ID in allow_credentials");
+    assert_eq!(res, WebauthnError::CredentialIdTooLong);
+
+    let auth_options = webauthn::CredentialRequestOptions {
+        public_key: webauthn::PublicKeyCredentialRequestOptions {
+            allow_credentials: allow_credentials(1023),
+            ..good_credential_request_options(cred.raw_id.clone())
+        },
+    };
+    client
+        .authenticate(&origin, auth_options, DefaultClientData)
+        .await
+        .expect("failed to authenticate with a 1023 byte credential ID in allow_credentials");
+}
