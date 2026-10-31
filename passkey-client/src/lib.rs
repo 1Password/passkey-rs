@@ -98,6 +98,22 @@ pub enum WebauthnError {
 
 const MAX_CREDENTIAL_ID_LENGTH: usize = 1023;
 
+/// Validate the length of every credential ID in an incoming `exclude_credentials` or
+/// `allow_credentials` list.
+/// <https://w3c.github.io/webauthn/#credential-id>
+fn validate_credential_id_lengths(
+    descriptors: Option<&[webauthn::PublicKeyCredentialDescriptor]>,
+) -> Result<(), WebauthnError> {
+    if descriptors
+        .unwrap_or_default()
+        .iter()
+        .any(|descriptor| descriptor.id.len() > MAX_CREDENTIAL_ID_LENGTH)
+    {
+        return Err(WebauthnError::CredentialIdTooLong);
+    }
+    Ok(())
+}
+
 // Library sets tokio import as optional, timeouts rely on it
 // Not sure if tokio should still be optional but guarding for now to avoid breaking changes
 // https://www.w3.org/TR/webauthn-3/#recommended-range-and-default-for-a-webauthn-ceremony-timeout
@@ -346,6 +362,7 @@ where
 
         // extract inner value of request as there is nothing else of value directly in CredentialCreationOptions
         let request = request.public_key;
+        validate_credential_id_lengths(request.exclude_credentials.as_deref())?;
         let auth_info = self.authenticator.get_info().await;
 
         let pub_key_cred_params = if request.pub_key_cred_params.is_empty() {
@@ -496,6 +513,7 @@ where
 
         // extract inner value of request as there is nothing else of value directly in CredentialRequestOptions
         let request = request.public_key;
+        validate_credential_id_lengths(request.allow_credentials.as_deref())?;
         let auth_info = self.authenticator().get_info().await;
 
         #[cfg(feature = "tokio")]
