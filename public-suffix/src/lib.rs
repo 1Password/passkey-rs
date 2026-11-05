@@ -219,15 +219,15 @@ impl<T: Table> ListProvider<T> {
             let mut u = T::NODES[f] >> (T::NODES_BITS_TEXT_OFFSET + T::NODES_BITS_TEXT_LENGTH);
             u >>= T::NODES_BITS_ICANN;
             u = T::CHILDREN[(u & ((1 << T::NODES_BITS_CHILDREN) - 1)) as usize];
-            lo = u & ((1 << T::CHILDREN_BITS_LO) - 1);
+            lo = (u & ((1 << T::CHILDREN_BITS_LO) - 1)) as u32;
             u >>= T::CHILDREN_BITS_LO;
-            hi = u & ((1 << T::CHILDREN_BITS_HI) - 1);
+            hi = (u & ((1 << T::CHILDREN_BITS_HI) - 1)) as u32;
             u >>= T::CHILDREN_BITS_HI;
             match u & ((1 << T::CHILDREN_BITS_NODE_TYPE) - 1) {
-                x if x == T::NODE_TYPE_NORMAL => {
+                x if x == u64::from(T::NODE_TYPE_NORMAL) => {
                     suffix = after_or_all(dot);
                 }
-                x if x == T::NODE_TYPE_EXCEPTION => {
+                x if x == u64::from(T::NODE_TYPE_EXCEPTION) => {
                     suffix = (1 + s.len())..;
                     break 'start;
                 }

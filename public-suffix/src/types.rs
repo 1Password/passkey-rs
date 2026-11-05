@@ -27,7 +27,7 @@ pub trait Table {
     /// The resulting string is the combined text of all labels concatenated together.
     const TEXT: &'static str;
 
-    /// NODES is the list of nodes. Each node is represented as a uint32, which
+    /// NODES is the list of nodes. Each node is represented as a u64, which
     /// encodes the node's children, wildcard bit and node type (as an index into
     /// the children array), ICANN bit and text.
     ///
@@ -37,10 +37,10 @@ pub trait Table {
     /// nodeType is printed as + for normal, ! for exception, and o for parent-only
     /// nodes that have children but don't match a domain label in their own right.
     /// An I denotes an ICANN domain.
-    const NODES: &'static [u32];
+    const NODES: &'static [u64];
 
     /// children is the list of nodes' children, the parent's wildcard bit and the
     /// parent's node type. If a node has no children then their children index
     /// will be in the range [0, 6), depending on the wildcard bit and node type.
-    const CHILDREN: &'static [u32];
+    const CHILDREN: &'static [u64];
 }
