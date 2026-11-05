@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### public-suffix v0.2.0
+
+- ⚠ BREAKING: `Table::NODES` and `Table::CHILDREN` are `&'static [u64]`, with wider text offset and children index fields so the current Public Suffix List fits. Regenerate custom tables with this release's generator.
+- Fix the generator's `--comments` output, whose padding format string was malformed.
+
 ### passkey-client
 
 - Deprecate WebAuthnError::ExceedsMaxLabelLimit variant ([#125](https://github.com/1Password/passkey-rs/pull/125))
