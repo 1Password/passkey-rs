@@ -56,7 +56,7 @@ serde_workaround! {
         /// which support user verification but do not have it configured, can be tricked into
         /// releasing this information by configuring the user verification.
         #[serde(rename = 0x03)]
-        pub user: webauthn::PublicKeyCredentialUserEntity,
+        pub user: PublicKeyCredentialUserEntity,
 
         /// A sequence of CBOR maps consisting of pairs of PublicKeyCredentialType (a string) and
         /// cryptographic algorithm (a positive or negative integer), where algorithm identifiers
