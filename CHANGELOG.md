@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Only add `rust-crypto` dependencies when `rust-crypto` feature flag is selected ([#129](https://github.com/1Password/passkey-rs/pull/129))
+* Changed make_credential parameters to accept incomplete user ([#135](https://github.com/1Password/passkey-rs/pull/135))
 
 ### public-suffix v0.2.0
 
