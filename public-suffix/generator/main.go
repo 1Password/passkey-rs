@@ -27,9 +27,9 @@ import (
 
 const (
 	// These sum of these four values must be no greater than 64.
-	nodesBitsChildren   = 10
+	nodesBitsChildren   = 11
 	nodesBitsICANN      = 1
-	nodesBitsTextOffset = 15
+	nodesBitsTextOffset = 16
 	nodesBitsTextLength = 6
 
 	// These sum of these four values must be no greater than 32.

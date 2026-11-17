@@ -125,13 +125,29 @@ static TEST_CASES: &[(&str, &str)] = &[
     ("aaa.xn--p1ai", "xn--p1ai"),
     ("www.xxx.yyy.xn--p1ai", "xn--p1ai"),
     // The .bd rules are:
-    // *.bd
-    ("bd", "bd"), // The catch-all "*" rule is not in the ICANN DOMAIN section. See footnote (†).
-    ("www.bd", "www.bd"),
-    ("xxx.www.bd", "www.bd"),
-    ("zzz.bd", "zzz.bd"),
-    ("www.zzz.bd", "zzz.bd"),
-    ("www.xxx.yyy.zzz.bd", "zzz.bd"),
+    // bd
+    // ac.bd
+    // ai.bd
+    // co.bd
+    // com.bd
+    // edu.bd
+    // gov.bd
+    // id.bd
+    // info.bd
+    // it.bd
+    // mil.bd
+    // net.bd
+    // org.bd
+    // sch.bd
+    // tv.bd
+    ("bd", "bd"),
+    ("www.bd", "bd"),
+    ("xxx.www.bd", "bd"),
+    ("zzz.bd", "bd"),
+    ("www.zzz.bd", "bd"),
+    ("www.xxx.yyy.zzz.bd", "bd"),
+    ("www.com.bd", "com.bd"),
+    ("xxx.tv.bd", "tv.bd"),
     // The .ck rules are:
     // *.ck
     // !www.ck
@@ -154,11 +170,11 @@ static TEST_CASES: &[(&str, &str)] = &[
     ("landing.myjino.ru", "myjino.ru"),
     ("www.landing.myjino.ru", "www.landing.myjino.ru"),
     ("spectrum.vps.myjino.ru", "spectrum.vps.myjino.ru"),
-    // The .uberspace.de rules (in the PRIVATE DOMAIN section) are:
-    // *.uberspace.de
+    // The uberspace.de rules (in the PRIVATE DOMAIN section) are:
+    // uber.space
     ("uberspace.de", "de"), // "de" is in the ICANN DOMAIN section. See footnote (†).
-    ("aaa.uberspace.de", "aaa.uberspace.de"),
-    ("bbb.ccc.uberspace.de", "ccc.uberspace.de"),
+    ("uber.space", "uber.space"),
+    ("aaa.uber.space", "uber.space"),
     // There are no .nosuchtld rules.
     ("nosuchtld", "nosuchtld"),
     ("foo.nosuchtld", "nosuchtld"),
