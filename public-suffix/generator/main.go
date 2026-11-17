@@ -317,7 +317,7 @@ impl Table for %s {
     /// encodes the node's children, wildcard bit and node type (as an index into
     /// the children array), ICANN bit and text.
     ///
-    /// If the table was generated with the -comments flag, there is a //-comment
+    /// If the table was generated with the --comments flag, there is a //-comment
     /// after each node's data. In it is the nodes-array indexes of the children,
     /// formatted as (n0x1234-n0x1256), with * denoting the wildcard bit. The
     /// nodeType is printed as + for normal, ! for exception, and o for parent-only
@@ -517,7 +517,7 @@ func formatThousands(num uint32, padding int8) string {
 	if padding == 0 {
 		formatter = "%x"
 	} else {
-		formatter = fmt.Sprintf("%%0*x", padding)
+		formatter = fmt.Sprintf("%%0%dx", padding)
 	}
 
 	hex := fmt.Sprintf(formatter, num)
