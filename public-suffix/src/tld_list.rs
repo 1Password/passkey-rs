@@ -4,10 +4,10 @@ use crate::Table;
 pub struct TLDList;
 
 impl Table for TLDList {
-    const NODES_BITS_CHILDREN: u32 = 10;
-    const NODES_BITS_ICANN: u32 = 1;
-    const NODES_BITS_TEXT_OFFSET: u32 = 15;
-    const NODES_BITS_TEXT_LENGTH: u32 = 6;
+    const NODES_BITS_CHILDREN: u64 = 10;
+    const NODES_BITS_ICANN: u64 = 1;
+    const NODES_BITS_TEXT_OFFSET: u64 = 15;
+    const NODES_BITS_TEXT_LENGTH: u64 = 6;
 
     const CHILDREN_BITS_WILDCARD: u32 = 1;
     const CHILDREN_BITS_NODE_TYPE: u32 = 2;
@@ -519,7 +519,7 @@ narashinoharaxn--yfro4i67oxn--ygarden-p1axn--ygbi2ammxn--4gbrimi\
 niserverxn--ystre-slidre-ujbolzano-altoadigeu-south-1xn--zbx025d\
 xn--zf0avxn--4it168dxn--zfr164bomlocustomer-ocienciaxnbayernxz";
 
-    /// NODES is the list of nodes. Each node is represented as a uint32, which
+    /// NODES is the list of nodes. Each node is represented as a u64, which
     /// encodes the node's children, wildcard bit and node type (as an index into
     /// the children array), ICANN bit and text.
     ///
@@ -530,13 +530,13 @@ xn--zf0avxn--4it168dxn--zfr164bomlocustomer-ocienciaxnbayernxz";
     /// nodes that have children but don't match a domain label in their own right.
     /// An I denotes an ICANN domain.
     ///
-    /// The layout within the uint32, from MSB to LSB, is:
-    /// [ 0 bits] unused
+    /// The layout within the u64, from MSB to LSB, is:
+    /// [32 bits] unused
     /// [10 bits] children index
     /// [ 1 bits] ICANN bit
     /// [15 bits] text index
     /// [ 6 bits] text length
-    const NODES: &'static [u32] = &[
+    const NODES: &'static [u64] = &[
         0x0032_4d03,
         0x0031_f9c4,
         0x0020_8c83,
@@ -10667,7 +10667,7 @@ xn--zf0avxn--4it168dxn--zfr164bomlocustomer-ocienciaxnbayernxz";
     /// parent's node type. If a node has no children then their children index
     /// will be in the range [0, 6), depending on the wildcard bit and node type.
     ///
-    /// The layout within the uint32, from MSB to LSB, is:
+    /// The layout within the u32, from MSB to LSB, is:
     /// [ 1 bits] unused
     /// [ 1 bits] wildcard bit
     /// [ 2 bits] node type

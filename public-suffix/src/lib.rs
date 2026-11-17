@@ -216,9 +216,9 @@ impl<T: Table> ListProvider<T> {
                 }
             };
 
-            let mut u = T::NODES[f] >> (T::NODES_BITS_TEXT_OFFSET + T::NODES_BITS_TEXT_LENGTH);
+            let mut u: u64 = T::NODES[f] >> (T::NODES_BITS_TEXT_OFFSET + T::NODES_BITS_TEXT_LENGTH);
             u >>= T::NODES_BITS_ICANN;
-            u = T::CHILDREN[(u & ((1 << T::NODES_BITS_CHILDREN) - 1)) as usize];
+            let mut u: u32 = T::CHILDREN[(u & ((1 << T::NODES_BITS_CHILDREN) - 1)) as usize];
             lo = u & ((1 << T::CHILDREN_BITS_LO) - 1);
             u >>= T::CHILDREN_BITS_LO;
             hi = u & ((1 << T::CHILDREN_BITS_HI) - 1);
