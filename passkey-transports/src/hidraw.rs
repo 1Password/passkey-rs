@@ -292,6 +292,7 @@ impl HidDevice {
             .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
             .open(path)?;
         // let fd: OwnedFd = file.into();
+        #[expect(deprecated)]
         let fd = AsyncFd::with_interest(file, Interest::READABLE | Interest::WRITABLE)?;
         Ok(Self { fd })
     }
