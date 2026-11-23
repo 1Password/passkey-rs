@@ -1,4 +1,4 @@
-use passkey_crypto::{CryptoBackend, rng::RngBackend};
+use passkey_crypto::{CryptoBackend, coset, rng::RngBackend};
 use passkey_types::{
     Passkey,
     ctap2::{
@@ -124,7 +124,15 @@ where
         // Encoding of the key pair into their CoseKey representation before moving the private CoseKey
         // into the passkey. Keeping the public key ready for step 11 below and returning the attested
         // credential.
-        let CoseKeyPair { public, private } = CoseKeyPair::from_secret_key(&private_key);
+        // Backends label keys by key type (ES256/EdDSA), so fully-specified algorithms such as
+        // ESP256 and Ed25519 must be applied explicitly to report what the RP asked for.
+        let CoseKeyPair {
+            mut public,
+            mut private,
+        } = CoseKeyPair::from_secret_key(&private_key);
+        let alg = Some(coset::RegisteredLabelWithPrivate::Assigned(algorithm));
+        public.alg = alg.clone();
+        private.alg = alg;
 
         let store_info = self.store.get_info().await;
 
