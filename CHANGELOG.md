@@ -2,16 +2,27 @@
 
 ## Unreleased
 
+* Only add `rust-crypto` dependencies when `rust-crypto` feature flag is selected ([#129](https://github.com/1Password/passkey-rs/pull/129))
+
 ### public-suffix v0.2.0
 
 - ⚠ BREAKING: `Table::NODES` has been changed from a `&'static [u32]` to a `&'static [u64]`, with wider text offset and children index fields so more recent Public Suffix Lists fit. Custom tables should be regenerated with the new version of the generator. ([#137](https://github.com/1Password/passkey-rs/pull/91))
 - Updated public suffix list
 - Fix the generator's `--comments` option, which had been emitting malformed output. ([#137](https://github.com/1Password/passkey-rs/pull/91))
 
+### passkey-authenticator
+
+- Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
+
 ### passkey-client
 
 - Deprecate WebAuthnError::ExceedsMaxLabelLimit variant ([#125](https://github.com/1Password/passkey-rs/pull/125))
 - Relax WebAuthn related origins validations to ignore, instead of error, when too many labels are encountered. ([#125](https://github.com/1Password/passkey-rs/pull/125))
+- Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
+
+### passkey-types
+
+- Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
 
 ### passkey-crypto v0.1.1
 
