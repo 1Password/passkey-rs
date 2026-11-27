@@ -19,6 +19,7 @@
 - Deprecate WebAuthnError::ExceedsMaxLabelLimit variant ([#125](https://github.com/1Password/passkey-rs/pull/125))
 - Relax WebAuthn related origins validations to ignore, instead of error, when too many labels are encountered. ([#125](https://github.com/1Password/passkey-rs/pull/125))
 - Removed `rust-crypto` dependencies that were added via `passkey-crypto` dependency ([#129](https://github.com/1Password/passkey-rs/pull/129))
+- `Client::register` and `Client::authenticate` now reject credential IDs longer than 1023 bytes in `exclude_credentials` and `allow_credentials` ([#131](https://github.com/1Password/passkey-rs/pull/131))
 
 ### passkey-types
 
