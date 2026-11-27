@@ -46,6 +46,7 @@
 - Add `linux` module with a `LinuxAuthenticator` for USB CTAP2 hardware authenticators ([#99](https://github.com/1Password/passkey-rs/pull/99))
 - ⚠ BREAKING: Remove U2F support ([#105](https://github.com/1Password/passkey-rs/pull/105))
 - Add a builder method on Authenticator to set supported algorithms ([#116](https://github.com/1Password/passkey-rs/pull/116))
+- Fix passkey labeling based on requested algorithm ([#141](https://github.com/1Password/passkey-rs/pull/141))
 
 ### passkey-client v0.6.0
 

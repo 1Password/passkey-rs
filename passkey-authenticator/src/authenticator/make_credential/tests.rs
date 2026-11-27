@@ -613,3 +613,108 @@ async fn store_with_credentials_not_in_exclude_list_succeeds() {
     // Verify a new credential was created (now 2 credentials in store)
     assert_eq!(shared_store.lock().await.len(), 2);
 }
+
+#[tokio::test]
+async fn make_credential_labels_keys_with_the_chosen_algorithm() {
+    use passkey_crypto::{AvailableSecretKey, PublicKeyT, SecretKeyT, coset};
+
+    for alg in [
+        iana::Algorithm::ES256,
+        iana::Algorithm::ESP256,
+        iana::Algorithm::EdDSA,
+        iana::Algorithm::Ed25519,
+        iana::Algorithm::ML_DSA_44,
+        iana::Algorithm::ML_DSA_65,
+        iana::Algorithm::ML_DSA_87,
+    ] {
+        let shared_store = Arc::new(Mutex::new(None));
+        let mut authenticator = Authenticator::new(
+            Aaguid::new_empty(),
+            shared_store.clone(),
+            MockUserValidationMethod::verified_user(1),
+            AvailableBackend,
+        );
+        let request = Request {
+            pub_key_cred_params: vec![webauthn::PublicKeyCredentialParameters {
+                ty: webauthn::PublicKeyCredentialType::PublicKey,
+                alg,
+            }],
+            ..good_request()
+        };
+
+        let response = authenticator
+            .make_credential(request)
+            .await
+            .unwrap_or_else(|e| panic!("make_credential failed for {alg:?}: {e:?}"));
+
+        let expected = Some(coset::RegisteredLabelWithPrivate::Assigned(alg));
+        let attested_key = response
+            .auth_data
+            .attested_credential_data
+            .expect("missing attested credential data")
+            .key;
+        assert_eq!(
+            attested_key.alg, expected,
+            "attested public key for {alg:?}"
+        );
+
+        let stored_key = shared_store
+            .lock()
+            .await
+            .as_ref()
+            .expect("passkey was not stored")
+            .key
+            .clone();
+        assert_eq!(stored_key.alg, expected, "stored private key for {alg:?}");
+
+        let mut secret = AvailableSecretKey::from_cose_key(&stored_key)
+            .unwrap_or_else(|e| panic!("stored key for {alg:?} is unusable: {e:?}"));
+        let public = secret.public_key();
+        assert_eq!(public.to_cose_key().params, attested_key.params);
+        let signature = secret.sign(b"challenge");
+        public
+            .verify(b"challenge", &signature)
+            .unwrap_or_else(|e| panic!("signature for {alg:?} did not verify: {e:?}"));
+    }
+}
+
+#[tokio::test]
+async fn make_credential_uses_first_supported_algorithm_from_request() {
+    use passkey_crypto::coset;
+
+    let shared_store = Arc::new(Mutex::new(None));
+    let mut authenticator = Authenticator::new(
+        Aaguid::new_empty(),
+        shared_store.clone(),
+        MockUserValidationMethod::verified_user(1),
+        AvailableBackend,
+    );
+    let request = Request {
+        pub_key_cred_params: [
+            iana::Algorithm::RSAES_OAEP_SHA_256,
+            iana::Algorithm::Ed25519,
+            iana::Algorithm::ES256,
+        ]
+        .into_iter()
+        .map(|alg| webauthn::PublicKeyCredentialParameters {
+            ty: webauthn::PublicKeyCredentialType::PublicKey,
+            alg,
+        })
+        .collect(),
+        ..good_request()
+    };
+
+    let response = authenticator.make_credential(request).await.unwrap();
+
+    let expected = Some(coset::RegisteredLabelWithPrivate::Assigned(
+        iana::Algorithm::Ed25519,
+    ));
+    assert_eq!(
+        response.auth_data.attested_credential_data.unwrap().key.alg,
+        expected
+    );
+    assert_eq!(
+        shared_store.lock().await.as_ref().unwrap().key.alg,
+        expected
+    );
+}
